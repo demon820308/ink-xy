@@ -1,0 +1,77 @@
+name: Build ink-xY Novel Studio
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    
+    # Grant contents:write permission to allow GITHUB_TOKEN to create and publish releases
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false # Ensures that if macOS fails, Windows build will still finish successfully
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js (Upgraded to Node 22 to natively support markAsUncloneable)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      # Strip macOS quarantine attributes to avoid permission & signature check issues
+      - name: Clear macOS quarantine attributes
+        if: matrix.os == 'macos-latest'
+        run: xattr -cr .
+
+      # Solve symbolic link cache resolution on Windows runner automatically by downloading & prepopulating cache
+      - name: Manually Prepopulate winCodeSign Cache (Windows only)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $cacheDir = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign"
+          Write-Host "Creating cache directory: $cacheDir"
+          New-Item -ItemType Directory -Force -Path $cacheDir
+          
+          $zipPath = Join-Path $cacheDir "winCodeSign-2.6.0.7z"
+          $downloadUrl = "https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z"
+          
+          Write-Host "Downloading winCodeSign from: $downloadUrl"
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath
+          
+          Write-Host "Extracting winCodeSign without macOS symlinks..."
+          $targetDir = Join-Path $cacheDir "winCodeSign-2.6.0"
+          & "node_modules/7zip-bin/win/x64/7za.exe" x -snld -bd $zipPath "-o$targetDir" "-x!darwin"
+          
+          Write-Host "winCodeSign cache populated successfully!"
+
+      - name: Build Next.js & Package App
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false # Disables keychain lookup on macOS
+          DEBUG: "electron-builder"          # Enables verbose logs for debugging if failure persists
+        run: npm run build && npx electron-builder -p always
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ink-xy-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
