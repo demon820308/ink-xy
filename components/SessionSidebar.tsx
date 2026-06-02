@@ -881,9 +881,45 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "创建书籍失败，大模型生成异常，请检查配置和 Key");
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; error?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (err) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (err) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "创建书籍失败，大模型生成异常，请检查配置和 Key");
       }
 
       await checkWorkspaceStatus(activeCwd);
@@ -911,10 +947,48 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "init", cwd: activeCwd }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to initialize workspace");
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
       }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; error?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (err) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (err) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "Failed to initialize workspace");
+      }
+
       await checkWorkspaceStatus(activeCwd);
       setExplorerKey((k) => k + 1); // trigger file explorer refresh
     } catch (err: any) {
