@@ -241,11 +241,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [bookPlatform, setBookPlatform] = useState("tomato");
   const [bookBrief, setBookBrief] = useState("");
 
-  const [detectedLocalFiles, setDetectedLocalFiles] = useState<string[]>([]);
+  const [detectedFramework, setDetectedFramework] = useState<{ name: string; fullPath: string } | null>(null);
+  const [detectedCharacter, setDetectedCharacter] = useState<{ name: string; fullPath: string } | null>(null);
+  const [useFramework, setUseFramework] = useState(true);
+  const [useCharacter, setUseCharacter] = useState(true);
 
   useEffect(() => {
     if (!isBookModalOpen) {
-      setDetectedLocalFiles([]);
+      setDetectedFramework(null);
+      setDetectedCharacter(null);
+      setUseFramework(true);
+      setUseCharacter(true);
       return;
     }
     const activeCwd = selectedCwdProp || selectedCwd;
@@ -253,45 +259,55 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
     const scanLocalFiles = async () => {
       try {
-        const detected: string[] = [];
-        
-        // 1. Scan CWD root
-        const rootRes = await fetch(`/api/files/${encodeFilePathForApi(activeCwd)}?type=list`);
-        const rootData = await rootRes.json();
-        if (rootData.entries) {
-          const hasFramework = rootData.entries.some((e: any) => !e.isDir && ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"].includes(e.name));
-          const hasCharacter = rootData.entries.some((e: any) => !e.isDir && ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"].includes(e.name));
-          if (hasFramework) detected.push("架构文件 (根目录)");
-          if (hasCharacter) detected.push("人设文件 (根目录)");
-        }
-        
-        // 2. Scan Temp directory
-        const tempDir = `${activeCwd}/Temp`;
-        const tempRes = await fetch(`/api/files/${encodeFilePathForApi(tempDir)}?type=list`);
-        if (tempRes.ok) {
-          const tempData = await tempRes.json();
-          if (tempData.entries) {
-            const hasFramework = tempData.entries.some((e: any) => !e.isDir && ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"].includes(e.name));
-            const hasCharacter = tempData.entries.some((e: any) => !e.isDir && ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"].includes(e.name));
-            if (hasFramework) detected.push("novel_framework.md (Temp)");
-            if (hasCharacter) detected.push("character_profiles.md (Temp)");
+        let fw: { name: string; fullPath: string } | null = null;
+        let char: { name: string; fullPath: string } | null = null;
+
+        // De-duplicate directories to avoid case-insensitive duplication on Windows
+        const directoriesToCheck = [
+          { name: "根目录", path: activeCwd },
+          { name: "Temp", path: `${activeCwd}/Temp` },
+          { name: "temp", path: `${activeCwd}/temp` }
+        ].filter((dir, idx, self) => {
+          return self.findIndex(d => d.path.toLowerCase().replace(/\\/g, "/") === dir.path.toLowerCase().replace(/\\/g, "/")) === idx;
+        });
+
+        const frameworkNames = ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"];
+        const characterNames = ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"];
+
+        for (const dirInfo of directoriesToCheck) {
+          try {
+            const res = await fetch(`/api/files/${encodeFilePathForApi(dirInfo.path)}?type=list`);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (data.entries) {
+              // Find framework if not already found
+              if (!fw) {
+                const found = data.entries.find((e: any) => !e.isDir && frameworkNames.includes(e.name.toLowerCase()));
+                if (found) {
+                  fw = {
+                    name: found.name,
+                    fullPath: `${dirInfo.path}/${found.name}`
+                  };
+                }
+              }
+              // Find character if not already found
+              if (!char) {
+                const found = data.entries.find((e: any) => !e.isDir && characterNames.includes(e.name.toLowerCase()));
+                if (found) {
+                  char = {
+                    name: found.name,
+                    fullPath: `${dirInfo.path}/${found.name}`
+                  };
+                }
+              }
+            }
+          } catch (e) {
+            // ignore folder read failures
           }
         }
         
-        // 3. Scan temp directory
-        const tempDirLower = `${activeCwd}/temp`;
-        const tempLowerRes = await fetch(`/api/files/${encodeFilePathForApi(tempDirLower)}?type=list`);
-        if (tempLowerRes.ok) {
-          const tempLowerData = await tempLowerRes.json();
-          if (tempLowerData.entries) {
-            const hasFramework = tempLowerData.entries.some((e: any) => !e.isDir && ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"].includes(e.name));
-            const hasCharacter = tempLowerData.entries.some((e: any) => !e.isDir && ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"].includes(e.name));
-            if (hasFramework) detected.push("novel_framework.md (temp)");
-            if (hasCharacter) detected.push("character_profiles.md (temp)");
-          }
-        }
-        
-        setDetectedLocalFiles(detected);
+        setDetectedFramework(fw);
+        setDetectedCharacter(char);
       } catch (e) {
         console.error("Failed to scan local framework/character files:", e);
       }
@@ -359,7 +375,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             title: bookTitle.trim(),
             genre: bookGenre,
             platform: bookPlatform,
-            brief: bookBrief.trim() || undefined
+            brief: bookBrief.trim() || undefined,
+            selectedFrameworkPath: (detectedFramework && useFramework) ? detectedFramework.fullPath : undefined,
+            selectedCharacterPath: (detectedCharacter && useCharacter) ? detectedCharacter.fullPath : undefined,
           }
         }),
       });
@@ -1393,18 +1411,42 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </div>
                 )}
 
-                {detectedLocalFiles.length > 0 && (
+                {(detectedFramework || detectedCharacter) && (
                   <div style={{
-                    background: "rgba(16, 185, 129, 0.08)",
-                    border: "1px solid rgba(16, 185, 129, 0.2)",
-                    borderRadius: "6px",
-                    padding: "10px",
-                    color: "#10b981",
-                    fontSize: "11px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "12px",
                     marginBottom: "16px",
-                    lineHeight: 1.5,
+                    fontSize: "12px",
                   }}>
-                    🔍 检测到本地创作设定：<strong>{detectedLocalFiles.join("、")}</strong>，确认创建后系统将自动以此为基础构建故事宇宙设定。
+                    <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: "8px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>🔍 检测到本地创作设定，请选择是否作为新书创建基础：</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {detectedFramework && (
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text)" }}>
+                          <input
+                            type="checkbox"
+                            checked={useFramework}
+                            onChange={(e) => setUseFramework(e.target.checked)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          <span>小说框架：<code style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--accent)" }}>{detectedFramework.name}</code></span>
+                        </label>
+                      )}
+                      {detectedCharacter && (
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text)" }}>
+                          <input
+                            type="checkbox"
+                            checked={useCharacter}
+                            onChange={(e) => setUseCharacter(e.target.checked)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          <span>角色人设：<code style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--accent)" }}>{detectedCharacter.name}</code></span>
+                        </label>
+                      )}
+                    </div>
                   </div>
                 )}
                 
