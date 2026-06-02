@@ -9,6 +9,19 @@ export function getGemsFilePath(): string {
 
 export const DEFAULT_GEMS: GemProfile[] = [
   {
+    id: "default-co-writer",
+    name: "文学协同执笔姬",
+    description: "与您沉浸式联手执笔，共同探讨剧情，并协同撰写、续写或直接起草小说正文段落",
+    avatar: "🖋️",
+    systemPrompt: "你是一位富有文学灵性的小说协同创作者（Co-Writer）。你的任务是作为作者的亲密写作伴侣，以极高的文学水准，与作者共同执笔创作小说正文。你可以根据作者提供的情节梗概、前文设定，与作者一同切磋、构思接下来的叙事，并直接续写或起草精彩的小说正文段落。请保持文字极具画面感与文学质感、人物对白生动自然、故事节奏紧凑，且完全遵照工作区中注入的人物设定与世界观限制。请以平等且富有洞察力的联合编剧身份与作者开展互动。",
+    modelId: "",
+    provider: "",
+    allowedTools: [],
+    knowledgeFiles: [],
+    created: new Date().toISOString(),
+    modified: new Date().toISOString()
+  },
+  {
     id: "default-outline-planner",
     name: "大纲策划师",
     description: "负责小说微观冲突、宏观结构、大纲与起承转合编排",
@@ -74,7 +87,24 @@ export function readGems(): GemProfile[] {
   }
   try {
     const data = readFileSync(filePath, "utf-8");
-    return JSON.parse(data) as GemProfile[];
+    const parsed = JSON.parse(data) as GemProfile[];
+    
+    // Auto-merge missing default gems
+    let updated = false;
+    const missing = DEFAULT_GEMS.filter(dg => !parsed.some(pg => pg.id === dg.id));
+    if (missing.length > 0) {
+      parsed.push(...missing);
+      updated = true;
+    }
+    
+    if (updated) {
+      try {
+        writeGems(parsed);
+      } catch (e) {
+        console.error("Failed to merge missing default gems:", e);
+      }
+    }
+    return parsed;
   } catch (error) {
     console.error("Failed to read gem_xy.json:", error);
     return [];
