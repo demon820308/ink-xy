@@ -258,6 +258,20 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [exportLogs, setExportLogs] = useState<string[]>([]);
   const consoleRef = useRef<HTMLDivElement>(null);
 
+  // InkOS import states
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [activeImportTab, setActiveImportTab] = useState<"chapters" | "canon">("chapters");
+  const [importFromPath, setImportFromPath] = useState("");
+  const [importSplitRegex, setImportSplitRegex] = useState("");
+  const [importResumeFrom, setImportResumeFrom] = useState("");
+  const [importIsSeries, setImportIsSeries] = useState(false);
+  const [importCanonFromBookId, setImportCanonFromBookId] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importLogs, setImportLogs] = useState<string[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccessText, setImportSuccessText] = useState<string | null>(null);
+  const [availableBooks, setAvailableBooks] = useState<string[]>([]);
+
   useEffect(() => {
     if (consoleRef.current) {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
@@ -371,6 +385,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           const actualBooks = bookEntries.filter((e: any) => e.name !== ".gitkeep" && !e.name.startsWith("."));
           const hasBooksVal = actualBooks.length > 0;
           setHasBooks(hasBooksVal);
+          setAvailableBooks(actualBooks.map((e: any) => e.name));
 
           if (hasBooksVal) {
             const firstBook = actualBooks[0].name;
@@ -424,12 +439,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           setActiveBookId(null);
           setHasChapters(false);
           setChapterStatusMap({});
+          setAvailableBooks([]);
         }
       } else {
         setHasBooks(false);
         setActiveBookId(null);
         setHasChapters(false);
         setChapterStatusMap({});
+        setAvailableBooks([]);
       }
     } catch (e) {
       console.error("Failed to verify workspace status:", e);
@@ -542,6 +559,124 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       setExportError(err.message || "书稿导出失败，请重试。");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd) return;
+
+    setIsImporting(true);
+    setImportError(null);
+    setImportSuccessText(null);
+    setImportLogs([]);
+
+    try {
+      let body: Record<string, unknown> = {};
+      if (activeImportTab === "chapters") {
+        if (!importFromPath.trim()) {
+          throw new Error("导入源路径不能为空");
+        }
+        body = {
+          action: "import-chapters",
+          cwd: activeCwd,
+          args: {
+            bookId: activeBookId || undefined,
+            from: importFromPath.trim(),
+            split: importSplitRegex.trim() || undefined,
+            resumeFrom: importResumeFrom ? parseInt(importResumeFrom, 10) : undefined,
+            series: importIsSeries,
+            json: true
+          }
+        };
+      } else {
+        if (!importCanonFromBookId.trim()) {
+          throw new Error("请选择或输入原著/前作 Book ID");
+        }
+        body = {
+          action: "import-canon",
+          cwd: activeCwd,
+          args: {
+            bookId: activeBookId || undefined,
+            from: importCanonFromBookId.trim(),
+            json: true
+          }
+        };
+      }
+
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; stdout?: string; stderr?: string; error?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setImportLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (err) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (err) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "导入执行失败，请检查路径或日志。");
+      }
+
+      if (activeImportTab === "chapters") {
+        let resultData: { importedCount?: number; totalWords?: number } | null = null;
+        try {
+          if (finalResult.stdout) {
+            resultData = JSON.parse(finalResult.stdout);
+          }
+        } catch (err) {}
+        const imported = resultData?.importedCount ?? "部分";
+        const words = resultData?.totalWords ?? 0;
+        setImportSuccessText(`🎉 成功导入章节！共处理了 ${imported} 章节，约 ${words} 字。逆向工程设定提取成功！`);
+      } else {
+        setImportSuccessText(`🎉 成功导入前作设定！世界观与人物正典已同步成功。`);
+      }
+
+      // Refresh status and file explorer tree
+      await checkWorkspaceStatus(activeCwd);
+      setExplorerKey((k) => k + 1);
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+    } catch (err: any) {
+      console.error(err);
+      setImportError(err.message || "导入执行失败，请重试。");
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -1373,34 +1508,70 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               创作目录 (Workspace)
             </button>
             {isInkosWorkspace && hasBooks && (
-              <button
-                onClick={() => {
-                  setIsExportModalOpen(true);
-                  setExportSuccessText(null);
-                  setExportError(null);
-                  setExportLogs([]);
-                }}
-                title="导出小说书稿 (Export Book)"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 26, height: 26, padding: 0, marginRight: 6,
-                  background: "none",
-                  border: "none",
-                  color: "var(--text-dim)",
-                  cursor: "pointer",
-                  borderRadius: 5,
-                  flexShrink: 0,
-                  transition: "color 0.3s, background 0.3s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-              </button>
+              <div style={{ display: "flex", gap: 2 }}>
+                <button
+                  onClick={() => {
+                    setIsExportModalOpen(true);
+                    setExportSuccessText(null);
+                    setExportError(null);
+                    setExportLogs([]);
+                  }}
+                  title="导出小说书稿 (Export Book)"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 26, height: 26, padding: 0,
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-dim)",
+                    cursor: "pointer",
+                    borderRadius: 5,
+                    flexShrink: 0,
+                    transition: "color 0.3s, background 0.3s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsImportModalOpen(true);
+                    setImportSuccessText(null);
+                    setImportError(null);
+                    setImportLogs([]);
+                    setImportFromPath("");
+                    setImportSplitRegex("");
+                    setImportResumeFrom("");
+                    setImportIsSeries(false);
+                    const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
+                    setImportCanonFromBookId(otherBook);
+                  }}
+                  title="导入设定或旧章原稿 (Import Canon/Chapters)"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 26, height: 26, padding: 0, marginRight: 6,
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-dim)",
+                    cursor: "pointer",
+                    borderRadius: 5,
+                    flexShrink: 0,
+                    transition: "color 0.3s, background 0.3s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+              </div>
             )}
             <button
               onClick={() => {
@@ -1534,24 +1705,57 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
                     您的创作宇宙和人设基础已准备就绪！点击下方按钮，由 AI 协同起草第一章正文，拉开故事序幕。
                   </div>
-                  <button
-                    onClick={handleStartWriting}
-                    disabled={isWriteLoading}
-                    style={{
-                      width: "100%",
-                      padding: "6px 0",
-                      background: "var(--accent)",
-                      border: "none",
-                      borderRadius: "6px",
-                      color: "white",
-                      fontWeight: 600,
-                      cursor: isWriteLoading ? "not-allowed" : "pointer",
-                      textAlign: "center",
-                      transition: "opacity 0.15s",
-                    }}
-                  >
-                    ✍️ 智能写作正文
-                  </button>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <button
+                      onClick={handleStartWriting}
+                      disabled={isWriteLoading}
+                      style={{
+                        flex: 1,
+                        padding: "6px 0",
+                        background: "var(--accent)",
+                        border: "none",
+                        borderRadius: "6px",
+                        color: "white",
+                        fontWeight: 600,
+                        cursor: isWriteLoading ? "not-allowed" : "pointer",
+                        textAlign: "center",
+                        fontSize: "11px",
+                        transition: "opacity 0.15s",
+                      }}
+                    >
+                      ✍️ 智能写作正文
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsImportModalOpen(true);
+                        setImportSuccessText(null);
+                        setImportError(null);
+                        setImportLogs([]);
+                        setImportFromPath("");
+                        setImportSplitRegex("");
+                        setImportResumeFrom("");
+                        setImportIsSeries(false);
+                        const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
+                        setImportCanonFromBookId(otherBook);
+                      }}
+                      disabled={isWriteLoading}
+                      style={{
+                        flex: 1,
+                        padding: "6px 0",
+                        background: "var(--bg)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        color: "var(--text)",
+                        fontWeight: 600,
+                        cursor: isWriteLoading ? "not-allowed" : "pointer",
+                        textAlign: "center",
+                        fontSize: "11px",
+                        transition: "opacity 0.15s",
+                      }}
+                    >
+                      📥 导入已有旧稿
+                    </button>
+                  </div>
                 </div>
               )}
               {registeredCwd === (selectedCwdProp ?? selectedCwd) && (
@@ -2444,6 +2648,302 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   <button
                     type="button"
                     onClick={() => setIsExportModalOpen(false)}
+                    style={{
+                      padding: "0 16px", height: 38,
+                      background: "var(--bg-hover)",
+                      border: "1px solid var(--border)", borderRadius: 8,
+                      color: "var(--text-muted)", fontSize: 12, fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    取消
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Novel Import Wizard Modal */}
+      {isImportModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            width: "500px",
+            maxWidth: "95%",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)",
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 20px", borderBottom: "1px solid var(--border)",
+              background: "var(--bg)",
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                📥 InkOS 导入向导 ({activeBookId})
+              </span>
+              <button
+                onClick={() => { if (!isImporting) setIsImportModalOpen(false); }}
+                disabled={isImporting}
+                style={{
+                  background: "none", border: "none", color: "var(--text-dim)",
+                  fontSize: 14, cursor: isImporting ? "not-allowed" : "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tabs Header */}
+            <div style={{
+              display: "flex",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--bg-panel)",
+            }}>
+              <button
+                type="button"
+                onClick={() => { if (!isImporting) setActiveImportTab("chapters"); }}
+                disabled={isImporting}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  background: activeImportTab === "chapters" ? "var(--bg)" : "transparent",
+                  color: activeImportTab === "chapters" ? "var(--accent)" : "var(--text-muted)",
+                  borderBottom: activeImportTab === "chapters" ? "2px solid var(--accent)" : "none",
+                  cursor: isImporting ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                📥 导入旧章原稿
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!isImporting) setActiveImportTab("canon"); }}
+                disabled={isImporting}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  background: activeImportTab === "canon" ? "var(--bg)" : "transparent",
+                  color: activeImportTab === "canon" ? "var(--accent)" : "var(--text-muted)",
+                  borderBottom: activeImportTab === "canon" ? "2px solid var(--accent)" : "none",
+                  cursor: isImporting ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                📖 导入前作设定 (Canon)
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleImport} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {activeImportTab === "chapters" ? (
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                      输入源文件或文件夹路径 (from)*
+                    </label>
+                    <input
+                      type="text"
+                      value={importFromPath}
+                      onChange={(e) => setImportFromPath(e.target.value)}
+                      placeholder="如: D:/novel/drafts (目录) 或 D:/draft.txt (单文件)"
+                      disabled={isImporting}
+                      style={{
+                        width: "100%", padding: "8px 10px", borderRadius: 6,
+                        background: "var(--bg)", border: "1px solid var(--border)",
+                        color: "var(--text)", fontSize: 12, fontFamily: "var(--font-mono)",
+                        outline: "none"
+                      }}
+                      required
+                    />
+                    <span style={{ fontSize: 10, color: "var(--text-dim)", lineHeight: 1.4 }}>
+                      提示：系统会扫描目录下的所有 .md/.txt 并按文件名排序，或读取大文件进行自动分章，同时**提取人设与设定数据库**以备续写。
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                        分章正则式 (可选)
+                      </label>
+                      <input
+                        type="text"
+                        value={importSplitRegex}
+                        onChange={(e) => setImportSplitRegex(e.target.value)}
+                        placeholder="如: ^第[一二三四五]章"
+                        disabled={isImporting}
+                        style={{
+                          width: "100%", padding: "8px 10px", borderRadius: 6,
+                          background: "var(--bg)", border: "1px solid var(--border)",
+                          color: "var(--text)", fontSize: 12, fontFamily: "var(--font-mono)",
+                          outline: "none"
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                        续传章节号 (可选)
+                      </label>
+                      <input
+                        type="number"
+                        value={importResumeFrom}
+                        onChange={(e) => setImportResumeFrom(e.target.value)}
+                        placeholder="如: 12"
+                        disabled={isImporting}
+                        style={{
+                          width: "100%", padding: "8px 10px", borderRadius: 6,
+                          background: "var(--bg)", border: "1px solid var(--border)",
+                          color: "var(--text)", fontSize: 12, fontFamily: "var(--font-mono)",
+                          outline: "none"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <label style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    fontSize: 11, color: "var(--text)", cursor: isImporting ? "not-allowed" : "pointer",
+                    userSelect: "none", marginTop: 4
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={importIsSeries}
+                      disabled={isImporting}
+                      onChange={(e) => setImportIsSeries(e.target.checked)}
+                      style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+                    />
+                    <span>作为独立同宇宙系列作品导入 (shared universe spinoff)</span>
+                  </label>
+                </>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                    选择或输入前作书籍 ID (parentBookId)*
+                  </label>
+                  {availableBooks.filter(b => b !== activeBookId).length > 0 ? (
+                    <select
+                      value={importCanonFromBookId}
+                      onChange={(e) => setImportCanonFromBookId(e.target.value)}
+                      disabled={isImporting}
+                      style={{
+                        width: "100%", padding: "8px 10px", borderRadius: 6,
+                        background: "var(--bg)", border: "1px solid var(--border)",
+                        color: "var(--text)", fontSize: 12, fontFamily: "var(--font-serif)",
+                        outline: "none", cursor: "pointer"
+                      }}
+                      required
+                    >
+                      <option value="">-- 请选择书籍 --</option>
+                      {availableBooks.filter(b => b !== activeBookId).map((book) => (
+                        <option key={book} value={book}>{book}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={importCanonFromBookId}
+                      onChange={(e) => setImportCanonFromBookId(e.target.value)}
+                      placeholder="请输入前作 Book ID (例如: my_first_novel)"
+                      disabled={isImporting}
+                      style={{
+                        width: "100%", padding: "8px 10px", borderRadius: 6,
+                        background: "var(--bg)", border: "1px solid var(--border)",
+                        color: "var(--text)", fontSize: 12, fontFamily: "var(--font-mono)",
+                        outline: "none"
+                      }}
+                      required
+                    />
+                  )}
+                  <span style={{ fontSize: 10, color: "var(--text-dim)", lineHeight: 1.4 }}>
+                    提示：将从所选的书籍目录中复制并合并人物卡片、纪元史和设定，帮助在全新书籍中开展同宇宙故事线（Spinoff）的创作。
+                  </span>
+                </div>
+              )}
+
+              {/* Console Log Console */}
+              {(isImporting || importLogs.length > 0 || importError || importSuccessText) && (
+                <div style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "12px",
+                  fontSize: 11,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}>
+                  {importError && (
+                    <div style={{ color: "#ef4444", fontWeight: 600 }}>
+                      ⚠️ 导入失败: {importError}
+                    </div>
+                  )}
+                  {importSuccessText && (
+                    <div style={{ color: "#10b981", fontWeight: 600 }}>
+                      {importSuccessText}
+                    </div>
+                  )}
+                  {isImporting && (
+                    <div style={{ color: "var(--accent)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin" style={{ animation: "spin 1s linear infinite" }}>
+                        <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" /><line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" /><line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                      </svg>
+                      <span>正在运行 InkOS 智能导入引擎，请稍候...</span>
+                    </div>
+                  )}
+                  {importLogs.length > 0 && (
+                    <div style={{
+                      maxHeight: "80px", overflowY: "auto",
+                      fontFamily: "var(--font-mono)", fontSize: 10,
+                      color: "var(--text-dim)", background: "#121214",
+                      padding: "6px", borderRadius: 4, whiteSpace: "pre-wrap",
+                      textAlign: "left",
+                    }}>
+                      {importLogs.map((log, index) => (
+                        <div key={index} style={{ marginBottom: 2 }}>{log}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Form Actions */}
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button
+                  type="submit"
+                  disabled={isImporting}
+                  style={{
+                    flex: 1, height: 38,
+                    background: "var(--accent)",
+                    border: "none", borderRadius: 8,
+                    color: "white", fontSize: 12, fontWeight: 600,
+                    cursor: isImporting ? "not-allowed" : "pointer",
+                    opacity: isImporting ? 0.7 : 1,
+                  }}
+                >
+                  {isImporting ? "正在导入..." : "确认开始导入"}
+                </button>
+                {!isImporting && (
+                  <button
+                    type="button"
+                    onClick={() => setIsImportModalOpen(false)}
                     style={{
                       padding: "0 16px", height: 38,
                       background: "var(--bg-hover)",

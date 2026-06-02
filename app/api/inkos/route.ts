@@ -430,6 +430,43 @@ export async function POST(request: NextRequest) {
         }
         break;
 
+      case "import-chapters":
+        if (!args.from) {
+          return NextResponse.json({ error: "导入源路径不能为空" }, { status: 400 });
+        }
+        cliArgs = ["import", "chapters"];
+        if (args.bookId) {
+          cliArgs.push(args.bookId);
+        }
+        cliArgs.push("--from", args.from);
+        if (args.split) {
+          cliArgs.push("--split", args.split);
+        }
+        if (args.resumeFrom) {
+          cliArgs.push("--resume-from", String(args.resumeFrom));
+        }
+        if (args.series) {
+          cliArgs.push("--series");
+        }
+        if (args.json) {
+          cliArgs.push("--json");
+        }
+        break;
+
+      case "import-canon":
+        if (!args.from) {
+          return NextResponse.json({ error: "原著/前作 Book ID 不能为空" }, { status: 400 });
+        }
+        cliArgs = ["import", "canon"];
+        if (args.bookId) {
+          cliArgs.push(args.bookId);
+        }
+        cliArgs.push("--from", args.from);
+        if (args.json) {
+          cliArgs.push("--json");
+        }
+        break;
+
       case "custom":
         if (!args.command || !Array.isArray(args.command)) {
           return NextResponse.json({ error: "自定义指令 args.command 必须是字符串数组" }, { status: 400 });
