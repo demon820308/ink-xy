@@ -169,6 +169,11 @@ export async function runNpx(args: string[], opts: RunNpxOptions = {}): Promise<
   });
 }
 
+interface ProviderConfig {
+  apiKey?: string;
+  baseUrl?: string;
+}
+
 /**
  * Resolve environment variables from the isolated ~/.ink/agent/models.json configuration file.
  */
@@ -198,7 +203,7 @@ function resolveModelsEnv(): Record<string, string> {
         // Map all providers
         for (const [providerName, providerConfig] of Object.entries(data.providers)) {
           if (providerConfig && typeof providerConfig === "object") {
-            const config = providerConfig as Record<string, any>;
+            const config = providerConfig as ProviderConfig;
             const upperProvider = providerName.toUpperCase();
             if (config.apiKey) {
               envs[`${upperProvider}_API_KEY`] = config.apiKey;
@@ -220,7 +225,7 @@ function resolveModelsEnv(): Record<string, string> {
         // Map default selected provider to INKOS_LLM_ environment keys
         const activeProvider = defaultProvider ? data.providers[defaultProvider] : null;
         if (activeProvider && typeof activeProvider === "object") {
-          const config = activeProvider as Record<string, any>;
+          const config = activeProvider as ProviderConfig;
           if (config.apiKey) {
             envs["INKOS_LLM_API_KEY"] = config.apiKey;
           }

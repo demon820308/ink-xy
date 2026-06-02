@@ -42,6 +42,17 @@ function isPptxPath(filePath: string): boolean {
   return PPTX_EXTS.has(ext);
 }
 
+function getBookIdFromPath(filePath: string, cwd?: string): string | null {
+  if (!cwd) return null;
+  const relative = getRelativeFilePath(filePath, cwd);
+  const normalized = relative.replace(/\\/g, "/");
+  const parts = normalized.split("/");
+  if (parts[0] === "books" && parts[1]) {
+    return parts[1];
+  }
+  return null;
+}
+
 type DiffLine =
   | { type: "unchanged"; text: string; lineNo: number }
   | { type: "removed"; text: string; lineNo: number }
@@ -1248,9 +1259,36 @@ function TextFileViewer({ filePath, cwd }: Props) {
   // InkOS Integration states
   const [auditLoading, setAuditLoading] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
+  const [writeLoading, setWriteLoading] = useState(false);
+  const [hasChapters, setHasChapters] = useState(false);
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
   const [isReportOpen, setIsReportOpen] = useState(false);
+
+  useEffect(() => {
+    if (!cwd || !filePath) return;
+    const bookId = getBookIdFromPath(filePath, cwd);
+    if (!bookId) {
+      setHasChapters(false);
+      return;
+    }
+    const chaptersDir = `${cwd}/books/${bookId}/chapters`;
+    const encoded = encodeFilePathForApi(chaptersDir);
+    fetch(`/api/files/${encoded}?type=list`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.entries) {
+          const mdFiles = data.entries.filter((e: any) => !e.isDir && e.name.endsWith(".md") && /^\d{4}/.test(e.name));
+          setHasChapters(mdFiles.length > 0);
+        } else {
+          setHasChapters(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to check chapters list:", err);
+        setHasChapters(false);
+      });
+  }, [filePath, cwd]);
 
   const handleRunAudit = async () => {
     if (!cwd) return;
@@ -1307,6 +1345,106 @@ function TextFileViewer({ filePath, cwd }: Props) {
       setReportContent(`### ⚠️ 规划运行失败\n\n${err.message || String(err)}\n\n请确保已在侧边栏点击【一键开启创作宇宙】初始化该工作区，并在「模型配置」中配置了大模型 API Key。`);
     } finally {
       setPlanLoading(false);
+    }
+  };
+
+  const handleWriteNext = async () => {
+    if (!cwd) return;
+    const bookId = getBookIdFromPath(filePath, cwd);
+    if (!bookId) return;
+
+    setWriteLoading(true);
+    const modeTitle = hasChapters ? "智能续写正文" : "智能写作正文";
+    setReportTitle(modeTitle);
+    setReportContent(hasChapters ? "正在进行智能续写中，请稍候..." : "正在为您规划大纲并起草首章正文，请稍候...");
+    setIsReportOpen(true);
+
+    try {
+      // 1. If editor is dirty, save the current text to disk immediately
+      if (saveStatus === "dirty") {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        await saveFile(editContent);
+      }
+
+      // 2. Call the write next API with json: true
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "write-next",
+          cwd,
+          args: { bookId, json: true }
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "智能创作执行失败");
+      }
+
+      // 3. Parse JSON results from stdout
+      let results: any[] = [];
+      try {
+        results = JSON.parse(data.stdout);
+      } catch (e) {
+        console.error("Failed to parse write-next JSON output:", e);
+        setReportContent(data.stdout || "写作/续写任务完成。");
+        window.dispatchEvent(new CustomEvent("refresh-explorer"));
+        return;
+      }
+
+      const result = results[0];
+      if (!result) {
+        throw new Error("未返回有效的创作章节结果。");
+      }
+
+      // 4. Resolve file path of newly created file and open it
+      const paddedNum = String(result.chapterNumber).padStart(4, "0");
+      const chaptersDir = `${cwd}/books/${bookId}/chapters`;
+      const listRes = await fetch(`/api/files/${encodeFilePathForApi(chaptersDir)}?type=list`);
+      const listData = await listRes.json();
+      const found = listData.entries?.find((e: any) => !e.isDir && e.name.startsWith(paddedNum));
+
+      if (found) {
+        const newFilePath = chaptersDir + "/" + found.name;
+        window.dispatchEvent(new CustomEvent("open-file", {
+          detail: { filePath: newFilePath, fileName: found.name }
+        }));
+      }
+
+      // 5. Refresh sidebar file tree explorer
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+
+      // 6. Format consistency/audit report in markdown
+      const isPassed = result.auditResult?.passed ?? false;
+      const issues = result.auditResult?.issues ?? [];
+      const reportMarkdown = [
+        `### 🎉 ${modeTitle}完成！`,
+        "",
+        `- **章节**: 第 ${result.chapterNumber} 章 《${result.title}》`,
+        `- **字数**: ${result.wordCount} 字`,
+        `- **自动修正**: ${result.revised ? "已执行（已修复关键问题）" : "无（无需修正）"}`,
+        `- **状态结算**: \`${result.status}\``,
+        "",
+        `#### 🔍 离线审稿审计结果`,
+        isPassed 
+          ? "✅ **审计通过**：无逻辑矛盾或角色人设崩塌问题。" 
+          : "⚠️ **审计未完全通过**：检测到一些逻辑或人设风险，建议审阅：",
+        "",
+        issues.length > 0
+          ? issues.map((issue: any) => `- [${issue.severity}] **${issue.category}**: ${issue.description}\n  *建议: ${issue.suggestion}*`).join("\n")
+          : "*（无关键警告或错误）*"
+      ].join("\n");
+
+      setReportContent(reportMarkdown);
+      setHasChapters(true);
+    } catch (err: any) {
+      console.error(err);
+      setReportContent(`### ⚠️ 智能创作失败\n\n${err.message || String(err)}\n\n请确保已在侧边栏点击【一键开启创作宇宙】初始化该工作区，并在「模型配置」中配置了大模型 API Key。`);
+    } finally {
+      setWriteLoading(false);
     }
   };
 
@@ -1726,6 +1864,26 @@ function TextFileViewer({ filePath, cwd }: Props) {
               {/* InkOS Command Toolbar */}
               {cwd && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={handleWriteNext}
+                    disabled={writeLoading || saveStatus === "saving"}
+                    style={{
+                      padding: "3px 10px",
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "5px",
+                      color: "var(--text-muted)",
+                      cursor: "pointer",
+                      fontSize: "10px",
+                      fontWeight: 600,
+                      fontFamily: "var(--font-serif)",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+                  >
+                    {writeLoading ? "正在编写中..." : (hasChapters ? "✍️ 智能续写正文" : "✍️ 智能写作正文")}
+                  </button>
                   <button
                     onClick={handleRunAudit}
                     disabled={auditLoading || saveStatus === "saving"}

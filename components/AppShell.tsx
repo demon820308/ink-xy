@@ -219,6 +219,24 @@ export function AppShell() {
     setRightPanelOpen(true);
   }, []);
 
+  useEffect(() => {
+    const handleRefresh = () => {
+      setExplorerRefreshKey((k) => k + 1);
+    };
+    const handleOpenFileEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ filePath: string; fileName: string }>;
+      if (customEvent.detail) {
+        handleOpenFile(customEvent.detail.filePath, customEvent.detail.fileName);
+      }
+    };
+    window.addEventListener("refresh-explorer", handleRefresh);
+    window.addEventListener("open-file", handleOpenFileEvent);
+    return () => {
+      window.removeEventListener("refresh-explorer", handleRefresh);
+      window.removeEventListener("open-file", handleOpenFileEvent);
+    };
+  }, [handleOpenFile]);
+
   const handleCloseFileTab = useCallback((tabId: string) => {
     setFileTabs((prev) => {
       const next = prev.filter((t) => t.id !== tabId);

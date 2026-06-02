@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
         if (args.words) {
           cliArgs.push("--words", String(args.words));
         }
+        if (args.json) {
+          cliArgs.push("--json");
+        }
         break;
 
       case "audit":
@@ -98,6 +101,9 @@ export async function POST(request: NextRequest) {
         if (args.bookId) {
           cliArgs.push(args.bookId);
         }
+        if (args.json) {
+          cliArgs.push("--json");
+        }
         break;
 
       case "doctor":
@@ -117,12 +123,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`[API/inkos] Spawning local CLI in CWD "${cwd}": node packages/cli/dist/index.js ${cliArgs.join(" ")}`);
     
-    // Execute command with a reasonable 90-second timeout for long running generation/audits
+    // Execute command with a generous 300-second timeout for long running generation/audits (e.g. reasoning models)
     let result;
     try {
       result = await runInkos(cliArgs, {
         cwd,
-        timeout: 90000, 
+        timeout: 300000, 
       });
     } finally {
       if (tempBriefPath) {
