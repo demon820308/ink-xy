@@ -36,60 +36,6 @@ function phaseLabel(phase: AgentPhase): string {
   return "Thinking...";
 }
 
-const TYPEWRITER_PHRASES = [
-  "ready when you are.",
-  "ask me anything.",
-  "let's build something cool.",
-  "explore your codebase.",
-  "draft an email.",
-  "summarize that paper.",
-  "plan your weekend.",
-  "explain it like I'm five.",
-  "pair-program with me.",
-  "fix that pesky bug.",
-  "translate to 中文.",
-  "write a haiku.",
-  "brainstorm ideas.",
-  "review my pull request.",
-  "what should we cook tonight?",
-  "ship it.",
-  "make it pretty.",
-  "rubber-duck with me.",
-];
-
-function Typewriter({ phrases }: { phrases: string[] }) {
-  const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * phrases.length));
-  const [text, setText] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [caretOn, setCaretOn] = useState(true);
-
-  useEffect(() => {
-    const blink = setInterval(() => setCaretOn((v) => !v), 530);
-    return () => clearInterval(blink);
-  }, []);
-
-  useEffect(() => {
-    const current = phrases[phraseIdx];
-    let timeout: ReturnType<typeof setTimeout>;
-    if (!deleting && text === current) {
-      timeout = setTimeout(() => setDeleting(true), 1800);
-    } else if (deleting && text === "") {
-      setDeleting(false);
-      setPhraseIdx((i) => (i + 1) % phrases.length);
-    } else {
-      const next = deleting ? current.slice(0, text.length - 1) : current.slice(0, text.length + 1);
-      timeout = setTimeout(() => setText(next), deleting ? 28 : 55);
-    }
-    return () => clearTimeout(timeout);
-  }, [text, deleting, phraseIdx, phrases]);
-
-  return (
-    <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>
-      {text}
-      <span style={{ opacity: caretOn ? 1 : 0, color: "var(--accent)", marginLeft: 1 }}>▍</span>
-    </span>
-  );
-}
 
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, activeGemId }: Props) {
   const [gemName, setGemName] = useState<string | null>(null);
@@ -307,9 +253,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>✒️</span>
                 <span style={{ fontSize: 22, color: "var(--text)", fontWeight: 700, letterSpacing: "-0.01em" }}>
                   ink-xY Novel Studio{gemName ? ` [${gemName}]` : ""}
-                </span>
-                <span style={{ fontSize: 14, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                  <Typewriter phrases={TYPEWRITER_PHRASES} />
                 </span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>

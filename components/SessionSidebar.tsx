@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { FileExplorer } from "./FileExplorer";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Props {
   selectedSessionId: string | null;
@@ -234,6 +236,22 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isCreatingBook, setIsCreatingBook] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
+  const [hasChapters, setHasChapters] = useState(false);
+  const [activeBookId, setActiveBookId] = useState<string | null>(null);
+  const [isWriteLoading, setIsWriteLoading] = useState(false);
+  const [writeProgressText, setWriteProgressText] = useState("");
+  const [writeReportTitle, setWriteReportTitle] = useState("");
+  const [writeReportContent, setWriteReportContent] = useState("");
+  const [isWriteReportOpen, setIsWriteReportOpen] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const consoleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (consoleRef.current) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   // Book creation form state
   const [bookTitle, setBookTitle] = useState("");
@@ -340,17 +358,215 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           const booksData = await booksRes.json();
           const bookEntries = booksData.entries || [];
           const actualBooks = bookEntries.filter((e: any) => e.name !== ".gitkeep" && !e.name.startsWith("."));
-          setHasBooks(actualBooks.length > 0);
+          const hasBooksVal = actualBooks.length > 0;
+          setHasBooks(hasBooksVal);
+
+          if (hasBooksVal) {
+            const firstBook = actualBooks[0].name;
+            setActiveBookId(firstBook);
+
+            const chaptersDir = joinFilePath(cwd, `books/${firstBook}/chapters`);
+            const chaptersEncoded = encodeFilePathForApi(chaptersDir);
+            const chaptersRes = await fetch(`/api/files/${chaptersEncoded}?type=list`);
+            if (chaptersRes.ok) {
+              const chaptersData = await chaptersRes.json();
+              const chapterEntries = chaptersData.entries || [];
+              const mdFiles = chapterEntries.filter(
+                (e: any) => !e.isDir && e.name.endsWith(".md") && /^\d{4}/.test(e.name)
+              );
+              setHasChapters(mdFiles.length > 0);
+            } else {
+              setHasChapters(false);
+            }
+          } else {
+            setActiveBookId(null);
+            setHasChapters(false);
+          }
         } else {
           setHasBooks(false);
+          setActiveBookId(null);
+          setHasChapters(false);
         }
       } else {
         setHasBooks(false);
+        setActiveBookId(null);
+        setHasChapters(false);
       }
     } catch (e) {
       console.error("Failed to verify workspace status:", e);
     }
   }, []);
+
+  const handleStartWriting = async () => {
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    setIsWriteLoading(true);
+    setWriteProgressText("正在为您规划大纲并起草首章正文，请稍候...");
+    setWriteReportTitle("");
+    setWriteReportContent("");
+    setLogs([]);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "write-next",
+          cwd: activeCwd,
+          args: { bookId: activeBookId, json: true }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              const text = chunk.data || "";
+              setLogs((prev) => [...prev, text]);
+
+              if (text.includes("planning chapter") || text.includes("规划本章")) {
+                setWriteProgressText("正在规划本章意图与章节规划栈...");
+              } else if (text.includes("起草") || text.includes("drafting")) {
+                setWriteProgressText("正在协同起草首章正文，请稍候...");
+              } else if (text.includes("audit") || text.includes("审计")) {
+                setWriteProgressText("正在执行离线审稿与一致性审计...");
+              }
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {
+            console.error("Failed to parse stream chunk:", e);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        let errMsg = "";
+        if (finalResult) {
+          if (finalResult.error) {
+            errMsg = finalResult.error;
+          } else if (finalResult.stdout) {
+            try {
+              const parsed = JSON.parse(finalResult.stdout);
+              if (parsed && parsed.error) {
+                errMsg = parsed.error;
+              } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[parsed.length - 1]?.error) {
+                errMsg = parsed[parsed.length - 1].error;
+              }
+            } catch (e) {}
+          }
+          if (!errMsg && finalResult.stderr) {
+            errMsg = finalResult.stderr.trim();
+          }
+        }
+        throw new Error(errMsg || "首章创作执行失败");
+      }
+
+      let results: any[] = [];
+      try {
+        results = JSON.parse(finalResult.stdout);
+      } catch (e) {
+        console.error("Failed to parse write-next JSON output:", e);
+        setWriteReportContent(finalResult.stdout || "首章起草成功！");
+        setWriteReportTitle("首章起草完成");
+        setIsWriteReportOpen(true);
+        window.dispatchEvent(new CustomEvent("refresh-explorer"));
+        await checkWorkspaceStatus(activeCwd);
+        return;
+      }
+
+      const result = results[0];
+      if (!result) {
+        throw new Error("未返回有效的创作章节结果。");
+      }
+
+      const paddedNum = String(result.chapterNumber).padStart(4, "0");
+      const chaptersDir = `${activeCwd}/books/${activeBookId}/chapters`;
+      const listRes = await fetch(`/api/files/${encodeFilePathForApi(chaptersDir)}?type=list`);
+      const listData = await listRes.json();
+      const found = listData.entries?.find((e: any) => !e.isDir && e.name.startsWith(paddedNum));
+
+      if (found) {
+        const newFilePath = chaptersDir + "/" + found.name;
+        window.dispatchEvent(new CustomEvent("open-file", {
+          detail: { filePath: newFilePath, fileName: found.name }
+        }));
+      }
+
+      const isPassed = result.auditResult?.passed ?? false;
+      const issues = result.auditResult?.issues ?? [];
+      const reportMarkdown = [
+        `### 🎉 智能写作首章完成！`,
+        "",
+        `- **章节**: 第 ${result.chapterNumber} 章 《${result.title}》`,
+        `- **字数**: ${result.wordCount} 字`,
+        `- **自动修正**: ${result.revised ? "已执行（已修复关键问题）" : "无（无需修正）"}`,
+        `- **状态结算**: \`${result.status}\``,
+        "",
+        `#### 🔍 离线审稿审计结果`,
+        isPassed 
+          ? "✅ **审计通过**：无逻辑矛盾或角色人设崩塌问题。" 
+          : "⚠️ **审计未完全通过**：检测到一些逻辑或人设风险，建议审阅：",
+        "",
+        issues.length > 0
+          ? issues.map((issue: any) => {
+              const sev = String(issue.severity || "info").toLowerCase();
+              const emojiPrefix = 
+                (sev === "critical" || sev === "error") ? "🔴 [critical]" : 
+                (sev === "warning") ? "🟡 [warning]" : 
+                (sev === "info") ? "🔵 [info]" : `⚪ [${issue.severity}]`;
+              return `- ${emojiPrefix} **${issue.category}**: ${issue.description}\n  *建议: ${issue.suggestion}*`;
+            }).join("\n")
+          : "*（无关键警告或错误）*"
+      ].join("\n");
+
+      setWriteReportTitle("首章创作与审计报告");
+      setWriteReportContent(reportMarkdown);
+      setIsWriteReportOpen(true);
+
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+      await checkWorkspaceStatus(activeCwd);
+      setIsWriteLoading(false);
+    } catch (err: any) {
+      console.error(err);
+      const isTimeout = err.message.includes("超时") || err.message.includes("timed out") || logs.some(l => l.includes("超时"));
+      if (isTimeout) {
+        setWriteError("任务运行超时（已超过 600 秒）。建议在右上角「模型配置」中，更换速度较快且稳定的标准模型（例如将 reasoning/思索模型切换为标准对话模型），并检查您的 API Key 与接口代理连接状态。");
+      } else {
+        setWriteError(err.message || String(err));
+      }
+    }
+  };
 
   const handleCreateBook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -547,7 +763,29 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         onInitialRestoreDone?.();
       }
       const cwds = getRecentCwds(allSessions);
-      if (cwds.length > 0) setSelectedCwd(cwds[0]);
+      const selectValidCwd = async () => {
+        for (const candidate of cwds) {
+          try {
+            const res = await fetch(`/api/files/${encodeFilePathForApi(candidate)}?type=list&check=true`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.exists !== false) {
+                setSelectedCwd(candidate);
+                return;
+              }
+            }
+          } catch (e) {}
+        }
+        // Fallback: try to fetch default CWD
+        try {
+          const res = await fetch("/api/default-cwd", { method: "POST" });
+          const data = await res.json() as { cwd?: string };
+          if (data.cwd) {
+            setSelectedCwd(data.cwd);
+          }
+        } catch {}
+      };
+      selectValidCwd();
     }
   }, [allSessions, selectedCwd, initialSessionId, onSelectSession, onInitialRestoreDone]);
 
@@ -1064,6 +1302,43 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </button>
                 </div>
               )}
+              {isInkosWorkspace && hasBooks && !hasChapters && (
+                <div style={{
+                  margin: "8px 10px",
+                  padding: "12px",
+                  background: "var(--bg-panel)",
+                  border: "1px dashed var(--accent)",
+                  borderRadius: "8px",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-serif)",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13 }}>✍️</span>
+                    <span>书籍已创建，准备开始首章创作</span>
+                  </div>
+                  <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
+                    您的创作宇宙和人设基础已准备就绪！点击下方按钮，由 AI 协同起草第一章正文，拉开故事序幕。
+                  </div>
+                  <button
+                    onClick={handleStartWriting}
+                    disabled={isWriteLoading}
+                    style={{
+                      width: "100%",
+                      padding: "6px 0",
+                      background: "var(--accent)",
+                      border: "none",
+                      borderRadius: "6px",
+                      color: "white",
+                      fontWeight: 600,
+                      cursor: isWriteLoading ? "not-allowed" : "pointer",
+                      textAlign: "center",
+                      transition: "opacity 0.15s",
+                    }}
+                  >
+                    ✍️ 智能写作正文
+                  </button>
+                </div>
+              )}
               <div style={{ flex: 1 }}>
                 <FileExplorer
                   cwd={selectedCwdProp ?? selectedCwd!}
@@ -1079,7 +1354,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
       {/* Gem-xY custom agent panel (AI co-writers list, collapsible) */}
       {(selectedCwdProp || selectedCwd) && (
-        <div style={{ borderBottom: "1px solid var(--border)", flexShrink: 0, paddingBottom: 6 }}>
+        <div style={{ flexShrink: 0, paddingBottom: 6 }}>
           <div
             onClick={() => setGemsExpanded(!gemsExpanded)}
             style={{
@@ -1138,7 +1413,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 flexDirection: "column",
                 gap: 2,
                 padding: "0 6px",
-                maxHeight: 140,
+                maxHeight: 240,
                 overflowY: "auto",
               }}
             >
@@ -1149,10 +1424,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               ) : (
                 gems.map((gem) => {
                   const isSelected = activeGemId === gem.id && !selectedSessionId;
+                  const isDefaultGem = gem.id.startsWith("default-");
                   return (
                     <div
                       key={gem.id}
                       onClick={() => handleSelectGem(gem.id)}
+                      title={gem.description || undefined}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -1203,51 +1480,53 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                       </div>
                       
                       {/* Actions */}
-                      <div
-                        className="gem-actions"
-                        style={{
-                          display: "flex",
-                          gap: 4,
-                          flexShrink: 0,
-                          opacity: 0,
-                          transition: "opacity 0.15s",
-                        }}
-                      >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingGemId(gem.id);
-                            setIsGemModalOpen(true);
-                          }}
-                          title="编辑"
+                      {!isDefaultGem && (
+                        <div
+                          className="gem-actions"
                           style={{
-                            background: "none",
-                            border: "none",
-                            color: "var(--text-dim)",
-                            cursor: "pointer",
-                            padding: 2,
+                            display: "flex",
+                            gap: 4,
+                            flexShrink: 0,
+                            opacity: 0,
+                            transition: "opacity 0.15s",
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
                         >
-                          ✎
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteGem(e, gem.id)}
-                          title="删除"
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: "var(--text-dim)",
-                            cursor: "pointer",
-                            padding: 2,
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
-                        >
-                          🗑
-                        </button>
-                      </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingGemId(gem.id);
+                              setIsGemModalOpen(true);
+                            }}
+                            title="编辑"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--text-dim)",
+                              cursor: "pointer",
+                              padding: 2,
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteGem(e, gem.id)}
+                            title="删除"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--text-dim)",
+                              cursor: "pointer",
+                              padding: 2,
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -1259,14 +1538,22 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
       {/* Session list section (AI chats / co-writing sessions, collapsible, default collapsed) */}
       {(selectedCwdProp || selectedCwd) && (
-        <div style={{ display: "flex", flexDirection: "column", flexShrink: 0, borderBottom: "1px solid var(--border)", paddingBottom: 6 }}>
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+          borderTop: "1px solid var(--border)",
+          height: sessionsExpanded ? "auto" : "35px",
+          boxSizing: "border-box",
+          justifyContent: sessionsExpanded ? "flex-start" : "center",
+        }}>
           <div
             onClick={() => setSessionsExpanded(!sessionsExpanded)}
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "8px 10px 4px",
+              padding: sessionsExpanded ? "8px 10px 4px" : "0 10px",
               color: "var(--text-muted)",
               cursor: "pointer",
               fontSize: 11,
@@ -1606,6 +1893,173 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Chapter Write Progress Modal */}
+      {isWriteLoading && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            width: "min(600px, 90vw)",
+            padding: "24px 20px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+            fontFamily: "var(--font-serif)",
+            textAlign: "center",
+          }}>
+            {!writeError ? (
+              <div style={{
+                width: "36px",
+                height: "36px",
+                border: "3px solid var(--border)",
+                borderTopColor: "var(--accent)",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 16px",
+              }} />
+            ) : (
+              <div style={{ fontSize: "28px", margin: "0 auto 12px", color: "#ef4444" }}>
+                ⚠️
+              </div>
+            )}
+            <div style={{ fontWeight: 600, color: writeError ? "#ef4444" : "var(--text)", marginBottom: 8, fontSize: "14px" }}>
+              {writeError ? "智能写作首章失败" : "正在进行智能首章写作..."}
+            </div>
+            <div style={{ color: "var(--text-muted)", fontSize: "11px", lineHeight: 1.6 }}>
+              {writeError ? `错误详情: ${writeError}` : writeProgressText}
+            </div>
+
+            {/* Terminal Live Output Console */}
+            <div 
+              ref={consoleRef}
+              style={{
+                background: "#121214",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                padding: "12px",
+                height: "240px",
+                overflowY: "auto",
+                textAlign: "left",
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "11px",
+                lineHeight: "1.5",
+                color: "#e4e4e7",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+                marginTop: "16px",
+              }}
+            >
+              {logs.length === 0 ? (
+                <span style={{ color: "var(--text-dim)" }}>正在启动写作引擎...</span>
+              ) : (
+                logs.map((log, index) => (
+                  <div key={index} style={{ marginBottom: 2 }}>
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {writeError && (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+                <button
+                  onClick={() => {
+                    setIsWriteLoading(false);
+                    setWriteError(null);
+                  }}
+                  style={{
+                    padding: "6px 20px",
+                    background: "var(--accent)",
+                    border: "none",
+                    borderRadius: "6px",
+                    color: "white",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  关闭
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Chapter Write Report Modal */}
+      {isWriteReportOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            width: "min(500px, 90vw)",
+            maxHeight: "80vh",
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+            fontFamily: "var(--font-serif)",
+            overflow: "hidden",
+          }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "14px 18px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--bg-panel)",
+              flexShrink: 0
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                {writeReportTitle}
+              </span>
+              <button
+                onClick={() => setIsWriteReportOpen(false)}
+                style={{
+                  padding: "4px 12px",
+                  fontSize: 11,
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-hover)",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                ✕ 关闭
+              </button>
+            </div>
+            <div style={{
+              flex: 1,
+              padding: "18px",
+              overflowY: "auto",
+              lineHeight: "1.8",
+              fontSize: "12px",
+              color: "var(--text)",
+            }} className="markdown-body">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{writeReportContent}</ReactMarkdown>
+            </div>
           </div>
         </div>
       )}

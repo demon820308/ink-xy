@@ -282,6 +282,10 @@ export async function GET(
     try {
       stat = fs.statSync(filePath);
     } catch {
+      const checkOnly = request.nextUrl.searchParams.get("check") === "true";
+      if (checkOnly) {
+        return NextResponse.json({ exists: false });
+      }
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

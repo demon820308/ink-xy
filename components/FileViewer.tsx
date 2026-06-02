@@ -1222,7 +1222,615 @@ function PptxViewer({ filePath, cwd }: Props) {
   );
 }
 
+// ── Audit Report Component ────────────────────────────────────────────────────
+
+interface AuditIssue {
+  severity: string;
+  category: string;
+  description: string;
+  suggestion?: string;
+}
+
+interface AuditReportData {
+  passed: boolean;
+  chapterNumber?: number;
+  summary?: string;
+  issues?: AuditIssue[];
+}
+
+function AuditReport({ data }: { data: AuditReportData }) {
+  const isPassed = data.passed ?? false;
+  const issues = data.issues ?? [];
+
+  const severityConfig = (severity: string) => {
+    const s = (severity || "info").toLowerCase();
+    if (s === "error" || s === "critical")
+      return { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", label: "严重", emoji: "❌" };
+    if (s === "warning")
+      return { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", label: "警告", emoji: "⚠️" };
+    return { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", label: "提示", emoji: "ℹ️" };
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: 24 }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12,
+        paddingBottom: 16, borderBottom: "1px solid var(--border)"
+      }}>
+        <div style={{ fontSize: 28 }}>🔍</div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>人设防崩与一致性审计报告</div>
+          {data.chapterNumber != null && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              第 {data.chapterNumber} 章
+            </div>
+          )}
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 20,
+            fontSize: 12, fontWeight: 600,
+            background: isPassed ? "rgba(74,222,128,0.12)" : "rgba(251,191,36,0.12)",
+            color: isPassed ? "#4ade80" : "#fbbf24",
+            border: `1px solid ${isPassed ? "rgba(74,222,128,0.3)" : "rgba(251,191,36,0.3)"}`,
+          }}>
+            {isPassed ? "✅ 审计通过" : "⚠️ 发现风险"}
+          </span>
+        </div>
+      </div>
+
+      {/* Summary */}
+      {data.summary && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            📝 本章内容总结
+          </div>
+          <div style={{
+            padding: "14px 18px",
+            background: "rgba(96,165,250,0.06)",
+            border: "1px solid rgba(96,165,250,0.2)",
+            borderLeft: "3px solid #60a5fa",
+            borderRadius: 8,
+            fontSize: 13,
+            lineHeight: 1.8,
+            color: "var(--text)",
+          }}>
+            {data.summary}
+          </div>
+        </div>
+      )}
+
+      {/* Issues */}
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+          🛠️ 审计诊断条目 ({issues.length})
+        </div>
+        {issues.length === 0 ? (
+          <div style={{
+            padding: "14px 18px",
+            background: "rgba(74,222,128,0.06)",
+            border: "1px solid rgba(74,222,128,0.2)",
+            borderLeft: "3px solid #4ade80",
+            borderRadius: 8,
+            fontSize: 13,
+            color: "#4ade80",
+          }}>
+            ✅ 未检测到任何明显的角色设定矛盾或世界观冲突风险。
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {issues.map((issue: AuditIssue, i: number) => {
+              const cfg = severityConfig(issue.severity);
+              return (
+                <div key={i} style={{
+                  padding: "14px 18px",
+                  background: cfg.bg,
+                  border: `1px solid ${cfg.border}33`,
+                  borderLeft: `3px solid ${cfg.border}`,
+                  borderRadius: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 14 }}>{cfg.emoji}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      {cfg.label}
+                    </span>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600,
+                      color: "var(--text)",
+                      background: "var(--bg-hover)",
+                      padding: "1px 8px", borderRadius: 4,
+                    }}>
+                      {issue.category || "未分类"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text)" }}>
+                    <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>问题描述：</span>
+                    {issue.description}
+                  </div>
+                  {issue.suggestion && (
+                    <div style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text)" }}>
+                      <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>修改建议：</span>
+                      {issue.suggestion}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Write Report Component ─────────────────────────────────────────────────────
+
+interface WriteReportData {
+  chapterNumber: number;
+  title: string;
+  wordCount: number;
+  revised: boolean;
+  status: string;
+  auditResult?: AuditReportData;
+  autoReviseResult?: ReviseReportData;
+}
+
+function WriteReport({ data }: { data: WriteReportData }) {
+  const audit = data.auditResult;
+  const isPassed = audit?.passed ?? true;
+  const issues = audit?.issues ?? [];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: 24 }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12,
+        paddingBottom: 16, borderBottom: "1px solid var(--border)"
+      }}>
+        <div style={{ fontSize: 28 }}>✍️</div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>智能续写完成</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+            第 {data.chapterNumber} 章 《{data.title}》
+          </div>
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 20,
+            fontSize: 12, fontWeight: 600,
+            background: "rgba(139,92,246,0.12)",
+            color: "#a78bfa",
+            border: "1px solid rgba(139,92,246,0.3)",
+          }}>
+            ✨ 已生成
+          </span>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+        {[
+          { label: "生成字数", value: `${data.wordCount} 字`, color: "#a78bfa", bg: "rgba(139,92,246,0.08)", border: "rgba(139,92,246,0.2)" },
+          { label: "章节状态", value: data.status || "complete", color: "#34d399", bg: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.2)" },
+          { label: "即时修正", value: data.revised ? "已执行" : "无需", color: data.revised ? "#60a5fa" : "var(--text-muted)", bg: data.revised ? "rgba(96,165,250,0.08)" : "var(--bg-hover)", border: data.revised ? "rgba(96,165,250,0.2)" : "var(--border)" },
+        ].map((stat, i) => (
+          <div key={i} style={{
+            padding: "12px 16px",
+            background: stat.bg,
+            border: `1px solid ${stat.border}`,
+            borderRadius: 8,
+            display: "flex", flexDirection: "column", gap: 4,
+          }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{stat.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: stat.color }}>{stat.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Audit result section */}
+      {audit && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            🔍 离线审稿审计
+          </div>
+          <div style={{
+            padding: "10px 16px",
+            borderRadius: 8,
+            background: isPassed ? "rgba(74,222,128,0.06)" : "rgba(251,191,36,0.06)",
+            border: `1px solid ${isPassed ? "rgba(74,222,128,0.2)" : "rgba(251,191,36,0.2)"}`,
+            borderLeft: `3px solid ${isPassed ? "#4ade80" : "#fbbf24"}`,
+            fontSize: 13, fontWeight: 600,
+            color: isPassed ? "#4ade80" : "#fbbf24",
+            marginBottom: issues.length > 0 ? 10 : 0,
+          }}>
+            {isPassed ? "✅ 审计通过 — 无明显逻辑矛盾或人设崩塌风险" : "⚠️ 审计未完全通过 — 检测到以下风险条目："}
+          </div>
+
+          {issues.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {issues.map((issue: AuditIssue, i: number) => {
+                const sev = (issue.severity || "info").toLowerCase();
+                const cfg =
+                  sev === "error" || sev === "critical"
+                    ? { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", emoji: "❌", label: "严重" }
+                    : sev === "warning"
+                    ? { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", emoji: "⚠️", label: "警告" }
+                    : { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", emoji: "ℹ️", label: "提示" };
+                return (
+                  <div key={i} style={{
+                    padding: "12px 16px", background: cfg.bg,
+                    border: `1px solid ${cfg.border}33`,
+                    borderLeft: `3px solid ${cfg.border}`,
+                    borderRadius: 8, display: "flex", flexDirection: "column", gap: 6,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13 }}>{cfg.emoji}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{cfg.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--bg-hover)", padding: "1px 8px", borderRadius: 4 }}>
+                        {issue.category || "未分类"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)" }}>
+                      <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>问题描述：</span>{issue.description}
+                    </div>
+                    {issue.suggestion && (
+                      <div style={{ fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)" }}>
+                        <span style={{ fontWeight: 600 }}>修改建议：</span>{issue.suggestion}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Auto-revise result */}
+      {data.autoReviseResult && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            🪄 自动修正结果
+          </div>
+          <ReviseReport data={data.autoReviseResult} compact />
+        </div>
+      )}
+
+      {!data.autoReviseResult && !isPassed && (
+        <div style={{
+          padding: "12px 16px",
+          background: "rgba(96,165,250,0.06)",
+          border: "1px solid rgba(96,165,250,0.2)",
+          borderRadius: 8,
+          fontSize: 13,
+          color: "var(--text-muted)",
+          lineHeight: 1.7,
+        }}>
+          💡 <strong style={{ color: "var(--text)" }}>建议</strong>：点击工具栏的 <strong>「🪄 AI 修正」</strong> 对以上风险条目进行自动局部修缮，或手动微调相关情节后点击 <strong>「🔄 同步设定」</strong> 重新对齐故事数据库。
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Revise Report Component ────────────────────────────────────────────────────
+
+interface ReviseReportData {
+  applied?: boolean;
+  skippedReason?: string;
+  fixedIssues?: string[];
+  status?: string;
+  wordCount?: number;
+}
+
+function ReviseReport({ data, compact = false }: { data: ReviseReportData; compact?: boolean }) {
+  const applied = data.applied ?? false;
+
+  if (!applied) {
+    return (
+      <div style={{
+        padding: "14px 18px",
+        background: "rgba(96,165,250,0.06)",
+        border: "1px solid rgba(96,165,250,0.2)",
+        borderLeft: "3px solid #60a5fa",
+        borderRadius: 8,
+        fontSize: 13, lineHeight: 1.75, color: "var(--text)",
+      }}>
+        <div style={{ fontWeight: 600, color: "#60a5fa", marginBottom: 4 }}>💡 未应用修改</div>
+        <div style={{ color: "var(--text-muted)" }}>{data.skippedReason || "未发现明显的改善机会，当前文本已达到较好的一致性水平。"}</div>
+        {!compact && (
+          <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-dim)" }}>
+            建议手动微调相关段落后，点击 <strong>「🔄 同步设定」</strong> 重新对齐故事数据库。
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: compact ? 10 : 16 }}>
+      {!compact && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          paddingBottom: 16, borderBottom: "1px solid var(--border)"
+        }}>
+          <div style={{ fontSize: 28 }}>🪄</div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>AI 修正成功应用</div>
+          </div>
+          <div style={{ marginLeft: "auto" }}>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "5px 14px", borderRadius: 20,
+              fontSize: 12, fontWeight: 600,
+              background: "rgba(74,222,128,0.12)", color: "#4ade80",
+              border: "1px solid rgba(74,222,128,0.3)",
+            }}>✅ 已修正</span>
+          </div>
+        </div>
+      )}
+
+      {data.fixedIssues && data.fixedIssues.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {data.fixedIssues.map((f: string, i: number) => (
+            <div key={i} style={{
+              padding: "10px 14px",
+              background: "rgba(74,222,128,0.06)",
+              border: "1px solid rgba(74,222,128,0.2)",
+              borderLeft: "3px solid #4ade80",
+              borderRadius: 8,
+              fontSize: 13, color: "var(--text)", lineHeight: 1.6,
+            }}>
+              ✅ {f}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!compact && (data.status || data.wordCount) && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {data.status && (
+            <div style={{ padding: "10px 14px", background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4 }}>当前状态</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#34d399" }}>{data.status}</div>
+            </div>
+          )}
+          {data.wordCount && (
+            <div style={{ padding: "10px 14px", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginBottom: 4 }}>当前字数</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#60a5fa" }}>{data.wordCount} 字</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!compact && (
+        <div style={{ padding: "12px 16px", background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
+          💡 正文已自动更新。建议点击 <strong style={{ color: "var(--text)" }}>「🔍 防崩审计」</strong> 重新运行审查，确认修改后是否完全绿灯。
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Sync Report Component ──────────────────────────────────────────────────────
+
+interface SyncReportData {
+  auditResult?: AuditReportData;
+}
+
+function SyncReport({ data }: { data: SyncReportData }) {
+  const audit = data.auditResult;
+  const isPassed = audit?.passed ?? true;
+  const issues = audit?.issues ?? [];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: 24 }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12,
+        paddingBottom: 16, borderBottom: "1px solid var(--border)"
+      }}>
+        <div style={{ fontSize: 28 }}>🔄</div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>同步设定成功</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+            人物卡、伏笔池与大纲事件线已与最新正文完全对齐
+          </div>
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 20,
+            fontSize: 12, fontWeight: 600,
+            background: "rgba(52,211,153,0.12)", color: "#34d399",
+            border: "1px solid rgba(52,211,153,0.3)",
+          }}>🔄 已同步</span>
+        </div>
+      </div>
+
+      {/* Audit inline */}
+      {audit && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            🔍 同步后审计结果
+          </div>
+          <div style={{
+            padding: "10px 16px", borderRadius: 8,
+            background: isPassed ? "rgba(74,222,128,0.06)" : "rgba(251,191,36,0.06)",
+            border: `1px solid ${isPassed ? "rgba(74,222,128,0.2)" : "rgba(251,191,36,0.2)"}`,
+            borderLeft: `3px solid ${isPassed ? "#4ade80" : "#fbbf24"}`,
+            fontSize: 13, fontWeight: 600,
+            color: isPassed ? "#4ade80" : "#fbbf24",
+            marginBottom: issues.length > 0 ? 10 : 0,
+          }}>
+            {isPassed ? "✅ 审计通过 — 无逻辑矛盾或角色人设崩塌问题" : "⚠️ 检测到部分人设或逻辑风险 — 建议处理以下条目："}
+          </div>
+
+          {issues.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {issues.map((issue: AuditIssue, i: number) => {
+                const sev = (issue.severity || "info").toLowerCase();
+                const cfg =
+                  sev === "error" || sev === "critical"
+                    ? { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", emoji: "❌", label: "严重" }
+                    : sev === "warning"
+                    ? { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", emoji: "⚠️", label: "警告" }
+                    : { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", emoji: "ℹ️", label: "提示" };
+                return (
+                  <div key={i} style={{
+                    padding: "12px 16px", background: cfg.bg,
+                    border: `1px solid ${cfg.border}33`,
+                    borderLeft: `3px solid ${cfg.border}`,
+                    borderRadius: 8, display: "flex", flexDirection: "column", gap: 6,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13 }}>{cfg.emoji}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{cfg.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--bg-hover)", padding: "1px 8px", borderRadius: 4 }}>
+                        {issue.category || "未分类"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)" }}>
+                      <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>问题描述：</span>{issue.description}
+                    </div>
+                    {issue.suggestion && (
+                      <div style={{ fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)" }}>
+                        <span style={{ fontWeight: 600 }}>修改建议：</span>{issue.suggestion}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ padding: "12px 16px", background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
+        💡 如发现残留的人设警告，可点击 <strong style={{ color: "var(--text)" }}>「🪄 AI 修正」</strong> 运行自动局部修缮，或根据审计描述手动微调相关情节。
+      </div>
+    </div>
+  );
+}
+
+// ── Plan Report Component ──────────────────────────────────────────────────────
+
+interface PlanReportData {
+  chapterNumber?: number;
+  bookTitle?: string;
+  goal?: string;
+  intentFile?: string;
+  raw?: string;
+}
+
+function PlanReport({ data }: { data: PlanReportData }) {
+  if (data.raw && !data.goal) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 24 }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          paddingBottom: 16, borderBottom: "1px solid var(--border)"
+        }}>
+          <div style={{ fontSize: 28 }}>📝</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>本章意图规划完成</div>
+        </div>
+        <div style={{
+          padding: "14px 18px",
+          background: "rgba(96,165,250,0.06)",
+          border: "1px solid rgba(96,165,250,0.2)",
+          borderLeft: "3px solid #60a5fa",
+          borderRadius: 8, fontSize: 13, lineHeight: 1.8, color: "var(--text)",
+          whiteSpace: "pre-wrap",
+        }}>
+          {data.raw}
+        </div>
+        <div style={{ padding: "12px 16px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
+          💡 剧情意图与备忘账本已成功保存。点击 <strong style={{ color: "var(--text)" }}>「✍️ 智能续写」</strong> 时，AI 会以此为核心基准进行剧情铺陈与细节扩写。
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: 24 }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12,
+        paddingBottom: 16, borderBottom: "1px solid var(--border)"
+      }}>
+        <div style={{ fontSize: 28 }}>📝</div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>本章意图与剧情大纲规划</div>
+          {data.bookTitle && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              《{data.bookTitle}》 第 {data.chapterNumber} 章
+            </div>
+          )}
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 20,
+            fontSize: 12, fontWeight: 600,
+            background: "rgba(139,92,246,0.12)", color: "#a78bfa",
+            border: "1px solid rgba(139,92,246,0.3)",
+          }}>📝 已规划</span>
+        </div>
+      </div>
+
+      {/* Goal */}
+      {data.goal && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            🎯 核心写作目标 (Goal)
+          </div>
+          <div style={{
+            padding: "14px 18px",
+            background: "rgba(139,92,246,0.06)",
+            border: "1px solid rgba(139,92,246,0.2)",
+            borderLeft: "3px solid #a78bfa",
+            borderRadius: 8, fontSize: 14, lineHeight: 1.8, color: "var(--text)",
+            fontStyle: "italic",
+          }}>
+            {data.goal}
+          </div>
+        </div>
+      )}
+
+      {/* Intent file */}
+      {data.intentFile && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            📂 关联意图文件 (Intent)
+          </div>
+          <div style={{
+            padding: "10px 16px",
+            background: "var(--bg-hover)",
+            border: "1px solid var(--border)",
+            borderRadius: 8, fontSize: 13, color: "var(--text-muted)",
+            fontFamily: "var(--font-mono)",
+          }}>
+            {data.intentFile}
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: "12px 16px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
+        💡 剧情意图与备忘账本已保存。点击 <strong style={{ color: "var(--text)" }}>「✍️ 智能续写」</strong> 时，AI 会以此目标为核心进行剧情铺陈与细节扩写，确保故事节奏与伏笔完美对齐。
+      </div>
+    </div>
+  );
+}
+
 export function FileViewer({ filePath, cwd }: Props) {
+
   if (isImagePath(filePath)) {
     return <ImageViewer filePath={filePath} cwd={cwd} />;
   }
@@ -1256,14 +1864,29 @@ function TextFileViewer({ filePath, cwd }: Props) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusRef = useRef(saveStatus);
 
-  // InkOS Integration states
   const [auditLoading, setAuditLoading] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
   const [writeLoading, setWriteLoading] = useState(false);
+  const [reviseLoading, setReviseLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [hasChapters, setHasChapters] = useState(false);
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
+  const [auditData, setAuditData] = useState<any>(null);
+  const [writeResult, setWriteResult] = useState<WriteReportData | null>(null);
+  const [reviseResult, setReviseResult] = useState<ReviseReportData | null>(null);
+  const [syncResult, setSyncResult] = useState<SyncReportData | null>(null);
+  const [planResult, setPlanResult] = useState<PlanReportData | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const isRunning = writeLoading || reviseLoading || auditLoading || syncLoading || planLoading;
+  const [logs, setLogs] = useState<string[]>([]);
+  const consoleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (consoleRef.current) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   useEffect(() => {
     if (!cwd || !filePath) return;
@@ -1292,7 +1915,9 @@ function TextFileViewer({ filePath, cwd }: Props) {
 
   const handleRunAudit = async () => {
     if (!cwd) return;
+    setAuditData(null);
     setAuditLoading(true);
+    setLogs([]);
     setReportTitle("人设防崩与一致性审计报告");
     setReportContent("正在运行 InkOS 离线审计引擎，请稍候...");
     setIsReportOpen(true);
@@ -1304,17 +1929,89 @@ function TextFileViewer({ filePath, cwd }: Props) {
         body: JSON.stringify({
           action: "audit",
           cwd,
-          args: { chapter: relativeChapter }
+          args: { chapter: relativeChapter, json: true }
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "审计执行失败");
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
       }
-      setReportContent(data.stdout || "审计完成，无一致性问题。");
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {
+            console.error("Failed to parse stream chunk:", e);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "审计执行失败");
+      }
+
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(finalResult.stdout);
+      } catch (e) {
+        console.error("Failed to parse audit result JSON:", e);
+      }
+
+      if (parsed) {
+        setWriteResult(null);
+        setReviseResult(null);
+        setSyncResult(null);
+        setPlanResult(null);
+        setAuditData(parsed);
+        setReportContent("");
+      } else {
+        setAuditData(null);
+        setWriteResult(null);
+        setReviseResult(null);
+        setSyncResult(null);
+        setPlanResult(null);
+        setReportContent([
+          `### 🔍 防崩审计完成`,
+          "",
+          `🎉 **审计结论**：未检测到明显的一致性问题或人设偏离风险。`,
+          "",
+          `---`,
+          `- **诊断详情**：${finalResult.stdout || "审计完成，没有检测到任何一致性警告。"}`,
+          `- **提示**：如果您新写了正文，建议点击工具栏底部的 **「🔄 同步设定」**，将最新正文内容同步至故事数据库中。`
+        ].join("\n"));
+      }
     } catch (err: any) {
       console.error(err);
-      setReportContent(`### ⚠️ 审计运行失败\n\n${err.message || String(err)}\n\n请确保已在侧边栏点击【一键开启创作宇宙】初始化该工作区，并在「模型配置」中配置了大模型 API Key。`);
+      setAuditData(null);
+      setReportContent(`审计运行失败：${err.message || String(err)}\n\n请确保已在侧边栏点击【一键开启创作宇宙】初始化该工作区，并在「模型配置」中配置了大模型 API Key。`);
     } finally {
       setAuditLoading(false);
     }
@@ -1322,39 +2019,110 @@ function TextFileViewer({ filePath, cwd }: Props) {
 
   const handlePlanChapter = async () => {
     if (!cwd) return;
+    setAuditData(null);
     setPlanLoading(true);
+    setLogs([]);
     setReportTitle("本章意图与剧情大纲规划");
     setReportContent("正在运行 InkOS 多智能体规划管线，请稍候...");
     setIsReportOpen(true);
     try {
+      const bookId = getBookIdFromPath(filePath, cwd);
       const res = await fetch("/api/inkos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "plan",
           cwd,
+          args: { bookId }
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "规划执行失败");
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
       }
-      setReportContent(data.stdout || "规划完成。已为您生成本章写作焦点和规则栈。");
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {
+            console.error("Failed to parse stream chunk:", e);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "规划执行失败");
+      }
+      const rawOutput = finalResult.stdout || "";
+      const match = rawOutput.match(/Planned chapter (\d+) for "([^"]+)" Goal: ([\s\S]+?)(?:\s+Intent:\s+(.+))?$/i);
+      if (match) {
+        const [_, chNum, bookTitle, goal, intentFile] = match;
+        setAuditData(null);
+        setWriteResult(null);
+        setReviseResult(null);
+        setSyncResult(null);
+        setPlanResult({
+          chapterNumber: parseInt(chNum, 10),
+          bookTitle,
+          goal: goal.trim(),
+          intentFile: intentFile ? intentFile.trim() : undefined,
+        });
+        setReportContent("");
+      } else {
+        setAuditData(null);
+        setWriteResult(null);
+        setReviseResult(null);
+        setSyncResult(null);
+        setPlanResult({ raw: rawOutput || "规划完成。已为您生成本章写作焦点和规则栈。" });
+        setReportContent("");
+      }
     } catch (err: any) {
       console.error(err);
+      setPlanResult(null);
       setReportContent(`### ⚠️ 规划运行失败\n\n${err.message || String(err)}\n\n请确保已在侧边栏点击【一键开启创作宇宙】初始化该工作区，并在「模型配置」中配置了大模型 API Key。`);
     } finally {
       setPlanLoading(false);
     }
   };
 
-  const handleWriteNext = async () => {
+  const handleWriteNext = async (forceRewrite: any = false) => {
     if (!cwd) return;
+    setAuditData(null);
     const bookId = getBookIdFromPath(filePath, cwd);
     if (!bookId) return;
 
+    const isForce = forceRewrite === true;
     setWriteLoading(true);
-    const modeTitle = hasChapters ? "智能续写正文" : "智能写作正文";
+    setLogs([]);
+    const modeTitle = "智能续写";
     setReportTitle(modeTitle);
     setReportContent(hasChapters ? "正在进行智能续写中，请稍候..." : "正在为您规划大纲并起草首章正文，请稍候...");
     setIsReportOpen(true);
@@ -1368,6 +2136,10 @@ function TextFileViewer({ filePath, cwd }: Props) {
         await saveFile(editContent);
       }
 
+      // Parse active chapter number from current file
+      const fileMatch = getFileName(filePath).match(/^(\d+)/);
+      const activeChapter = fileMatch ? parseInt(fileMatch[1], 10) : undefined;
+
       // 2. Call the write next API with json: true
       const res = await fetch("/api/inkos", {
         method: "POST",
@@ -1375,22 +2147,96 @@ function TextFileViewer({ filePath, cwd }: Props) {
         body: JSON.stringify({
           action: "write-next",
           cwd,
-          args: { bookId, json: true }
+          args: { bookId, json: true, activeChapter, forceRewrite: isForce }
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "智能创作执行失败");
+      if (res.status === 409) {
+        const conflictData = await res.json();
+        setWriteLoading(false);
+        setIsReportOpen(false);
+        if (conflictData.conflict) {
+          const confirmText = `${conflictData.message}\n\n⚠️ 注意：此操作不可逆！确认要重写该章节并永久删除后续所有章节吗？`;
+          if (window.confirm(confirmText)) {
+            handleWriteNext(true);
+            return;
+          }
+        }
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {
+            console.error("Failed to parse stream chunk:", e);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        let errMsg = "";
+        if (finalResult) {
+          if (finalResult.error) {
+            errMsg = finalResult.error;
+          } else if (finalResult.stdout) {
+            try {
+              const parsed = JSON.parse(finalResult.stdout);
+              if (parsed && parsed.error) {
+                errMsg = parsed.error;
+              } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[parsed.length - 1]?.error) {
+                errMsg = parsed[parsed.length - 1].error;
+              }
+            } catch (e) {}
+          }
+          if (!errMsg && finalResult.stderr) {
+            errMsg = finalResult.stderr.trim();
+          }
+        }
+        throw new Error(errMsg || "智能创作执行失败");
       }
 
       // 3. Parse JSON results from stdout
       let results: any[] = [];
       try {
-        results = JSON.parse(data.stdout);
+        results = JSON.parse(finalResult.stdout);
       } catch (e) {
         console.error("Failed to parse write-next JSON output:", e);
-        setReportContent(data.stdout || "写作/续写任务完成。");
+        setReportContent(finalResult.stdout || "写作/续写任务完成。");
         window.dispatchEvent(new CustomEvent("refresh-explorer"));
         return;
       }
@@ -1409,6 +2255,11 @@ function TextFileViewer({ filePath, cwd }: Props) {
 
       if (found) {
         const newFilePath = chaptersDir + "/" + found.name;
+        if (newFilePath !== filePath) {
+          window.dispatchEvent(new CustomEvent("close-file", {
+            detail: { filePath }
+          }));
+        }
         window.dispatchEvent(new CustomEvent("open-file", {
           detail: { filePath: newFilePath, fileName: found.name }
         }));
@@ -1417,36 +2268,394 @@ function TextFileViewer({ filePath, cwd }: Props) {
       // 5. Refresh sidebar file tree explorer
       window.dispatchEvent(new CustomEvent("refresh-explorer"));
 
-      // 6. Format consistency/audit report in markdown
-      const isPassed = result.auditResult?.passed ?? false;
-      const issues = result.auditResult?.issues ?? [];
-      const reportMarkdown = [
-        `### 🎉 ${modeTitle}完成！`,
-        "",
-        `- **章节**: 第 ${result.chapterNumber} 章 《${result.title}》`,
-        `- **字数**: ${result.wordCount} 字`,
-        `- **自动修正**: ${result.revised ? "已执行（已修复关键问题）" : "无（无需修正）"}`,
-        `- **状态结算**: \`${result.status}\``,
-        "",
-        `#### 🔍 离线审稿审计结果`,
-        isPassed 
-          ? "✅ **审计通过**：无逻辑矛盾或角色人设崩塌问题。" 
-          : "⚠️ **审计未完全通过**：检测到一些逻辑或人设风险，建议审阅：",
-        "",
-        issues.length > 0
-          ? issues.map((issue: any) => `- [${issue.severity}] **${issue.category}**: ${issue.description}\n  *建议: ${issue.suggestion}*`).join("\n")
-          : "*（无关键警告或错误）*"
-      ].join("\n");
+      // 6. Extract audit result from write-next JSON
+      const auditResult: AuditReportData | undefined = result.auditResult;
+      const isPassed = auditResult?.passed ?? true;
 
-      setReportContent(reportMarkdown);
+      // 7. Show WriteReport card (clear other result panels)
+      setAuditData(null);
+      setReviseResult(null);
+      setSyncResult(null);
+      setPlanResult(null);
+      setWriteResult({
+        chapterNumber: result.chapterNumber,
+        title: result.title || "",
+        wordCount: result.wordCount ?? 0,
+        revised: !!result.revised,
+        status: result.status || "complete",
+        auditResult,
+      });
+      setReportContent("");
       setHasChapters(true);
+
+      // 8. If audit did not pass and result.revised is false, auto-run revise in-place
+      if (!isPassed && !result.revised && bookId) {
+        setReportTitle("✍️ 智能续写 + 🪄 自动修正");
+        try {
+          const fileMatch = getFileName(found ? chaptersDir + "/" + found.name : filePath).match(/^(\d+)/);
+          const chNum = fileMatch ? parseInt(fileMatch[1], 10) : result.chapterNumber;
+          const revRes = await fetch("/api/inkos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "revise",
+              cwd,
+              args: { bookId, chapter: chNum, mode: "spot-fix", json: true }
+            }),
+          });
+          if (revRes.ok && revRes.body) {
+            const revReader = revRes.body.getReader();
+            const revDecoder = new TextDecoder();
+            let revBuffer = "";
+            let revFinal: any = null;
+            while (true) {
+              const { done, value } = await revReader.read();
+              if (done) break;
+              revBuffer += revDecoder.decode(value, { stream: true });
+              const lines = revBuffer.split("\n");
+              revBuffer = lines.pop() || "";
+              for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                  const chunk = JSON.parse(line);
+                  if (chunk.type === "stdout" || chunk.type === "stderr") {
+                    setLogs((prev) => [...prev, chunk.data || ""]);
+                  } else if (chunk.type === "result") {
+                    revFinal = chunk;
+                  }
+                } catch (e) { /* skip */ }
+              }
+            }
+            if (revBuffer.trim()) {
+              try { const c = JSON.parse(revBuffer); if (c.type === "result") revFinal = c; } catch (e) { /* skip */ }
+            }
+            if (revFinal?.success) {
+              let revData: any = null;
+              try { revData = JSON.parse(revFinal.stdout); } catch (e) { /* skip */ }
+              if (revData) {
+                // Reload content after auto-revise
+                await fetchContent(found ? chaptersDir + "/" + found.name : filePath);
+                setWriteResult((prev) => prev ? {
+                  ...prev,
+                  autoReviseResult: {
+                    applied: revData.applied ?? true,
+                    skippedReason: revData.skippedReason,
+                    fixedIssues: revData.fixedIssues,
+                    status: revData.status,
+                    wordCount: revData.wordCount,
+                  }
+                } : null);
+              }
+            }
+          }
+        } catch (revErr) {
+          console.error("Auto-revise after write-next failed:", revErr);
+        }
+      }
     } catch (err: any) {
       console.error(err);
-      setReportContent(`### ⚠️ 智能创作失败\n\n${err.message || String(err)}\n\n请确保已在侧边栏点击【一键开启创作宇宙】初始化该工作区，并在「模型配置」中配置了大模型 API Key。`);
+      setWriteResult(null);
+      const isTimeout = err.message.includes("超时") || err.message.includes("timed out") || logs.some(l => l.includes("超时"));
+      if (isTimeout) {
+        setReportContent(`### ⚠️ 智能创作超时\n\n系统运行已超过 600 秒，已自动终止。\n\n**建议解决方案**:\n- 检查您的大模型代理和 API Key 是否能快速响应。\n- 在右上角【配置模型】中，建议更换速度较快的模型（例如将 reasoning/思索模型切换为标准对话模型）后再试。`);
+      } else {
+        setReportContent(`### ⚠️ 智能创作失败\n\n**错误详情**:\n${err.message || String(err)}\n\n请确保已在侧边栏点击【一键开启创作宇宙】初始化该工作区，并在右上角【配置模型】中配置了大模型 API Key 和接口代理。`);
+      }
     } finally {
       setWriteLoading(false);
     }
   };
+
+  const handleRevise = async (mode: string = "spot-fix") => {
+    if (!cwd) return;
+    setAuditData(null);
+    const bookId = getBookIdFromPath(filePath, cwd);
+    if (!bookId) return;
+
+    setReviseLoading(true);
+    setLogs([]);
+    setReportTitle("🪄 AI 修正");
+    setReportContent("正在运行 InkOS AI 智能局部修正，请稍候...");
+    setIsReportOpen(true);
+
+    try {
+      // 1. If editor is dirty, save the current text to disk immediately
+      if (saveStatus === "dirty") {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        await saveFile(editContent);
+      }
+
+      // Parse active chapter number from current file
+      const fileMatch = getFileName(filePath).match(/^(\d+)/);
+      const chapter = fileMatch ? parseInt(fileMatch[1], 10) : undefined;
+
+      // 2. Call the revise API
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "revise",
+          cwd,
+          args: { bookId, chapter, mode, json: true }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {
+            console.error("Failed to parse stream chunk:", e);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        let errMsg = "";
+        if (finalResult) {
+          if (finalResult.error) {
+            errMsg = finalResult.error;
+          } else if (finalResult.stdout) {
+            try {
+              const parsed = JSON.parse(finalResult.stdout);
+              if (parsed && parsed.error) {
+                errMsg = parsed.error;
+              } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[parsed.length - 1]?.error) {
+                errMsg = parsed[parsed.length - 1].error;
+              }
+            } catch (e) {}
+          }
+          if (!errMsg && finalResult.stderr) {
+            errMsg = finalResult.stderr.trim();
+          }
+        }
+        throw new Error(errMsg || "智能修正执行失败");
+      }
+
+      // 3. Parse JSON results from stdout
+      let result: any = null;
+      try {
+        result = JSON.parse(finalResult.stdout);
+      } catch (e) {
+        console.error("Failed to parse revise JSON output:", e);
+      }
+
+      if (result && !result.applied) {
+        setAuditData(null);
+        setWriteResult(null);
+        setSyncResult(null);
+        setPlanResult(null);
+        setReviseResult({
+          applied: false,
+          skippedReason: result.skippedReason,
+        });
+        setReportContent("");
+      } else if (result) {
+        setAuditData(null);
+        setWriteResult(null);
+        setSyncResult(null);
+        setPlanResult(null);
+        setReviseResult({
+          applied: true,
+          fixedIssues: result.fixedIssues && result.fixedIssues.length > 0 ? result.fixedIssues : ["优化并修正了人设与设定偏离"],
+          status: result.status,
+          wordCount: result.wordCount,
+        });
+        setReportContent("");
+      } else {
+        setAuditData(null);
+        setWriteResult(null);
+        setSyncResult(null);
+        setPlanResult(null);
+        setReviseResult({ applied: true });
+        setReportContent("");
+      }
+
+      // 4. Force reload content in editor
+      await fetchContent(filePath);
+      // 5. Refresh sidebar file tree explorer
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+
+    } catch (err: any) {
+      console.error(err);
+      setReviseResult(null);
+      const isTimeout = err.message.includes("超时") || err.message.includes("timed out") || logs.some(l => l.includes("超时"));
+      if (isTimeout) {
+        setReportContent(`### ⚠️ 智能修正超时\n\n系统运行已超过 600 秒，已自动终止。\n\n**建议解决方案**:\n- 在右上角【配置模型】中更换速度较快的对话模型后再试。`);
+      } else {
+        setReportContent(`### ⚠️ 智能修正失败\n\n**错误详情**:\n${err.message || String(err)}`);
+      }
+    } finally {
+      setReviseLoading(false);
+    }
+  };
+
+  const handleSync = async () => {
+    if (!cwd) return;
+    setAuditData(null);
+    const bookId = getBookIdFromPath(filePath, cwd);
+    if (!bookId) return;
+
+    setSyncLoading(true);
+    setLogs([]);
+    setReportTitle("🔄 同步设定");
+    setReportContent("正在同步您修改的正文内容至故事真相账本中，并重新构建索引...");
+    setIsReportOpen(true);
+
+    try {
+      // 1. If editor is dirty, save the current text to disk immediately
+      if (saveStatus === "dirty") {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        await saveFile(editContent);
+      }
+
+      // Parse active chapter number from current file
+      const fileMatch = getFileName(filePath).match(/^(\d+)/);
+      const chapter = fileMatch ? parseInt(fileMatch[1], 10) : undefined;
+
+      // 2. Call the write sync API
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "write-sync",
+          cwd,
+          args: { bookId, chapter, json: true }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {
+            console.error("Failed to parse stream chunk:", e);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        let errMsg = "";
+        if (finalResult) {
+          if (finalResult.error) {
+            errMsg = finalResult.error;
+          } else if (finalResult.stdout) {
+            try {
+              const parsed = JSON.parse(finalResult.stdout);
+              if (parsed && parsed.error) {
+                errMsg = parsed.error;
+              } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[parsed.length - 1]?.error) {
+                errMsg = parsed[parsed.length - 1].error;
+              }
+            } catch (e) {}
+          }
+          if (!errMsg && finalResult.stderr) {
+            errMsg = finalResult.stderr.trim();
+          }
+        }
+        throw new Error(errMsg || "同步设定失败");
+      }
+
+      // 3. Parse JSON results from stdout
+      let result: any = null;
+      try {
+        const results = JSON.parse(finalResult.stdout);
+        result = results[0] || results;
+      } catch (e) {
+        console.error("Failed to parse sync JSON output:", e);
+      }
+
+      const auditResult: AuditReportData | undefined = result?.auditResult;
+
+      setAuditData(null);
+      setWriteResult(null);
+      setReviseResult(null);
+      setPlanResult(null);
+      setSyncResult({ auditResult });
+      setReportContent("");
+
+      // Refresh sidebar file tree explorer
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+
+    } catch (err: any) {
+      console.error(err);
+      setSyncResult(null);
+      setReportContent(`### ⚠️ 同步设定失败\n\n**错误详情**:\n${err.message || String(err)}`);
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     saveStatusRef.current = saveStatus;
@@ -1534,7 +2743,8 @@ function TextFileViewer({ filePath, cwd }: Props) {
     fetchContent(filePath).then((d) => {
       if (d) {
         setEditContent(d.content);
-        if (d.language === "markdown") setPreviewMode(true);
+        // Default to "沉浸创作" (edit mode) instead of forcing previewMode for markdown files
+        // if (d.language === "markdown") setPreviewMode(true);
       }
     }).finally(() => setLoading(false));
 
@@ -1843,12 +3053,13 @@ function TextFileViewer({ filePath, cwd }: Props) {
                 caretColor: "var(--accent)",
               }}
             />
-            {/* Zen Editor Footer Status */}
             <div style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "6px 20px",
+              padding: "0 16px",
+              height: "35px",
+              boxSizing: "border-box",
               background: "var(--bg-panel)",
               borderTop: "1px solid var(--border)",
               fontSize: "11px",
@@ -1866,66 +3077,177 @@ function TextFileViewer({ filePath, cwd }: Props) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button
                     onClick={handleWriteNext}
-                    disabled={writeLoading || saveStatus === "saving"}
+                    disabled={writeLoading || reviseLoading || syncLoading || auditLoading || planLoading || saveStatus === "saving"}
                     style={{
-                      padding: "3px 10px",
-                      background: "var(--bg)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "5px",
-                      color: "var(--text-muted)",
+                      padding: "5px 12px",
+                      background: "rgba(249, 115, 22, 0.08)",
+                      border: "1px solid rgba(249, 115, 22, 0.4)",
+                      borderRadius: "6px",
+                      color: "#ff903f",
                       cursor: "pointer",
-                      fontSize: "10px",
+                      fontSize: "11px",
                       fontWeight: 600,
                       fontFamily: "var(--font-serif)",
-                      transition: "all 0.15s",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                      whiteSpace: "nowrap",
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(249, 115, 22, 0.16)";
+                      e.currentTarget.style.borderColor = "#f97316";
+                      e.currentTarget.style.color = "#ffaa64";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(249, 115, 22, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(249, 115, 22, 0.08)";
+                      e.currentTarget.style.borderColor = "rgba(249, 115, 22, 0.4)";
+                      e.currentTarget.style.color = "#ff903f";
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
+                    }}
                   >
-                    {writeLoading ? "正在编写中..." : (hasChapters ? "✍️ 智能续写正文" : "✍️ 智能写作正文")}
+                    {writeLoading ? "正在编写中..." : "✍️ 智能续写"}
+                  </button>
+                  <button
+                    onClick={() => handleRevise("spot-fix")}
+                    disabled={reviseLoading || writeLoading || syncLoading || auditLoading || planLoading || saveStatus === "saving"}
+                    style={{
+                      padding: "5px 12px",
+                      background: "rgba(20, 184, 166, 0.08)",
+                      border: "1px solid rgba(20, 184, 166, 0.4)",
+                      borderRadius: "6px",
+                      color: "#2dd4bf",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      fontFamily: "var(--font-serif)",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                      whiteSpace: "nowrap",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(20, 184, 166, 0.16)";
+                      e.currentTarget.style.borderColor = "#14b8a6";
+                      e.currentTarget.style.color = "#5eead4";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(20, 184, 166, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(20, 184, 166, 0.08)";
+                      e.currentTarget.style.borderColor = "rgba(20, 184, 166, 0.4)";
+                      e.currentTarget.style.color = "#2dd4bf";
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
+                    }}
+                  >
+                    {reviseLoading ? "正在修正中..." : "🪄 AI 修正"}
                   </button>
                   <button
                     onClick={handleRunAudit}
-                    disabled={auditLoading || saveStatus === "saving"}
+                    disabled={auditLoading || writeLoading || reviseLoading || syncLoading || planLoading || saveStatus === "saving"}
                     style={{
-                      padding: "3px 10px",
-                      background: "var(--bg)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "5px",
-                      color: "var(--text-muted)",
+                      padding: "5px 12px",
+                      background: "rgba(59, 130, 246, 0.08)",
+                      border: "1px solid rgba(59, 130, 246, 0.4)",
+                      borderRadius: "6px",
+                      color: "#60a5fa",
                       cursor: "pointer",
-                      fontSize: "10px",
+                      fontSize: "11px",
                       fontWeight: 600,
                       fontFamily: "var(--font-serif)",
-                      transition: "all 0.15s",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                      whiteSpace: "nowrap",
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.16)";
+                      e.currentTarget.style.borderColor = "#3b82f6";
+                      e.currentTarget.style.color = "#93c5fd";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.08)";
+                      e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.4)";
+                      e.currentTarget.style.color = "#60a5fa";
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
+                    }}
                   >
-                    {auditLoading ? "正在审计中..." : "🔍 人设防崩审计"}
+                    {auditLoading ? "正在审计中..." : "🔍 防崩审计"}
+                  </button>
+                  <button
+                    onClick={handleSync}
+                    disabled={syncLoading || writeLoading || reviseLoading || auditLoading || planLoading || saveStatus === "saving"}
+                    style={{
+                      padding: "5px 12px",
+                      background: "rgba(16, 185, 129, 0.08)",
+                      border: "1px solid rgba(16, 185, 129, 0.4)",
+                      borderRadius: "6px",
+                      color: "#34d399",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      fontFamily: "var(--font-serif)",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                      whiteSpace: "nowrap",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(16, 185, 129, 0.16)";
+                      e.currentTarget.style.borderColor = "#10b981";
+                      e.currentTarget.style.color = "#6ee7b7";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(16, 185, 129, 0.08)";
+                      e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.4)";
+                      e.currentTarget.style.color = "#34d399";
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
+                    }}
+                  >
+                    {syncLoading ? "正在同步中..." : "🔄 同步设定"}
                   </button>
                   <button
                     onClick={handlePlanChapter}
-                    disabled={planLoading}
+                    disabled={planLoading || writeLoading || reviseLoading || syncLoading || auditLoading || saveStatus === "saving"}
                     style={{
-                      padding: "3px 10px",
-                      background: "var(--bg)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "5px",
-                      color: "var(--text-muted)",
+                      padding: "5px 12px",
+                      background: "rgba(168, 85, 247, 0.08)",
+                      border: "1px solid rgba(168, 85, 247, 0.4)",
+                      borderRadius: "6px",
+                      color: "#c084fc",
                       cursor: "pointer",
-                      fontSize: "10px",
+                      fontSize: "11px",
                       fontWeight: 600,
                       fontFamily: "var(--font-serif)",
-                      transition: "all 0.15s",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                      whiteSpace: "nowrap",
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(168, 85, 247, 0.16)";
+                      e.currentTarget.style.borderColor = "#a855f7";
+                      e.currentTarget.style.color = "#d8b4fe";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(168, 85, 247, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(168, 85, 247, 0.08)";
+                      e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.4)";
+                      e.currentTarget.style.color = "#c084fc";
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
+                    }}
                   >
-                    {planLoading ? "正在规划中..." : "📝 规划本章意图"}
+                    {planLoading ? "正在规划中..." : "📝 规划意图"}
                   </button>
                 </div>
               )}
+
 
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {saveStatus === "saving" && (
@@ -2087,20 +3409,25 @@ function TextFileViewer({ filePath, cwd }: Props) {
                 {reportTitle}
               </span>
               <button
-                onClick={() => setIsReportOpen(false)}
+                onClick={() => {
+                  if (isRunning) return;
+                  setIsReportOpen(false);
+                }}
+                disabled={isRunning}
                 style={{
                   padding: "4px 12px",
                   fontSize: 11,
                   borderRadius: 4,
                   border: "1px solid var(--border)",
-                  background: "var(--bg-hover)",
-                  color: "var(--text-muted)",
-                  cursor: "pointer",
+                  background: isRunning ? "var(--bg)" : "var(--bg-hover)",
+                  color: isRunning ? "var(--text-dim)" : "var(--text-muted)",
+                  cursor: isRunning ? "not-allowed" : "pointer",
+                  opacity: isRunning ? 0.6 : 1,
                   fontWeight: 600,
                   fontFamily: "var(--font-serif)"
                 }}
               >
-                ✕ 关闭
+                {isRunning ? "执行中..." : "✕ 关闭"}
               </button>
             </div>
 
@@ -2110,9 +3437,103 @@ function TextFileViewer({ filePath, cwd }: Props) {
               padding: "24px 32px",
               overflowY: "auto",
               lineHeight: "1.8",
-              fontSize: "14px"
+              fontSize: "14px",
+              display: "flex",
+              flexDirection: "column"
             }} className="markdown-body markdown-file-preview">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportContent}</ReactMarkdown>
+              {(writeLoading || auditLoading || planLoading || reviseLoading || syncLoading) ? (
+                <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexShrink: 0 }}>
+                    <div style={{
+                      width: "16px",
+                      height: "16px",
+                      border: "2px solid var(--border)",
+                      borderTopColor: "var(--accent)",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                      flexShrink: 0
+                    }} />
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)" }}>
+                      正在执行指令，实时进度如下：
+                    </span>
+                  </div>
+                  <div 
+                    ref={consoleRef}
+                    style={{
+                      flex: 1,
+                      background: "#121214",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                      padding: "12px",
+                      overflowY: "auto",
+                      fontFamily: "var(--font-mono), monospace",
+                      fontSize: "11px",
+                      lineHeight: "1.5",
+                      color: "#e4e4e7",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {logs.length === 0 ? (
+                      <span style={{ color: "var(--text-dim)" }}>正在准备执行环境...</span>
+                    ) : (
+                      logs.map((log, index) => (
+                        <div key={index} style={{ marginBottom: 2 }}>
+                          {log}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                ) : (
+                <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                  <div style={{ flex: 1, overflowY: "auto" }}>
+                    {auditData ? (
+                      <AuditReport data={auditData} />
+                    ) : writeResult ? (
+                      <WriteReport data={writeResult} />
+                    ) : reviseResult ? (
+                      <ReviseReport data={reviseResult} />
+                    ) : syncResult ? (
+                      <SyncReport data={syncResult} />
+                    ) : planResult ? (
+                      <PlanReport data={planResult} />
+                    ) : (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportContent}</ReactMarkdown>
+                    )}
+                  </div>
+                  {logs.length > 0 && (
+                    <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 12, flexShrink: 0 }}>
+                      <details style={{ cursor: "pointer", fontSize: 12, color: "var(--text-muted)" }}>
+                        <summary style={{ fontWeight: 600, marginBottom: 8, userSelect: "none" }}>查看控制台运行日志</summary>
+                        <div 
+                          style={{
+                            background: "#121214",
+                            border: "1px solid var(--border)",
+                            borderRadius: "6px",
+                            padding: "12px",
+                            maxHeight: "180px",
+                            overflowY: "auto",
+                            fontFamily: "var(--font-mono), monospace",
+                            fontSize: "11px",
+                            lineHeight: "1.5",
+                            color: "#e4e4e7",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-all",
+                            textAlign: "left",
+                          }}
+                        >
+                          {logs.map((log, index) => (
+                            <div key={index} style={{ marginBottom: 2 }}>
+                              {log}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

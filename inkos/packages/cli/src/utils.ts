@@ -15,6 +15,9 @@ export async function resolveContext(opts: {
   if (opts.contextFile) {
     return readFile(resolve(opts.contextFile), "utf-8");
   }
+  if (process.env.INKOS_NO_STDIN === "true") {
+    return undefined;
+  }
   // Read from stdin if piped (non-TTY)
   if (!process.stdin.isTTY) {
     const chunks: Buffer[] = [];

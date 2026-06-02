@@ -1,4 +1,4 @@
-import { execFile, execSync } from "child_process";
+import { execFile, execSync, spawn } from "child_process";
 import { promisify } from "util";
 import { existsSync, readFileSync } from "fs";
 import { dirname, join, delimiter } from "path";
@@ -269,8 +269,30 @@ export async function runInkos(args: string[], opts: RunNpxOptions = {}): Promis
     env: {
       ...process.env,
       ...modelsEnv,
+      INKOS_NO_STDIN: "true",
       ...opts.env,
     },
+  });
+}
+
+export function spawnInkos(args: string[], opts: RunNpxOptions = {}) {
+  const resolved = resolveNpx();
+  const nodeBin = resolved ? resolved.nodePath : "node";
+  let cliPath = join(process.cwd(), "inkos", "packages", "cli", "dist", "index.js");
+  if (!existsSync(cliPath)) {
+    cliPath = join(__dirname, "..", "inkos", "packages", "cli", "dist", "index.js");
+  }
+  const modelsEnv = resolveModelsEnv();
+  console.log(`[spawnInkos] spawning local InkOS CLI: "${nodeBin} ${cliPath} ${args.join(" ")}"`);
+  return spawn(nodeBin, [cliPath, ...args], {
+    cwd: opts.cwd ?? process.cwd(),
+    env: {
+      ...process.env,
+      ...modelsEnv,
+      INKOS_NO_STDIN: "true",
+      ...opts.env,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
   });
 }
 
