@@ -177,10 +177,25 @@ function resolveModelsEnv(): Record<string, string> {
   try {
     const home = homedir();
     const agentDir = process.env.PI_CODING_AGENT_DIR || join(home, ".ink", "agent");
+    const settingsPath = join(agentDir, "settings.json");
     const modelsPath = join(agentDir, "models.json");
+
+    let defaultProvider = "";
+    let defaultModel = "";
+    if (existsSync(settingsPath)) {
+      try {
+        const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+        defaultProvider = settings.defaultProvider || "";
+        defaultModel = settings.defaultModel || "";
+      } catch (e) {
+        // ignore
+      }
+    }
+
     if (existsSync(modelsPath)) {
       const data = JSON.parse(readFileSync(modelsPath, "utf8"));
       if (data && data.providers) {
+        // Map all providers
         for (const [providerName, providerConfig] of Object.entries(data.providers)) {
           if (providerConfig && typeof providerConfig === "object") {
             const config = providerConfig as Record<string, any>;
@@ -200,6 +215,24 @@ function resolveModelsEnv(): Record<string, string> {
               }
             }
           }
+        }
+
+        // Map default selected provider to INKOS_LLM_ environment keys
+        const activeProvider = defaultProvider ? data.providers[defaultProvider] : null;
+        if (activeProvider && typeof activeProvider === "object") {
+          const config = activeProvider as Record<string, any>;
+          if (config.apiKey) {
+            envs["INKOS_LLM_API_KEY"] = config.apiKey;
+          }
+          if (config.baseUrl) {
+            envs["INKOS_LLM_BASE_URL"] = config.baseUrl;
+          }
+          if (defaultModel) {
+            envs["INKOS_LLM_MODEL"] = defaultModel;
+          }
+          envs["INKOS_LLM_PROVIDER"] = "openai";
+          envs["INKOS_LLM_API_FORMAT"] = "chat";
+          envs["INKOS_LLM_STREAM"] = "true";
         }
       }
     }

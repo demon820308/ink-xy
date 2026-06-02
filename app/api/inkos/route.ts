@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     let cliArgs: string[] = [];
+    let tempBriefPath: string | null = null;
 
     switch (action) {
       case "init":
@@ -37,7 +38,14 @@ export async function POST(request: NextRequest) {
           cliArgs.push("--genre", args.genre);
         }
         if (args.brief) {
-          cliArgs.push("--brief", args.brief);
+          try {
+            const fs = require("fs");
+            tempBriefPath = join(cwd, "radar", `temp_brief_${Date.now()}.md`);
+            fs.writeFileSync(tempBriefPath, args.brief, "utf8");
+            cliArgs.push("--brief", tempBriefPath);
+          } catch (e: any) {
+            return NextResponse.json({ error: `无法写入创意简报临时文件: ${e.message}` }, { status: 500 });
+          }
         }
         if (args.chapterWords) {
           cliArgs.push("--chapter-words", String(args.chapterWords));
@@ -110,10 +118,24 @@ export async function POST(request: NextRequest) {
     console.log(`[API/inkos] Spawning local CLI in CWD "${cwd}": node packages/cli/dist/index.js ${cliArgs.join(" ")}`);
     
     // Execute command with a reasonable 90-second timeout for long running generation/audits
-    const result = await runInkos(cliArgs, {
-      cwd,
-      timeout: 90000, 
-    });
+    let result;
+    try {
+      result = await runInkos(cliArgs, {
+        cwd,
+        timeout: 90000, 
+      });
+    } finally {
+      if (tempBriefPath) {
+        try {
+          const fs = require("fs");
+          if (fs.existsSync(tempBriefPath)) {
+            fs.unlinkSync(tempBriefPath);
+          }
+        } catch (e) {
+          console.error("[API/inkos] Failed to delete temp brief file:", e);
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

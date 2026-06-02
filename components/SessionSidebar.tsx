@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { FileExplorer } from "./FileExplorer";
-import { encodeFilePathForApi } from "@/lib/file-paths";
+import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 
 interface Props {
   selectedSessionId: string | null;
@@ -230,6 +230,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
   // InkOS workspace states
   const [isInkosWorkspace, setIsInkosWorkspace] = useState(true);
+  const [hasBooks, setHasBooks] = useState(true);
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [isCreatingBook, setIsCreatingBook] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
+
+  // Book creation form state
+  const [bookTitle, setBookTitle] = useState("");
+  const [bookGenre, setBookGenre] = useState("xuanhuan");
+  const [bookPlatform, setBookPlatform] = useState("tomato");
+  const [bookBrief, setBookBrief] = useState("");
+
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
@@ -245,10 +256,73 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         (e: any) => e.name === ".inkos" || e.name === "story" || e.name === "books"
       );
       setIsInkosWorkspace(hasSignature);
+
+      if (hasSignature) {
+        const booksDir = joinFilePath(cwd, "books");
+        const booksEncoded = encodeFilePathForApi(booksDir);
+        const booksRes = await fetch(`/api/files/${booksEncoded}?type=list`);
+        if (booksRes.ok) {
+          const booksData = await booksRes.json();
+          const bookEntries = booksData.entries || [];
+          const actualBooks = bookEntries.filter((e: any) => e.name !== ".gitkeep" && !e.name.startsWith("."));
+          setHasBooks(actualBooks.length > 0);
+        } else {
+          setHasBooks(false);
+        }
+      } else {
+        setHasBooks(false);
+      }
     } catch (e) {
       console.error("Failed to verify workspace status:", e);
     }
   }, []);
+
+  const handleCreateBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookTitle.trim()) {
+      setBookError("书籍名称不能为空");
+      return;
+    }
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd) return;
+
+    setIsCreatingBook(true);
+    setBookError(null);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "book-create",
+          cwd: activeCwd,
+          args: {
+            title: bookTitle.trim(),
+            genre: bookGenre,
+            platform: bookPlatform,
+            brief: bookBrief.trim() || undefined
+          }
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "创建书籍失败，大模型生成异常，请检查配置和 Key");
+      }
+
+      await checkWorkspaceStatus(activeCwd);
+      setExplorerKey((k) => k + 1);
+      
+      setBookTitle("");
+      setBookBrief("");
+      setIsBookModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      setBookError(err.message || "创建书籍失败，请确认侧边栏左下角 Models 中 API Key 填写正确且模型支持当前题材生成。");
+    } finally {
+      setIsCreatingBook(false);
+    }
+  };
 
   const handleInitWorkspace = async () => {
     const activeCwd = selectedCwdProp || selectedCwd;
@@ -877,6 +951,42 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </button>
                 </div>
               )}
+              {isInkosWorkspace && !hasBooks && (
+                <div style={{
+                  margin: "8px 10px",
+                  padding: "12px",
+                  background: "var(--bg-panel)",
+                  border: "1px dashed var(--accent)",
+                  borderRadius: "8px",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-serif)",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13 }}>📚</span>
+                    <span>小说宇宙内尚无书籍</span>
+                  </div>
+                  <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
+                    在 InkOS 中，设定与大纲是以“书籍”为单位存储的。立即创建您的第一本书，AI 架构师将为您搭建创作地基。
+                  </div>
+                  <button
+                    onClick={() => setIsBookModalOpen(true)}
+                    style={{
+                      width: "100%",
+                      padding: "6px 0",
+                      background: "var(--accent)",
+                      border: "none",
+                      borderRadius: "6px",
+                      color: "white",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "opacity 0.15s",
+                    }}
+                  >
+                    ✍️ 创建小说书籍
+                  </button>
+                </div>
+              )}
               <div style={{ flex: 1 }}>
                 <FileExplorer
                   cwd={selectedCwdProp ?? selectedCwd!}
@@ -1140,6 +1250,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         .gem-sidebar-item:hover .gem-actions {
           opacity: 1 !important;
         }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
       `}</style>
       <GemEditorModal
         isOpen={isGemModalOpen}
@@ -1148,6 +1262,217 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         onSave={() => loadGems()}
         modelList={modelList}
       />
+      
+      {/* Create Book Modal */}
+      {isBookModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            width: "min(480px, 90vw)",
+            padding: "20px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+            fontFamily: "var(--font-serif)",
+          }}>
+            <h3 style={{
+              margin: "0 0 16px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "var(--text)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              borderBottom: "1px solid var(--border)",
+              paddingBottom: "10px",
+            }}>
+              <span>📚</span>
+              <span>创建新小说书籍 (Create Book)</span>
+            </h3>
+            
+            {isCreatingBook ? (
+              <div style={{ padding: "30px 10px", textAlign: "center" }}>
+                <div style={{
+                  width: "36px",
+                  height: "36px",
+                  border: "3px solid var(--border)",
+                  borderTopColor: "var(--accent)",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                  margin: "0 auto 16px",
+                }} />
+                <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 8, fontSize: "13px" }}>
+                  正在生成创作宇宙基础设定...
+                </div>
+                <div style={{ color: "var(--text-muted)", fontSize: "11px", lineHeight: 1.6, maxWidth: "300px", margin: "0 auto" }}>
+                  AI 架构师正在分析题材大纲，并自动构建卷大纲、角色设定卡片与世界观法则，请稍候约 30 秒。
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleCreateBook}>
+                {bookError && (
+                  <div style={{
+                    background: "rgba(239, 68, 68, 0.08)",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                    borderRadius: "6px",
+                    padding: "10px",
+                    color: "#ef4444",
+                    fontSize: "11px",
+                    marginBottom: "16px",
+                    lineHeight: 1.5,
+                  }}>
+                    ⚠️ {bookError}
+                  </div>
+                )}
+                
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+                    小说书名 (Title)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={bookTitle}
+                    onChange={(e) => setBookTitle(e.target.value)}
+                    placeholder="例如：万古大帝"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                      background: "var(--bg)",
+                      color: "var(--text)",
+                      fontSize: "12px",
+                      fontFamily: "var(--font-serif)",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+                
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+                      小说题材 (Genre)
+                    </label>
+                    <select
+                      value={bookGenre}
+                      onChange={(e) => setBookGenre(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        background: "var(--bg)",
+                        color: "var(--text)",
+                        fontSize: "12px",
+                        outline: "none",
+                      }}
+                    >
+                      <option value="xuanhuan">玄幻奇幻 (Xuanhuan)</option>
+                      <option value="urban">都市异能 (Urban)</option>
+                      <option value="history">历史同人 (History)</option>
+                      <option value="scifi">科幻未来 (Sci-Fi)</option>
+                      <option value="game">网游竞技 (Game)</option>
+                      <option value="fanfic">同人创作 (Fanfic)</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+                      目标平台 (Platform)
+                    </label>
+                    <select
+                      value={bookPlatform}
+                      onChange={(e) => setBookPlatform(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        background: "var(--bg)",
+                        color: "var(--text)",
+                        fontSize: "12px",
+                        outline: "none",
+                      }}
+                    >
+                      <option value="tomato">番茄小说 (Tomato)</option>
+                      <option value="qidian">起点中文 (Qidian)</option>
+                      <option value="other">其他独立平台 (Other)</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+                    大纲梗概/创意简报 (Brief - 可选)
+                  </label>
+                  <textarea
+                    value={bookBrief}
+                    onChange={(e) => setBookBrief(e.target.value)}
+                    placeholder="在此输入您的创意构想（例如：主角是退役兵王、金手指是万界交易面板、核心冲突为世家倾轧）。AI 架构师将优先融合您的创意进行大纲设定设计。"
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                      background: "var(--bg)",
+                      color: "var(--text)",
+                      fontSize: "12px",
+                      fontFamily: "var(--font-serif)",
+                      lineHeight: "1.6",
+                      outline: "none",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+                
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsBookModalOpen(false)}
+                    style={{
+                      padding: "6px 14px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                      background: "transparent",
+                      color: "var(--text-muted)",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="submit"
+                    style={{
+                      padding: "6px 16px",
+                      background: "var(--accent)",
+                      border: "none",
+                      borderRadius: "6px",
+                      color: "white",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    确认创建
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
