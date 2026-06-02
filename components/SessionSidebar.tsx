@@ -1411,7 +1411,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </div>
                 )}
 
-                {(detectedFramework || detectedCharacter) && (
+                {(detectedFramework || detectedCharacter) ? (
                   <div style={{
                     background: "var(--bg)",
                     border: "1px solid var(--border)",
@@ -1447,6 +1447,26 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                         </label>
                       )}
                     </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    background: "var(--bg-panel)",
+                    border: "1px dashed var(--border)",
+                    borderRadius: "8px",
+                    padding: "12px",
+                    marginBottom: "16px",
+                    fontSize: "11px",
+                    lineHeight: 1.6,
+                    color: "var(--text-muted)",
+                  }}>
+                    <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: "6px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>💡 创作建议与提示</span>
+                    </div>
+                    当前未检测到本地的「小说框架」或「角色人设」设定文件。您可以：
+                    <ul style={{ margin: "4px 0 0", paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <li><strong>直接创建书卷</strong>：忽略此提示，系统将自动为您构思并生成初始的世界观与角色人设。</li>
+                      <li><strong>AI 协同起草</strong>：先关闭此窗口，通过右侧<strong>「写作协同姬 (AI Copilot)」</strong>共同探讨并生成大纲设定，保存后再行创建。</li>
+                    </ul>
                   </div>
                 )}
                 
