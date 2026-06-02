@@ -241,6 +241,65 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [bookPlatform, setBookPlatform] = useState("tomato");
   const [bookBrief, setBookBrief] = useState("");
 
+  const [detectedLocalFiles, setDetectedLocalFiles] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!isBookModalOpen) {
+      setDetectedLocalFiles([]);
+      return;
+    }
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd) return;
+
+    const scanLocalFiles = async () => {
+      try {
+        const detected: string[] = [];
+        
+        // 1. Scan CWD root
+        const rootRes = await fetch(`/api/files/${encodeFilePathForApi(activeCwd)}?type=list`);
+        const rootData = await rootRes.json();
+        if (rootData.entries) {
+          const hasFramework = rootData.entries.some((e: any) => !e.isDir && ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"].includes(e.name));
+          const hasCharacter = rootData.entries.some((e: any) => !e.isDir && ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"].includes(e.name));
+          if (hasFramework) detected.push("架构文件 (根目录)");
+          if (hasCharacter) detected.push("人设文件 (根目录)");
+        }
+        
+        // 2. Scan Temp directory
+        const tempDir = `${activeCwd}/Temp`;
+        const tempRes = await fetch(`/api/files/${encodeFilePathForApi(tempDir)}?type=list`);
+        if (tempRes.ok) {
+          const tempData = await tempRes.json();
+          if (tempData.entries) {
+            const hasFramework = tempData.entries.some((e: any) => !e.isDir && ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"].includes(e.name));
+            const hasCharacter = tempData.entries.some((e: any) => !e.isDir && ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"].includes(e.name));
+            if (hasFramework) detected.push("novel_framework.md (Temp)");
+            if (hasCharacter) detected.push("character_profiles.md (Temp)");
+          }
+        }
+        
+        // 3. Scan temp directory
+        const tempDirLower = `${activeCwd}/temp`;
+        const tempLowerRes = await fetch(`/api/files/${encodeFilePathForApi(tempDirLower)}?type=list`);
+        if (tempLowerRes.ok) {
+          const tempLowerData = await tempLowerRes.json();
+          if (tempLowerData.entries) {
+            const hasFramework = tempLowerData.entries.some((e: any) => !e.isDir && ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"].includes(e.name));
+            const hasCharacter = tempLowerData.entries.some((e: any) => !e.isDir && ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"].includes(e.name));
+            if (hasFramework) detected.push("novel_framework.md (temp)");
+            if (hasCharacter) detected.push("character_profiles.md (temp)");
+          }
+        }
+        
+        setDetectedLocalFiles(detected);
+      } catch (e) {
+        console.error("Failed to scan local framework/character files:", e);
+      }
+    };
+    
+    scanLocalFiles();
+  }, [isBookModalOpen, selectedCwdProp, selectedCwd]);
+
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
@@ -1331,6 +1390,21 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     lineHeight: 1.5,
                   }}>
                     ⚠️ {bookError}
+                  </div>
+                )}
+
+                {detectedLocalFiles.length > 0 && (
+                  <div style={{
+                    background: "rgba(16, 185, 129, 0.08)",
+                    border: "1px solid rgba(16, 185, 129, 0.2)",
+                    borderRadius: "6px",
+                    padding: "10px",
+                    color: "#10b981",
+                    fontSize: "11px",
+                    marginBottom: "16px",
+                    lineHeight: 1.5,
+                  }}>
+                    🔍 检测到本地创作设定：<strong>{detectedLocalFiles.join("、")}</strong>，确认创建后系统将自动以此为基础构建故事宇宙设定。
                   </div>
                 )}
                 

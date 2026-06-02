@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
 
     let cliArgs: string[] = [];
     let tempBriefPath: string | null = null;
+    let localFilesUsed: string[] = [];
 
     switch (action) {
       case "init":
@@ -37,11 +38,69 @@ export async function POST(request: NextRequest) {
         if (args.genre) {
           cliArgs.push("--genre", args.genre);
         }
-        if (args.brief) {
+
+        // Scan for local framework and character profile files to use as basis
+        let combinedBrief = args.brief || "";
+        try {
+          const fs = require("fs");
+          const searchDirs = [cwd, join(cwd, "Temp"), join(cwd, "temp")];
+          const frameworkNames = ["novel_framework_v2.md", "novel_framework.md", "novel-framework.md", "架构.md", "构架.md"];
+          const characterNames = ["character_profiles.md", "character-profiles.md", "character.md", "人设.md"];
+          
+          let foundFramework = "";
+          let foundCharacter = "";
+          
+          // Find framework
+          for (const dir of searchDirs) {
+            if (!fs.existsSync(dir)) continue;
+            for (const name of frameworkNames) {
+              const fullPath = join(dir, name);
+              if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+                foundFramework = fs.readFileSync(fullPath, "utf8");
+                localFilesUsed.push(join(dir === cwd ? "" : (dir.endsWith("Temp") ? "Temp" : "temp"), name).replace(/\\/g, "/"));
+                break;
+              }
+            }
+            if (foundFramework) break;
+          }
+          
+          // Find character profiles
+          for (const dir of searchDirs) {
+            if (!fs.existsSync(dir)) continue;
+            for (const name of characterNames) {
+              const fullPath = join(dir, name);
+              if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+                foundCharacter = fs.readFileSync(fullPath, "utf8");
+                localFilesUsed.push(join(dir === cwd ? "" : (dir.endsWith("Temp") ? "Temp" : "temp"), name).replace(/\\/g, "/"));
+                break;
+              }
+            }
+            if (foundCharacter) break;
+          }
+          
+          if (foundFramework || foundCharacter) {
+            const sections = [];
+            if (foundFramework) {
+              sections.push(`# 导入的构架设定\n\n${foundFramework}`);
+            }
+            if (foundCharacter) {
+              sections.push(`# 导入的角色人设\n\n${foundCharacter}`);
+            }
+            if (args.brief) {
+              sections.push(`# 用户补充创意\n\n${args.brief}`);
+            }
+            combinedBrief = sections.join("\n\n---\n\n");
+            console.log(`[API/inkos] Book create using files: ${localFilesUsed.join(", ")}`);
+          }
+        } catch (err) {
+          console.error("[API/inkos] Failed to scan local framework/character files:", err);
+        }
+
+        if (combinedBrief) {
           try {
             const fs = require("fs");
             tempBriefPath = join(cwd, "radar", `temp_brief_${Date.now()}.md`);
-            fs.writeFileSync(tempBriefPath, args.brief, "utf8");
+            fs.writeFileSync(tempBriefPath, combinedBrief, "utf8");
             cliArgs.push("--brief", tempBriefPath);
           } catch (e: any) {
             return NextResponse.json({ error: `无法写入创意简报临时文件: ${e.message}` }, { status: 500 });
@@ -147,6 +206,7 @@ export async function POST(request: NextRequest) {
       success: true,
       stdout: result.stdout,
       stderr: result.stderr,
+      localFilesUsed: localFilesUsed.length > 0 ? localFilesUsed : undefined,
     });
   } catch (error: any) {
     console.error("[API/inkos] Execution failed:", error);
