@@ -88,7 +88,13 @@ export function AppShell() {
   // Right panel — file tabs only
   const [fileTabs, setFileTabs] = useState<Tab[]>([]);
   const [activeFileTabId, setActiveFileTabId] = useState<string | null>(null);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return !!params.get("session");
+    }
+    return false;
+  });
 
   const handleAtMention = useCallback((relativePath: string) => {
     chatInputRef.current?.insertText("`" + relativePath + "`");
@@ -141,6 +147,7 @@ export function AppShell() {
     if (!isRestore) {
       window.history.replaceState(null, "", `?session=${encodeURIComponent(session.id)}`);
     }
+    setRightPanelOpen(true);
   }, []);
 
   const handleNewSession = useCallback((_sessionId: string, cwd: string, gemId?: string | null) => {
@@ -153,6 +160,7 @@ export function AppShell() {
     setSystemPrompt(null);
     setActiveTopPanel(null);
     window.history.replaceState(null, "", "/");
+    setRightPanelOpen(true);
   }, []);
 
   // Called by ChatWindow when a new session gets its real id from pi
@@ -162,6 +170,7 @@ export function AppShell() {
     setActiveGemId(null);
     setRefreshKey((k) => k + 1);
     window.history.replaceState(null, "", `?session=${encodeURIComponent(session.id)}`);
+    setRightPanelOpen(true);
   }, []);
 
   const handleAgentEnd = useCallback(() => {
@@ -178,6 +187,7 @@ export function AppShell() {
       id: newSessionId,
     }));
     window.history.replaceState(null, "", `?session=${encodeURIComponent(newSessionId)}`);
+    setRightPanelOpen(true);
   }, []);
 
   const handleInitialRestoreDone = useCallback(() => {
