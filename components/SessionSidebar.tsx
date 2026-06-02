@@ -271,6 +271,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccessText, setImportSuccessText] = useState<string | null>(null);
   const [availableBooks, setAvailableBooks] = useState<string[]>([]);
+  const [importBookSelection, setImportBookSelection] = useState<"active" | "new">("active");
+  const [newBookId, setNewBookId] = useState("");
+  const [newBookTitle, setNewBookTitle] = useState("");
 
   useEffect(() => {
     if (consoleRef.current) {
@@ -573,6 +576,78 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     setImportLogs([]);
 
     try {
+      const targetBookId = (importBookSelection === "new" || availableBooks.length === 0)
+        ? newBookId.trim()
+        : (activeBookId || undefined);
+
+      if ((importBookSelection === "new" || availableBooks.length === 0) && activeImportTab === "chapters") {
+        if (!targetBookId) {
+          throw new Error("新书籍 ID 不能为空");
+        }
+        const bTitle = newBookTitle.trim() || targetBookId;
+        
+        setImportLogs((prev) => [...prev, `[System] 正在自动创建新书籍 "${targetBookId}" (${bTitle})...\n`]);
+        
+        const createRes = await fetch("/api/inkos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "book-create",
+            cwd: activeCwd,
+            args: {
+              title: bTitle,
+              genre: "xuanhuan",
+              platform: "tomato",
+            }
+          })
+        });
+
+        if (!createRes.ok) {
+          throw new Error(`创建新书籍失败，HTTP 异常 ${createRes.status}`);
+        }
+
+        if (!createRes.body) {
+          throw new Error("创建新书籍响应流为空");
+        }
+
+        const createReader = createRes.body.getReader();
+        const createDecoder = new TextDecoder();
+        let createBuffer = "";
+        let createResult: { success: boolean; error?: string } | null = null;
+
+        while (true) {
+          const { done, value } = await createReader.read();
+          if (done) break;
+          createBuffer += createDecoder.decode(value, { stream: true });
+          const lines = createBuffer.split("\n");
+          createBuffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const chunk = JSON.parse(line);
+              if (chunk.type === "stdout" || chunk.type === "stderr") {
+                setImportLogs((prev) => [...prev, chunk.data || ""]);
+              } else if (chunk.type === "result") {
+                createResult = chunk;
+              }
+            } catch (err) {}
+          }
+        }
+
+        if (createBuffer.trim()) {
+          try {
+            const chunk = JSON.parse(createBuffer);
+            if (chunk.type === "result") createResult = chunk;
+          } catch (err) {}
+        }
+
+        if (!createResult || !createResult.success) {
+          throw new Error(createResult?.error || "创建新书籍失败");
+        }
+
+        setImportLogs((prev) => [...prev, `[System] 新书籍创建完成，正在导入章节数据...\n`]);
+      }
+
       let body: Record<string, unknown> = {};
       if (activeImportTab === "chapters") {
         if (!importFromPath.trim()) {
@@ -582,7 +657,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           action: "import-chapters",
           cwd: activeCwd,
           args: {
-            bookId: activeBookId || undefined,
+            bookId: targetBookId,
             from: importFromPath.trim(),
             split: importSplitRegex.trim() || undefined,
             resumeFrom: importResumeFrom ? parseInt(importResumeFrom, 10) : undefined,
@@ -1581,36 +1656,38 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               </svg>
               创作目录 (Workspace)
             </button>
-            {isInkosWorkspace && hasBooks && (
+            {isInkosWorkspace && (
               <div style={{ display: "flex", gap: 2 }}>
-                <button
-                  onClick={() => {
-                    setIsExportModalOpen(true);
-                    setExportSuccessText(null);
-                    setExportError(null);
-                    setExportLogs([]);
-                  }}
-                  title="导出小说书稿 (Export Book)"
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    width: 26, height: 26, padding: 0,
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-dim)",
-                    cursor: "pointer",
-                    borderRadius: 5,
-                    flexShrink: 0,
-                    transition: "color 0.3s, background 0.3s",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                </button>
+                {hasBooks && (
+                  <button
+                    onClick={() => {
+                      setIsExportModalOpen(true);
+                      setExportSuccessText(null);
+                      setExportError(null);
+                      setExportLogs([]);
+                    }}
+                    title="导出小说书稿 (Export Book)"
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 26, height: 26, padding: 0,
+                      background: "none",
+                      border: "none",
+                      color: "var(--text-dim)",
+                      cursor: "pointer",
+                      borderRadius: 5,
+                      flexShrink: 0,
+                      transition: "color 0.3s, background 0.3s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setIsImportModalOpen(true);
@@ -1621,6 +1698,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     setImportSplitRegex("");
                     setImportResumeFrom("");
                     setImportIsSeries(false);
+                    setImportBookSelection(availableBooks.length > 0 ? "active" : "new");
+                    setNewBookId("");
+                    setNewBookTitle("");
                     const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
                     setImportCanonFromBookId(otherBook);
                   }}
@@ -1743,23 +1823,58 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
                     在 InkOS 中，设定与大纲是以“书籍”为单位存储的。立即创建您的第一本书，AI 架构师将为您搭建创作地基。
                   </div>
-                  <button
-                    onClick={() => setIsBookModalOpen(true)}
-                    style={{
-                      width: "100%",
-                      padding: "6px 0",
-                      background: "var(--accent)",
-                      border: "none",
-                      borderRadius: "6px",
-                      color: "white",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      textAlign: "center",
-                      transition: "opacity 0.15s",
-                    }}
-                  >
-                    ✍️ 创建小说书籍
-                  </button>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <button
+                      onClick={() => setIsBookModalOpen(true)}
+                      style={{
+                        flex: 1,
+                        padding: "6px 0",
+                        background: "var(--accent)",
+                        border: "none",
+                        borderRadius: "6px",
+                        color: "white",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        textAlign: "center",
+                        fontSize: "11px",
+                        transition: "opacity 0.15s",
+                      }}
+                    >
+                      ✍️ 创建小说书籍
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsImportModalOpen(true);
+                        setImportSuccessText(null);
+                        setImportError(null);
+                        setImportLogs([]);
+                        setImportFromPath("");
+                        setImportSplitRegex("");
+                        setImportResumeFrom("");
+                        setImportIsSeries(false);
+                        setImportBookSelection("new");
+                        setNewBookId("");
+                        setNewBookTitle("");
+                        const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
+                        setImportCanonFromBookId(otherBook);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "6px 0",
+                        background: "var(--bg)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        color: "var(--text)",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        textAlign: "center",
+                        fontSize: "11px",
+                        transition: "opacity 0.15s",
+                      }}
+                    >
+                      📥 导入已有旧稿
+                    </button>
+                  </div>
                 </div>
               )}
               {isInkosWorkspace && hasBooks && !hasChapters && (
@@ -2830,6 +2945,94 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             <form onSubmit={handleImport} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
               {activeImportTab === "chapters" ? (
                 <>
+                  {/* Book selection / creation option */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                      选择导入的目标书籍*
+                    </label>
+                    {availableBooks.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text)", cursor: "pointer" }}>
+                            <input
+                              type="radio"
+                              name="importBookSelect"
+                              checked={importBookSelection === "active"}
+                              onChange={() => setImportBookSelection("active")}
+                              disabled={isImporting}
+                              style={{ accentColor: "var(--accent)" }}
+                            />
+                            <span>当前书籍 ({activeBookId})</span>
+                          </label>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text)", cursor: "pointer" }}>
+                            <input
+                              type="radio"
+                              name="importBookSelect"
+                              checked={importBookSelection === "new"}
+                              onChange={() => setImportBookSelection("new")}
+                              disabled={isImporting}
+                              style={{ accentColor: "var(--accent)" }}
+                            />
+                            <span>➕ 导入并创建新书籍</span>
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 10, color: "var(--text-dim)" }}>
+                        ⚠️ 当前小说宇宙内尚无书籍，将自动创建新书籍进行导入。
+                      </span>
+                    )}
+                  </div>
+
+                  {(importBookSelection === "new" || availableBooks.length === 0) && (
+                    <div style={{
+                      background: "rgba(var(--accent-rgb), 0.03)",
+                      border: "1px dashed var(--border)",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8
+                    }}>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                          <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)" }}>新书籍 ID (拼音/英文)*</label>
+                          <input
+                            type="text"
+                            value={newBookId}
+                            onChange={(e) => setNewBookId(e.target.value.replace(/[^a-zA-Z0-9_\-]/g, ""))}
+                            placeholder="如: my_new_novel"
+                            disabled={isImporting}
+                            style={{
+                              width: "100%", padding: "6px 8px", borderRadius: 4,
+                              background: "var(--bg)", border: "1px solid var(--border)",
+                              color: "var(--text)", fontSize: 11, fontFamily: "var(--font-mono)",
+                              outline: "none"
+                            }}
+                            required
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                          <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)" }}>新书籍名称*</label>
+                          <input
+                            type="text"
+                            value={newBookTitle}
+                            onChange={(e) => setNewBookTitle(e.target.value)}
+                            placeholder="如: 我的新科幻小说"
+                            disabled={isImporting}
+                            style={{
+                              width: "100%", padding: "6px 8px", borderRadius: 4,
+                              background: "var(--bg)", border: "1px solid var(--border)",
+                              color: "var(--text)", fontSize: 11, fontFamily: "var(--font-serif)",
+                              outline: "none"
+                            }}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
                       输入源文件或文件夹路径 (from)*
