@@ -1465,7 +1465,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     当前未检测到本地的「小说框架」或「角色人设」设定文件。您可以：
                     <ul style={{ margin: "4px 0 0", paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "2px" }}>
                       <li><strong>直接创建书卷</strong>：忽略此提示，系统将自动为您构思并生成初始的世界观与角色人设。</li>
-                      <li><strong>AI 协同起草</strong>：先关闭此窗口，通过右侧<strong>「写作协同姬 (AI Copilot)」</strong>共同探讨并生成大纲设定，保存后再行创建。</li>
+                      <li><strong>AI 协同起草</strong>：先关闭此窗口，配合右侧的<strong>「AI写作伴侣」</strong>共同探讨并起草您的框架与人设设定，保存后再行创建。</li>
                     </ul>
                   </div>
                 )}
