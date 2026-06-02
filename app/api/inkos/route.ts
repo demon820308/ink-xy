@@ -377,8 +377,57 @@ export async function POST(request: NextRequest) {
         }
         break;
 
-      case "doctor":
-        cliArgs = ["doctor"];
+      case "export":
+        cliArgs = ["export"];
+        if (args.bookId) {
+          cliArgs.push(args.bookId);
+        }
+        if (args.format) {
+          cliArgs.push("--format", args.format);
+        }
+        if (args.approvedOnly) {
+          cliArgs.push("--approved-only");
+        }
+        if (args.output) {
+          cliArgs.push("--output", args.output);
+        }
+        if (args.json) {
+          cliArgs.push("--json");
+        }
+        break;
+
+      case "review-approve":
+        if (!args.chapter) {
+          return NextResponse.json({ error: "审核章节号不能为空" }, { status: 400 });
+        }
+        cliArgs = ["review", "approve"];
+        if (args.bookId) {
+          cliArgs.push(args.bookId);
+        }
+        cliArgs.push(String(args.chapter));
+        if (args.json) {
+          cliArgs.push("--json");
+        }
+        break;
+
+      case "review-reject":
+        if (!args.chapter) {
+          return NextResponse.json({ error: "驳回章节号不能为空" }, { status: 400 });
+        }
+        cliArgs = ["review", "reject"];
+        if (args.bookId) {
+          cliArgs.push(args.bookId);
+        }
+        cliArgs.push(String(args.chapter));
+        if (args.reason) {
+          cliArgs.push("--reason", args.reason);
+        }
+        if (args.keepSubsequent) {
+          cliArgs.push("--keep-subsequent");
+        }
+        if (args.json) {
+          cliArgs.push("--json");
+        }
         break;
 
       case "custom":

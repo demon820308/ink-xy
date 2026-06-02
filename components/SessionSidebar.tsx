@@ -245,6 +245,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [isWriteReportOpen, setIsWriteReportOpen] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const [registeredCwd, setRegisteredCwd] = useState<string | null>(null);
+  const [validRecentCwds, setValidRecentCwds] = useState<string[]>([]);
+  const [recentCwdsChecked, setRecentCwdsChecked] = useState(false);
+  const [chapterStatusMap, setChapterStatusMap] = useState<Record<number, string>>({});
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"txt" | "md" | "epub">("epub");
+  const [exportApprovedOnly, setExportApprovedOnly] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportSuccessText, setExportSuccessText] = useState<string | null>(null);
+  const [exportLogs, setExportLogs] = useState<string[]>([]);
   const consoleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -378,24 +389,161 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             } else {
               setHasChapters(false);
             }
+
+            // Load chapter index.json to retrieve statuses
+            const indexPath = joinFilePath(cwd, `books/${firstBook}/chapters/index.json`);
+            const indexEncoded = encodeFilePathForApi(indexPath);
+            const indexRes = await fetch(`/api/files/${indexEncoded}?type=read`);
+            if (indexRes.ok) {
+              try {
+                const indexData = await indexRes.json();
+                const parsed = JSON.parse(indexData.content);
+                const map: Record<number, string> = {};
+                if (Array.isArray(parsed)) {
+                  for (const ch of parsed) {
+                    if (ch && typeof ch.number === "number" && ch.status) {
+                      map[ch.number] = ch.status;
+                    }
+                  }
+                }
+                setChapterStatusMap(map);
+              } catch (err) {
+                console.error("Failed to parse chapter index.json:", err);
+                setChapterStatusMap({});
+              }
+            } else {
+              setChapterStatusMap({});
+            }
           } else {
             setActiveBookId(null);
             setHasChapters(false);
+            setChapterStatusMap({});
           }
         } else {
           setHasBooks(false);
           setActiveBookId(null);
           setHasChapters(false);
+          setChapterStatusMap({});
         }
       } else {
         setHasBooks(false);
         setActiveBookId(null);
         setHasChapters(false);
+        setChapterStatusMap({});
       }
     } catch (e) {
       console.error("Failed to verify workspace status:", e);
     }
   }, []);
+
+  const handleExportBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    setIsExporting(true);
+    setExportError(null);
+    setExportSuccessText(null);
+    setExportLogs([]);
+
+    // We will generate a unique filename under E:\ink-xY\Temp so it's downloadable
+    const filename = `${activeBookId}_export_${Date.now()}.${exportFormat}`;
+    const outputAbsPath = `${activeCwd}/Temp/${filename}`;
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "export",
+          cwd: activeCwd,
+          args: {
+            bookId: activeBookId,
+            format: exportFormat,
+            approvedOnly: exportApprovedOnly,
+            output: outputAbsPath,
+            json: true
+          }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setExportLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (err) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (err) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "书稿导出执行失败，请检查配置或存量章节。");
+      }
+
+      // Parse JSON from final stdout
+      let resultData: any = null;
+      try {
+        resultData = JSON.parse(finalResult.stdout);
+      } catch (err) {
+        console.error("Failed to parse export stdout:", err);
+      }
+
+      if (resultData && resultData.error) {
+        throw new Error(resultData.error);
+      }
+
+      // Trigger automatic browser download
+      const encodedDownloadPath = encodeFilePathForApi(outputAbsPath);
+      const downloadUrl = `/api/files/${encodedDownloadPath}?type=read`;
+      
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `${activeBookId}_export.${exportFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      setExportSuccessText(`🎉 导出成功！已导出 ${resultData?.chaptersExported ?? "全部"} 章节，共 ${resultData?.totalWords ?? 0} 字。`);
+      setExplorerKey((k) => k + 1); // refresh explorer
+    } catch (err: any) {
+      console.error(err);
+      setExportError(err.message || "书稿导出失败，请重试。");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleStartWriting = async () => {
     const activeCwd = selectedCwdProp || selectedCwd;
@@ -645,8 +793,26 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   useEffect(() => {
     const activeCwd = selectedCwdProp || selectedCwd;
     if (activeCwd) {
-      checkWorkspaceStatus(activeCwd);
+      fetch("/api/register-cwd", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd: activeCwd })
+      })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to register CWD");
+        return res.json();
+      })
+      .then(() => {
+        setRegisteredCwd(activeCwd);
+        checkWorkspaceStatus(activeCwd);
+      })
+      .catch((err) => {
+        console.error("CWD registration failed:", err);
+        setRegisteredCwd(activeCwd);
+        checkWorkspaceStatus(activeCwd);
+      });
     } else {
+      setRegisteredCwd(null);
       setIsInkosWorkspace(true);
     }
   }, [selectedCwdProp, selectedCwd, checkWorkspaceStatus, explorerKey]);
@@ -745,6 +911,34 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     onCwdChange?.(selectedCwd);
   }, [selectedCwd, onCwdChange]);
 
+  // Check existence of recent cwds whenever allSessions changes
+  useEffect(() => {
+    const rawCwds = getRecentCwds(allSessions);
+    if (rawCwds.length === 0) {
+      setValidRecentCwds([]);
+      setRecentCwdsChecked(true);
+      return;
+    }
+    const checkAll = async () => {
+      const results = await Promise.all(
+        rawCwds.map(async (cwd) => {
+          try {
+            const res = await fetch(`/api/files/${encodeFilePathForApi(cwd)}?type=list&check=true`);
+            if (res.ok) {
+              const data = await res.json();
+              return { cwd, exists: data.exists !== false };
+            }
+          } catch (e) {}
+          return { cwd, exists: false };
+        })
+      );
+      const valid = results.filter(r => r.exists).map(r => r.cwd);
+      setValidRecentCwds(valid);
+      setRecentCwdsChecked(true);
+    };
+    checkAll();
+  }, [allSessions]);
+
   // Auto-select cwd and restore session from URL on first load
   useEffect(() => {
     if (allSessions.length === 0) return;
@@ -762,32 +956,24 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         // Session not found — notify parent so it can show the placeholder
         onInitialRestoreDone?.();
       }
-      const cwds = getRecentCwds(allSessions);
-      const selectValidCwd = async () => {
-        for (const candidate of cwds) {
-          try {
-            const res = await fetch(`/api/files/${encodeFilePathForApi(candidate)}?type=list&check=true`);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.exists !== false) {
-                setSelectedCwd(candidate);
-                return;
+
+      if (recentCwdsChecked) {
+        if (validRecentCwds.length > 0) {
+          setSelectedCwd(validRecentCwds[0]);
+        } else {
+          // Fallback: try to fetch default CWD
+          fetch("/api/default-cwd", { method: "POST" })
+            .then((res) => res.json())
+            .then((data: any) => {
+              if (data.cwd) {
+                setSelectedCwd(data.cwd);
               }
-            }
-          } catch (e) {}
+            })
+            .catch(() => {});
         }
-        // Fallback: try to fetch default CWD
-        try {
-          const res = await fetch("/api/default-cwd", { method: "POST" });
-          const data = await res.json() as { cwd?: string };
-          if (data.cwd) {
-            setSelectedCwd(data.cwd);
-          }
-        } catch {}
-      };
-      selectValidCwd();
+      }
     }
-  }, [allSessions, selectedCwd, initialSessionId, onSelectSession, onInitialRestoreDone]);
+  }, [allSessions, selectedCwd, initialSessionId, onSelectSession, onInitialRestoreDone, validRecentCwds, recentCwdsChecked]);
 
   const commitCustomPath = useCallback(() => {
     const path = customPathValue.trim();
@@ -835,7 +1021,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     onNewSession?.(tempId, selectedCwd);
   }, [selectedCwd, onNewSession]);
 
-  const recentCwds = getRecentCwds(allSessions);
   const filteredSessions = selectedCwd
     ? allSessions.filter((s) => s.cwd === selectedCwd)
     : allSessions;
@@ -986,7 +1171,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 overflow: "hidden",
               }}
             >
-              {recentCwds.map((cwd) => (
+              {validRecentCwds.map((cwd) => (
                 <button
                   key={cwd}
                   onClick={() => {
@@ -1037,7 +1222,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     padding: "8px 10px",
                     background: "none",
                     border: "none",
-                    borderTop: recentCwds.length > 0 ? "1px solid var(--border)" : "none",
+                    borderTop: validRecentCwds.length > 0 ? "1px solid var(--border)" : "none",
                     color: "var(--text-muted)",
                     cursor: "pointer",
                     textAlign: "left",
@@ -1080,7 +1265,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   <span>自定义路径…</span>
                 </button>
               ) : (
-                <div style={{ padding: "6px 8px", borderTop: recentCwds.length > 0 ? "none" : undefined }}>
+                <div style={{ padding: "6px 8px", borderTop: validRecentCwds.length > 0 ? "none" : undefined }}>
                   <input
                     ref={customPathInputRef}
                     value={customPathValue}
@@ -1187,6 +1372,36 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               </svg>
               创作目录 (Workspace)
             </button>
+            {isInkosWorkspace && hasBooks && (
+              <button
+                onClick={() => {
+                  setIsExportModalOpen(true);
+                  setExportSuccessText(null);
+                  setExportError(null);
+                  setExportLogs([]);
+                }}
+                title="导出小说书稿 (Export Book)"
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 26, height: 26, padding: 0, marginRight: 6,
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-dim)",
+                  cursor: "pointer",
+                  borderRadius: 5,
+                  flexShrink: 0,
+                  transition: "color 0.3s, background 0.3s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={() => {
                 setExplorerKey((k) => k + 1);
@@ -1339,14 +1554,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </button>
                 </div>
               )}
-              <div style={{ flex: 1 }}>
-                <FileExplorer
-                  cwd={selectedCwdProp ?? selectedCwd!}
-                  onOpenFile={onOpenFile ?? (() => {})}
-                  refreshKey={explorerKey}
-                  onAtMention={onAtMention}
-                />
-              </div>
+              {registeredCwd === (selectedCwdProp ?? selectedCwd) && (
+                <div style={{ flex: 1 }}>
+                  <FileExplorer
+                    cwd={selectedCwdProp ?? selectedCwd!}
+                    onOpenFile={onOpenFile ?? (() => {})}
+                    refreshKey={explorerKey}
+                    onAtMention={onAtMention}
+                    chapterStatusMap={chapterStatusMap}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2060,6 +2278,185 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             }} className="markdown-body">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{writeReportContent}</ReactMarkdown>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Book Export Modal */}
+      {isExportModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            width: "480px",
+            maxWidth: "90%",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)",
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 20px", borderBottom: "1px solid var(--border)",
+              background: "var(--bg)",
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                📤 导出小说书稿 ({activeBookId})
+              </span>
+              <button
+                onClick={() => { if (!isExporting) setIsExportModalOpen(false); }}
+                disabled={isExporting}
+                style={{
+                  background: "none", border: "none", color: "var(--text-dim)",
+                  fontSize: 14, cursor: isExporting ? "not-allowed" : "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleExportBook} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Format selection */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>选择导出格式</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {(["epub", "txt", "md"] as const).map((fmt) => (
+                    <label
+                      key={fmt}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        height: 38,
+                        background: exportFormat === fmt ? "var(--bg-selected)" : "var(--bg)",
+                        border: exportFormat === fmt ? "1px solid var(--accent)" : "1px solid var(--border)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: exportFormat === fmt ? "var(--accent)" : "var(--text-muted)",
+                        cursor: isExporting ? "not-allowed" : "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="exportFormat"
+                        value={fmt}
+                        checked={exportFormat === fmt}
+                        disabled={isExporting}
+                        onChange={() => setExportFormat(fmt)}
+                        style={{ display: "none" }}
+                      />
+                      <span>{fmt.toUpperCase()}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Toggle switch for approved-only */}
+              <label style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 12, color: "var(--text)", cursor: isExporting ? "not-allowed" : "pointer",
+                userSelect: "none"
+              }}>
+                <input
+                  type="checkbox"
+                  checked={exportApprovedOnly}
+                  disabled={isExporting}
+                  onChange={(e) => setExportApprovedOnly(e.target.checked)}
+                  style={{
+                    width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer"
+                  }}
+                />
+                <span>仅导出已过审章节 (Approved Only)</span>
+              </label>
+
+              {/* Progress logs & Result alerts */}
+              {(isExporting || exportLogs.length > 0 || exportError || exportSuccessText) && (
+                <div style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "12px",
+                  fontSize: 11,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}>
+                  {exportError && (
+                    <div style={{ color: "#ef4444", fontWeight: 600 }}>
+                      ⚠️ 导出失败: {exportError}
+                    </div>
+                  )}
+                  {exportSuccessText && (
+                    <div style={{ color: "#10b981", fontWeight: 600 }}>
+                      {exportSuccessText}
+                    </div>
+                  )}
+                  {isExporting && (
+                    <div style={{ color: "var(--accent)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin" style={{ animation: "spin 1s linear infinite" }}>
+                        <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" /><line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" /><line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                      </svg>
+                      <span>正在整理并排版书稿中，请稍候...</span>
+                    </div>
+                  )}
+                  {exportLogs.length > 0 && (
+                    <div style={{
+                      maxHeight: "80px", overflowY: "auto",
+                      fontFamily: "var(--font-mono)", fontSize: 10,
+                      color: "var(--text-dim)", background: "rgba(0,0,0,0.15)",
+                      padding: "6px", borderRadius: 4, whiteSpace: "pre-wrap"
+                    }}>
+                      {exportLogs.join("")}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Form Actions */}
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button
+                  type="submit"
+                  disabled={isExporting}
+                  style={{
+                    flex: 1, height: 38,
+                    background: "var(--accent)",
+                    border: "none", borderRadius: 8,
+                    color: "white", fontSize: 12, fontWeight: 600,
+                    cursor: isExporting ? "not-allowed" : "pointer",
+                    opacity: isExporting ? 0.7 : 1,
+                  }}
+                >
+                  {isExporting ? "正在导出..." : "确认开始导出"}
+                </button>
+                {!isExporting && (
+                  <button
+                    type="button"
+                    onClick={() => setIsExportModalOpen(false)}
+                    style={{
+                      padding: "0 16px", height: 38,
+                      background: "var(--bg-hover)",
+                      border: "1px solid var(--border)", borderRadius: 8,
+                      color: "var(--text-muted)", fontSize: 12, fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    取消
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       )}

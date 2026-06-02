@@ -102,6 +102,7 @@ function getLanguage(filePath: string): string {
 // survives Next.js hot-reload.
 declare global {
   var __piAllowedRootsCache: { roots: Set<string>; expiresAt: number } | undefined;
+  var __piRegisteredCwds: Set<string> | undefined;
 }
 
 const ALLOWED_ROOTS_TTL_MS = 5_000;
@@ -131,6 +132,12 @@ async function getAllowedRoots(): Promise<Set<string>> {
   const roots = new Set<string>();
   for (const s of sessions) {
     if (s.cwd) roots.add(s.cwd);
+  }
+  // Add registered custom cwds
+  if (globalThis.__piRegisteredCwds) {
+    for (const cwd of globalThis.__piRegisteredCwds) {
+      roots.add(cwd);
+    }
   }
   // Also allow ~/pi-cwd-* and ~/ink-cwd-* directories created by the default-cwd endpoint
   const home = (await import("os")).homedir();

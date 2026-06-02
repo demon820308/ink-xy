@@ -25,6 +25,7 @@ interface Props {
   onOpenFile: (filePath: string, fileName: string) => void;
   refreshKey?: number;
   onAtMention?: (relativePath: string) => void;
+  chapterStatusMap?: Record<number, string>;
 }
 
 async function fetchEntries(dirPath: string): Promise<FileNode[]> {
@@ -51,6 +52,7 @@ function TreeNode({
   expandedPaths,
   onToggleExpanded,
   refreshKey,
+  chapterStatusMap,
 }: {
   node: FileNode;
   depth: number;
@@ -60,12 +62,71 @@ function TreeNode({
   expandedPaths: Set<string>;
   onToggleExpanded: (fullPath: string, open: boolean) => void;
   refreshKey?: number;
+  chapterStatusMap?: Record<number, string>;
 }) {
   const open = expandedPaths.has(node.fullPath);
   const [children, setChildren] = useState<FileNode[]>(node.children ?? []);
   const [loaded, setLoaded] = useState(node.loaded ?? false);
   const [loading, setLoading] = useState(false);
   const [hovered, setHovered] = useState(false);
+
+  let badgeEl: React.ReactNode = null;
+  if (!node.isDir && chapterStatusMap) {
+    const match = node.name.match(/^(\d{4})_/);
+    if (match) {
+      const chNum = parseInt(match[1], 10);
+      const status = chapterStatusMap[chNum];
+      if (status) {
+        let badgeText = "";
+        let badgeColor = "";
+        let badgeBg = "";
+        
+        switch (status) {
+          case "approved":
+            badgeText = "已过审";
+            badgeColor = "#10b981";
+            badgeBg = "rgba(16,185,129,0.08)";
+            break;
+          case "ready-for-review":
+            badgeText = "待审核";
+            badgeColor = "#eab308";
+            badgeBg = "rgba(234,179,8,0.08)";
+            break;
+          case "audit-failed":
+            badgeText = "审计未过";
+            badgeColor = "#ef4444";
+            badgeBg = "rgba(239,68,68,0.08)";
+            break;
+          case "rejected":
+            badgeText = "已驳回";
+            badgeColor = "#9ca3af";
+            badgeBg = "rgba(156,163,175,0.08)";
+            break;
+          default:
+            badgeText = status;
+            badgeColor = "var(--text-muted)";
+            badgeBg = "var(--bg-hover)";
+        }
+        
+        badgeEl = (
+          <span style={{
+            fontSize: "9px",
+            padding: "1px 5px",
+            borderRadius: "4px",
+            color: badgeColor,
+            background: badgeBg,
+            fontWeight: 600,
+            border: `1px solid ${badgeColor}25`,
+            marginLeft: 6,
+            flexShrink: 0,
+            whiteSpace: "nowrap"
+          }}>
+            {badgeText}
+          </span>
+        );
+      }
+    }
+  }
 
   const loadChildren = useCallback(async (force = false) => {
     if (loaded && !force) return;
@@ -151,6 +212,7 @@ function TreeNode({
         >
           {node.name}
         </span>
+        {badgeEl}
         {loading && (
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
@@ -195,7 +257,7 @@ function TreeNode({
       {node.isDir && open && (
         <div>
           {children.map((child) => (
-            <TreeNode key={child.fullPath} node={child} depth={depth + 1} cwd={cwd} onOpenFile={onOpenFile} onAtMention={onAtMention} expandedPaths={expandedPaths} onToggleExpanded={onToggleExpanded} refreshKey={refreshKey} />
+            <TreeNode key={child.fullPath} node={child} depth={depth + 1} cwd={cwd} onOpenFile={onOpenFile} onAtMention={onAtMention} expandedPaths={expandedPaths} onToggleExpanded={onToggleExpanded} refreshKey={refreshKey} chapterStatusMap={chapterStatusMap} />
           ))}
           {children.length === 0 && loaded && (
             <div style={{ paddingLeft: 8 + (depth + 1) * 14, fontSize: 11, color: "var(--text-dim)", height: 22, display: "flex", alignItems: "center" }}>
@@ -208,7 +270,7 @@ function TreeNode({
   );
 }
 
-export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props) {
+export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention, chapterStatusMap }: Props) {
   const [roots, setRoots] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -267,6 +329,7 @@ export function FileExplorer({ cwd, onOpenFile, refreshKey, onAtMention }: Props
           expandedPaths={expandedPaths}
           onToggleExpanded={handleToggleExpanded}
           refreshKey={refreshKey}
+          chapterStatusMap={chapterStatusMap}
         />
       ))}
       {roots.length === 0 && (

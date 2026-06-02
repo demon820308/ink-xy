@@ -1882,6 +1882,205 @@ function TextFileViewer({ filePath, cwd }: Props) {
   const [logs, setLogs] = useState<string[]>([]);
   const consoleRef = useRef<HTMLDivElement>(null);
 
+  const [chapterStatus, setChapterStatus] = useState<string | null>(null);
+  const [reviewLogs, setReviewLogs] = useState<string[]>([]);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const bookId = getBookIdFromPath(filePath, cwd);
+  const filename = getFileName(filePath);
+  const chMatch = filename.match(/^(\d{4})_/);
+  const chapterNumber = chMatch ? parseInt(chMatch[1], 10) : null;
+
+  const loadActiveChapterStatus = useCallback(async () => {
+    if (!cwd || !filePath) return;
+    const bookIdVal = getBookIdFromPath(filePath, cwd);
+    if (!bookIdVal || !chapterNumber) {
+      setChapterStatus(null);
+      return;
+    }
+    const indexPath = `${cwd}/books/${bookIdVal}/chapters/index.json`;
+    const encoded = encodeFilePathForApi(indexPath);
+    try {
+      const res = await fetch(`/api/files/${encoded}?type=read`);
+      if (res.ok) {
+        const indexData = await res.json();
+        const parsed = JSON.parse(indexData.content);
+        if (Array.isArray(parsed)) {
+          const ch = parsed.find((c: any) => c.number === chapterNumber);
+          if (ch && ch.status) {
+            setChapterStatus(ch.status);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load active chapter status:", e);
+    }
+    setChapterStatus(null);
+  }, [cwd, filePath, chapterNumber]);
+
+  useEffect(() => {
+    loadActiveChapterStatus();
+  }, [loadActiveChapterStatus]);
+
+  const handleApproveChapter = async () => {
+    if (!cwd || !bookId || !chapterNumber) return;
+    setIsReviewing(true);
+    setReviewError(null);
+    setReviewLogs([]);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "review-approve",
+          cwd,
+          args: {
+            bookId,
+            chapter: chapterNumber,
+            json: true
+          }
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setReviewLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "批准章节执行失败");
+      }
+
+      await loadActiveChapterStatus();
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+    } catch (err: any) {
+      console.error(err);
+      setReviewError(err.message || "批准章节失败，请重试。");
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
+  const handleRejectChapter = async () => {
+    if (!cwd || !bookId || !chapterNumber) return;
+    setIsReviewing(true);
+    setReviewError(null);
+    setReviewLogs([]);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "review-reject",
+          cwd,
+          args: {
+            bookId,
+            chapter: chapterNumber,
+            reason: rejectReason.trim() || undefined,
+            json: true
+          }
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setReviewLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "驳回并重构章节执行失败");
+      }
+
+      setIsRejectDialogOpen(false);
+      setRejectReason("");
+
+      // Close file tab
+      window.dispatchEvent(new CustomEvent("close-file", {
+        detail: { filePath }
+      }));
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+    } catch (err: any) {
+      console.error(err);
+      setReviewError(err.message || "驳回章节失败，请重试。");
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
   useEffect(() => {
     if (consoleRef.current) {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
@@ -2830,6 +3029,78 @@ function TextFileViewer({ filePath, cwd }: Props) {
         <span style={{ fontFamily: "var(--font-mono)" }} title={filePath}>
           {getRelativeFilePath(filePath, cwd)}
         </span>
+
+        {/* Chapter review status & controls */}
+        {chapterNumber !== null && chapterStatus && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, borderLeft: "1px solid var(--border)", paddingLeft: 12 }}>
+            <span style={{
+              fontSize: "10px",
+              padding: "2px 6px",
+              borderRadius: "4px",
+              fontWeight: 600,
+              color: 
+                chapterStatus === "approved" ? "#10b981" :
+                chapterStatus === "ready-for-review" ? "#eab308" :
+                chapterStatus === "audit-failed" ? "#ef4444" :
+                chapterStatus === "rejected" ? "#9ca3af" : "var(--text-muted)",
+              background: 
+                chapterStatus === "approved" ? "rgba(16,185,129,0.08)" :
+                chapterStatus === "ready-for-review" ? "rgba(234,179,8,0.08)" :
+                chapterStatus === "audit-failed" ? "rgba(239,68,68,0.08)" :
+                chapterStatus === "rejected" ? "rgba(156,163,175,0.08)" : "var(--bg-hover)",
+              border: `1px solid ${
+                chapterStatus === "approved" ? "#10b98125" :
+                chapterStatus === "ready-for-review" ? "#eab30825" :
+                chapterStatus === "audit-failed" ? "#ef444425" :
+                chapterStatus === "rejected" ? "#9ca3af25" : "transparent"
+              }`
+            }}>
+              {
+                chapterStatus === "approved" ? "已过审" :
+                chapterStatus === "ready-for-review" ? "待审核" :
+                chapterStatus === "audit-failed" ? "审计失败" :
+                chapterStatus === "rejected" ? "已驳回" : chapterStatus
+              }
+            </span>
+
+            {chapterStatus !== "approved" && (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={handleApproveChapter}
+                  disabled={isReviewing}
+                  style={{
+                    padding: "2px 8px", fontSize: 10, cursor: isReviewing ? "not-allowed" : "pointer",
+                    background: "rgba(16,185,129,0.08)",
+                    color: "#10b981",
+                    border: "1px solid rgba(16,185,129,0.25)",
+                    borderRadius: 5,
+                    fontWeight: 600,
+                    whiteSpace: "nowrap"
+                  }}
+                  title="批准并提交该章节状态为已过审"
+                >
+                  {isReviewing ? "处理中..." : "✅ 批准章节"}
+                </button>
+                <button
+                  onClick={() => setIsRejectDialogOpen(true)}
+                  disabled={isReviewing}
+                  style={{
+                    padding: "2px 8px", fontSize: 10, cursor: isReviewing ? "not-allowed" : "pointer",
+                    background: "rgba(239,68,68,0.08)",
+                    color: "#ef4444",
+                    border: "1px solid rgba(239,68,68,0.25)",
+                    borderRadius: 5,
+                    fontWeight: 600,
+                    whiteSpace: "nowrap"
+                  }}
+                  title="驳回并回滚故事状态到该章之前"
+                >
+                  {isReviewing ? "处理中..." : "❌ 驳回重构"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         <span style={{ marginLeft: "auto" }}>{data.language}</span>
         {viewMode === "source" && <span>{lines.length} lines</span>}
         <span>{formatSize(data.size)}</span>
@@ -3534,6 +3805,188 @@ function TextFileViewer({ filePath, cwd }: Props) {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Confirmation Dialog */}
+      {isRejectDialogOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          background: "rgba(15, 10, 10, 0.4)",
+          backdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          animation: "fadeIn 0.2s ease-out"
+        }}>
+          <div style={{
+            width: "min(480px, 90%)",
+            background: "var(--bg-panel)",
+            border: "1px solid rgba(239, 68, 68, 0.2)",
+            borderRadius: "12px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)"
+          }}>
+            {/* Header */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "16px 20px",
+              background: "rgba(239, 68, 68, 0.08)",
+              borderBottom: "1px solid rgba(239, 68, 68, 0.15)",
+              color: "#ef4444",
+              fontWeight: 600,
+              fontSize: 14
+            }}>
+              <span style={{ fontSize: 16 }}>⚠️</span>
+              <span>确认驳回并重构章节</span>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{
+                background: "rgba(239, 68, 68, 0.04)",
+                border: "1px solid rgba(239, 68, 68, 0.1)",
+                borderRadius: "8px",
+                padding: "12px 14px",
+                fontSize: 12,
+                color: "var(--text)",
+                lineHeight: "1.6"
+              }}>
+                <span style={{ color: "#ef4444", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                  ⚠️ 毁灭性操作警告：
+                </span>
+                驳回该章节将<strong>删除此章节及所有后续章节</strong>，并将书籍与AI系统的状态数据库回滚到前一章节（第 {chapterNumber ? chapterNumber - 1 : 0} 章）。此操作会丢弃当前章节的所有生成数据与文件，<strong>且无法撤销！</strong>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
+                  请输入驳回重构的具体原因（可选，将作为重构的指导上下文）：
+                </span>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="例如：剧情节奏太慢，角色性格偏离设定，或者需要重新规划意图..."
+                  disabled={isReviewing}
+                  style={{
+                    width: "100%",
+                    height: "90px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    color: "var(--text)",
+                    fontFamily: "var(--font-serif)",
+                    resize: "none",
+                    outline: "none"
+                  }}
+                />
+              </div>
+
+              {reviewError && (
+                <div style={{
+                  color: "#ef4444",
+                  fontSize: 12,
+                  background: "rgba(239, 68, 68, 0.05)",
+                  border: "1px solid rgba(239, 68, 68, 0.15)",
+                  borderRadius: "6px",
+                  padding: "8px 12px"
+                }}>
+                  {reviewError}
+                </div>
+              )}
+
+              {isReviewing && reviewLogs.length > 0 && (
+                <div style={{
+                  background: "#121214",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px",
+                  padding: "8px",
+                  maxHeight: "100px",
+                  overflowY: "auto",
+                  fontFamily: "var(--font-mono), monospace",
+                  fontSize: "10px",
+                  color: "#e4e4e7",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all"
+                }}>
+                  {reviewLogs.map((log, index) => (
+                    <div key={index} style={{ marginBottom: 2 }}>{log}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              padding: "12px 20px",
+              background: "var(--bg-panel)",
+              borderTop: "1px solid var(--border)"
+            }}>
+              <button
+                onClick={() => {
+                  setIsRejectDialogOpen(false);
+                  setRejectReason("");
+                }}
+                disabled={isReviewing}
+                style={{
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--text-muted)",
+                  cursor: isReviewing ? "not-allowed" : "pointer",
+                  fontWeight: 500
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleRejectChapter}
+                disabled={isReviewing}
+                style={{
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "none",
+                  background: isReviewing ? "rgba(239, 68, 68, 0.5)" : "#ef4444",
+                  color: "white",
+                  cursor: isReviewing ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                {isReviewing ? (
+                  <>
+                    <div style={{
+                      width: "12px",
+                      height: "12px",
+                      border: "2px solid rgba(255, 255, 255, 0.3)",
+                      borderTopColor: "white",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite"
+                    }} />
+                    正在回滚...
+                  </>
+                ) : (
+                  "确认驳回并重构"
+                )}
+              </button>
             </div>
           </div>
         </div>
