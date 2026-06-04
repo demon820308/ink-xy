@@ -1,0 +1,33 @@
+# Exclude node_modules from publishing
+node_modules/
+**/node_modules/
+
+# Exclude configuration and environment files
+.env
+.env.local
+.npmrc
+*.tgz
+.DS_Store
+coverage/
+.turbo/
+_notes/
+_tmp_*
+test-project/
+.venv*/
+.gstack/
+.worktrees/
+docs/*
+novel-to-comic-research.docx
+.pnpm-store/
+tmp/
+autoresearch/
+.playwright-cli/
+.superpowers/
+_*.md
+
+# Exclude runtime/user data
+.inkos/
+books/
+inkos.json
+prompt/
+CLAUDE.md
