@@ -753,6 +753,72 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case "dashboard": {
+        const fs = require("fs");
+        const bookId = args.bookId;
+        if (!bookId) {
+          return NextResponse.json({ error: "书籍ID不能为空" }, { status: 400 });
+        }
+        
+        const bookDir = join(cwd, "books", bookId);
+        const indexPath = join(bookDir, "chapters", "index.json");
+        
+        let chapters = [];
+        if (fs.existsSync(indexPath)) {
+          try {
+            const raw = fs.readFileSync(indexPath, "utf8");
+            chapters = JSON.parse(raw);
+          } catch (e: any) {
+            return NextResponse.json({ error: `无法读取章节索引: ${e.message}` }, { status: 500 });
+          }
+        }
+        
+        if (!Array.isArray(chapters)) {
+          chapters = [];
+        }
+
+        const runtimeDir = join(bookDir, "story", "runtime");
+        const snapshotsDir = join(bookDir, "story", "snapshots");
+
+        const dashboardData = chapters.map((ch: any) => {
+          const num = ch.number;
+          const padded = String(num).padStart(4, "0");
+          
+          const planFile = `chapter-${padded}.plan.md`;
+          const intentFile = `chapter-${padded}.intent.md`;
+          
+          const hasPlan = fs.existsSync(join(runtimeDir, planFile));
+          const hasIntent = fs.existsSync(join(runtimeDir, intentFile));
+          
+          const snapshotPath = join(snapshotsDir, String(num));
+          const hasSnapshot = fs.existsSync(snapshotPath) && fs.statSync(snapshotPath).isDirectory();
+
+          return {
+            ...ch,
+            hasPlan,
+            hasIntent,
+            hasSnapshot,
+          };
+        });
+
+        const nextChapterNum = dashboardData.length > 0 
+          ? Math.max(...dashboardData.map((c: any) => c.number)) + 1 
+          : 1;
+        const nextPadded = String(nextChapterNum).padStart(4, "0");
+        const nextHasPlan = fs.existsSync(join(runtimeDir, `chapter-${nextPadded}.plan.md`));
+        const nextHasIntent = fs.existsSync(join(runtimeDir, `chapter-${nextPadded}.intent.md`));
+
+        return NextResponse.json({ 
+          success: true, 
+          chapters: dashboardData,
+          nextChapter: {
+            number: nextChapterNum,
+            hasPlan: nextHasPlan,
+            hasIntent: nextHasIntent
+          }
+        });
+      }
+
       case "style-list": {
         const fs = require("fs");
         const bookId = args.bookId;

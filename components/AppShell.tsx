@@ -12,6 +12,7 @@ import { BranchNavigator } from "./BranchNavigator";
 import { SettingsModal } from "./SettingsModal";
 import { HelpModal } from "./HelpModal";
 import { useTheme } from "@/hooks/useTheme";
+import { ChapterDashboard } from "./ChapterDashboard";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
 
@@ -261,6 +262,16 @@ export function AppShell() {
     setRightPanelOpen(true);
   }, []);
 
+  const handleOpenDashboard = useCallback((bookId: string) => {
+    const tabId = `dashboard:${bookId}`;
+    setFileTabs((prev) => {
+      if (prev.find((t) => t.id === tabId)) return prev;
+      return [...prev, { id: tabId, label: `📊 ${bookId} 看板`, filePath: `dashboard:${bookId}` }];
+    });
+    setActiveFileTabId(tabId);
+    setRightPanelOpen(true);
+  }, []);
+
   useEffect(() => {
     const handleRefresh = () => {
       setExplorerRefreshKey((k) => k + 1);
@@ -301,18 +312,26 @@ export function AppShell() {
         });
       }
     };
+    const handleOpenDashboardEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ bookId: string }>;
+      if (customEvent.detail && customEvent.detail.bookId) {
+        handleOpenDashboard(customEvent.detail.bookId);
+      }
+    };
     window.addEventListener("refresh-explorer", handleRefresh);
     window.addEventListener("open-file", handleOpenFileEvent);
     window.addEventListener("close-file", handleCloseFileEvent);
     window.addEventListener("close-directory", handleCloseDirEvent);
+    window.addEventListener("open-dashboard", handleOpenDashboardEvent);
     return () => {
       window.removeEventListener("refresh-explorer", handleRefresh);
       window.removeEventListener("open-file", handleOpenFileEvent);
       window.removeEventListener("close-file", handleCloseFileEvent);
       window.removeEventListener("close-directory", handleCloseDirEvent);
+      window.removeEventListener("open-dashboard", handleOpenDashboardEvent);
     };
 
-  }, [handleOpenFile, handleCloseFileTab]);
+  }, [handleOpenFile, handleCloseFileTab, handleOpenDashboard]);
 
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
@@ -326,6 +345,7 @@ export function AppShell() {
   const [activeStyleName, setActiveStyleName] = useState<string | null>(null);
   const [isInkosWorkspace, setIsInkosWorkspace] = useState(false);
   const [hasBooks, setHasBooks] = useState(false);
+  const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [isStyleSwitching, setIsStyleSwitching] = useState(false);
 
   const handleStylesChange = useCallback((styles: string[], activeStyle: string | null) => {
@@ -385,6 +405,7 @@ export function AppShell() {
         activeStyleName={activeStyleName}
         onStylesChange={handleStylesChange}
         onWorkspaceStatusChange={handleWorkspaceStatusChange}
+        onActiveBookChange={setActiveBookId}
       />
     </>
   );
@@ -502,6 +523,36 @@ export function AppShell() {
                   </select>
                 </div>
               </div>
+
+              {/* 1.5. Chapter Control Dashboard (章节管控看板) */}
+              {hasBooks && activeBookId && (
+                <button
+                  onClick={() => {
+                    handleOpenDashboard(activeBookId);
+                  }}
+                  title="章节管控看板 (Chapter Control Center)"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    height: "100%",
+                    padding: "0 12px",
+                    background: "none",
+                    border: "none",
+                    borderRight: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    transition: "color 0.12s, background 0.12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
+                >
+                  <span style={{ fontSize: 12 }}>📊</span>
+                  <span>章节管控看板</span>
+                </button>
+              )}
 
               {/* 2. Style Clone Workshop (文风克隆工坊) */}
               {hasBooks && (
@@ -717,13 +768,21 @@ export function AppShell() {
         {/* Editor Main Content Area */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative", background: "var(--bg)" }}>
           {activeFileTab?.filePath ? (
-            <FileViewer
-              filePath={activeFileTab.filePath}
-              cwd={activeCwd ?? undefined}
-              availableStyles={availableStyles}
-              activeStyleName={activeStyleName}
-              showExecutionConfirm={showExecutionConfirm}
-            />
+            activeFileTab.filePath.startsWith("dashboard:") ? (
+              <ChapterDashboard
+                bookId={activeFileTab.filePath.substring("dashboard:".length)}
+                cwd={activeCwd!}
+                onOpenFile={handleOpenFile}
+              />
+            ) : (
+              <FileViewer
+                filePath={activeFileTab.filePath}
+                cwd={activeCwd ?? undefined}
+                availableStyles={availableStyles}
+                activeStyleName={activeStyleName}
+                showExecutionConfirm={showExecutionConfirm}
+              />
+            )
           ) : (
             <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", padding: 32, textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>✍️</div>

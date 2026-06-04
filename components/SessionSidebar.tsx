@@ -26,6 +26,7 @@ interface Props {
   activeStyleName?: string | null;
   onStylesChange?: (styles: string[], activeStyle: string | null) => void;
   onWorkspaceStatusChange?: (isInkos: boolean, hasBooks: boolean) => void;
+  onActiveBookChange?: (bookId: string | null) => void;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -209,7 +210,7 @@ function StudioTitle() {
 import GemEditorModal from "./GemEditorModal";
 import type { GemProfile } from "@/lib/types";
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, activeGemId, availableStyles = [], activeStyleName = null, onStylesChange, onWorkspaceStatusChange }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, activeGemId, availableStyles = [], activeStyleName = null, onStylesChange, onWorkspaceStatusChange, onActiveBookChange }: Props) {
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -251,7 +252,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const activeBookIdRef = useRef<string | null>(null);
   useEffect(() => {
     activeBookIdRef.current = activeBookId;
-  }, [activeBookId]);
+    onActiveBookChange?.(activeBookId);
+  }, [activeBookId, onActiveBookChange]);
 
   const [isWriteLoading, setIsWriteLoading] = useState(false);
   const [writeProgressText, setWriteProgressText] = useState("");
@@ -3373,7 +3375,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     fontFamily: "var(--font-serif)",
                     flexShrink: 0
                   }}>
-                    <span style={{ fontSize: 13, flexShrink: 0 }}>📖</span>
                     <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>当前书籍:</span>
                     <select
                       value={activeBookId || ""}
