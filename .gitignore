@@ -43,3 +43,5 @@ next-env.d.ts
 
 # electron-builder output
 /dist
+.env
+node_modules/

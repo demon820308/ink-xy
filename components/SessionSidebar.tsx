@@ -241,9 +241,18 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isCreatingBook, setIsCreatingBook] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
+  const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false);
+  const [isDeletingBook, setIsDeletingBook] = useState(false);
+  const [deleteBookError, setDeleteBookError] = useState<string | null>(null);
+
   const [hasChapters, setHasChapters] = useState(false);
   const [hasFirstChapterBlueprint, setHasFirstChapterBlueprint] = useState(false);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
+  const activeBookIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeBookIdRef.current = activeBookId;
+  }, [activeBookId]);
+
   const [isWriteLoading, setIsWriteLoading] = useState(false);
   const [writeProgressText, setWriteProgressText] = useState("");
   const [writeReportTitle, setWriteReportTitle] = useState("");
@@ -497,7 +506,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
-  const checkWorkspaceStatus = useCallback(async (cwd: string) => {
+  const checkWorkspaceStatus = useCallback(async (cwd: string, targetBookId?: string) => {
     if (!cwd) return;
     try {
       const encoded = encodeFilePathForApi(cwd);
@@ -550,15 +559,25 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           const actualBooks = bookEntries.filter((e: any) => e.name !== ".gitkeep" && !e.name.startsWith("."));
           const hasBooksVal = actualBooks.length > 0;
           setHasBooks(hasBooksVal);
-          setAvailableBooks(actualBooks.map((e: any) => e.name));
+          const bookNames = actualBooks.map((e: any) => e.name);
+          setAvailableBooks(bookNames);
 
           if (hasBooksVal) {
-            const firstBook = actualBooks[0].name;
-            setActiveBookId(firstBook);
+            let selectedBook: string | null = targetBookId || null;
+            if (!selectedBook || !bookNames.includes(selectedBook)) {
+              const currentActive = activeBookIdRef.current;
+              if (currentActive && bookNames.includes(currentActive)) {
+                selectedBook = currentActive;
+              } else {
+                selectedBook = actualBooks[0].name;
+              }
+            }
+            setActiveBookId(selectedBook);
+
 
             // Check if it is a fanfic book
             try {
-              const bookJsonPath = joinFilePath(cwd, `books/${firstBook}/book.json`);
+              const bookJsonPath = joinFilePath(cwd, `books/${selectedBook}/book.json`);
               const bookJsonEncoded = encodeFilePathForApi(bookJsonPath);
               const bookJsonRes = await fetch(`/api/files/${bookJsonEncoded}?type=read`);
               if (bookJsonRes.ok) {
@@ -581,7 +600,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               setActiveFanficMode(null);
             }
 
-            const chaptersDir = joinFilePath(cwd, `books/${firstBook}/chapters`);
+            const chaptersDir = joinFilePath(cwd, `books/${selectedBook}/chapters`);
             const chaptersEncoded = encodeFilePathForApi(chaptersDir);
             const chaptersRes = await fetch(`/api/files/${chaptersEncoded}?type=list`);
             let maxChapter = 0;
@@ -605,7 +624,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             // Check if Chapter 1 plan exists
             let hasPlan = false;
             try {
-              const planPath = joinFilePath(cwd, `books/${firstBook}/story/runtime/chapter-0001.plan.md`);
+              const planPath = joinFilePath(cwd, `books/${selectedBook}/story/runtime/chapter-0001.plan.md`);
               const planEncoded = encodeFilePathForApi(planPath);
               const planRes = await fetch(`/api/files/${planEncoded}?type=read`);
               if (planRes.ok) {
@@ -619,7 +638,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             // Consolidation recommendation check
             try {
               let volumeMapText = "";
-              const newPath = joinFilePath(cwd, `books/${firstBook}/story/outline/volume_map.md`);
+              const newPath = joinFilePath(cwd, `books/${selectedBook}/story/outline/volume_map.md`);
               const newEncoded = encodeFilePathForApi(newPath);
               const newRes = await fetch(`/api/files/${newEncoded}?type=read`);
               if (newRes.ok) {
@@ -627,7 +646,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 if (fileData && fileData.content) volumeMapText = fileData.content;
               }
               if (!volumeMapText.trim()) {
-                const legacyPath = joinFilePath(cwd, `books/${firstBook}/story/volume_outline.md`);
+                const legacyPath = joinFilePath(cwd, `books/${selectedBook}/story/volume_outline.md`);
                 const legacyEncoded = encodeFilePathForApi(legacyPath);
                 const legacyRes = await fetch(`/api/files/${legacyEncoded}?type=read`);
                 if (legacyRes.ok) {
@@ -664,7 +683,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 const volumes = parseVolumeBoundaries(volumeMapText);
                 
                 let volSummariesText = "";
-                const volSummariesPath = joinFilePath(cwd, `books/${firstBook}/story/volume_summaries.md`);
+                const volSummariesPath = joinFilePath(cwd, `books/${selectedBook}/story/volume_summaries.md`);
                 const volSummariesEncoded = encodeFilePathForApi(volSummariesPath);
                 const volSummariesRes = await fetch(`/api/files/${volSummariesEncoded}?type=read`);
                 if (volSummariesRes.ok) {
@@ -707,7 +726,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 body: JSON.stringify({
                   action: "style-list",
                   cwd,
-                  args: { bookId: firstBook }
+                  args: { bookId: selectedBook }
                 })
               });
               if (stylesRes.ok) {
@@ -721,7 +740,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             }
 
             // Load chapter index.json to retrieve statuses
-            const indexPath = joinFilePath(cwd, `books/${firstBook}/chapters/index.json`);
+            const indexPath = joinFilePath(cwd, `books/${selectedBook}/chapters/index.json`);
             const indexEncoded = encodeFilePathForApi(indexPath);
             const indexRes = await fetch(`/api/files/${indexEncoded}?type=read`);
             if (indexRes.ok) {
@@ -779,7 +798,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     } catch (e) {
       console.error("Failed to verify workspace status:", e);
     }
-  }, []);
+  }, [onStylesChange]);
+
 
   const handleExportBook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1816,7 +1836,87 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     }
   };
 
+  const handleDeleteBook = async () => {
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    setIsDeletingBook(true);
+    setDeleteBookError(null);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "book-delete",
+          cwd: activeCwd,
+          args: {
+            bookId: activeBookId,
+            json: true,
+          }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; error?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (err) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (err) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "删除书籍失败");
+      }
+
+      // Close all open tabs for this book in the editor
+      window.dispatchEvent(new CustomEvent("close-directory", {
+        detail: { dirPath: `${activeCwd}/books/${activeBookId}` }
+      }));
+
+      // Refresh workspace available books
+      await checkWorkspaceStatus(activeCwd);
+      setExplorerKey((k) => k + 1);
+      setIsDeleteBookModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      setDeleteBookError(err.message || "删除书籍失败");
+    } finally {
+      setIsDeletingBook(false);
+    }
+  };
+
   const handleRadarScan = async (e: React.FormEvent) => {
+
     e.preventDefault();
     const activeCwd = selectedCwdProp || selectedCwd;
     if (!activeCwd) return;
@@ -3257,7 +3357,94 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               )}
               {registeredCwd === (selectedCwdProp ?? selectedCwd) && (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                  {/* Active Book Selector Panel */}
+                  <div style={{
+                    margin: "8px 10px",
+                    padding: "8px 10px",
+                    background: "var(--bg-panel)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "12px",
+                    fontFamily: "var(--font-serif)",
+                    flexShrink: 0
+                  }}>
+                    <span style={{ fontSize: 13, flexShrink: 0 }}>📖</span>
+                    <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>当前书籍:</span>
+                    <select
+                      value={activeBookId || ""}
+                      onChange={(e) => {
+                        const newActive = e.target.value;
+                        setActiveBookId(newActive);
+                        const activeCwd = selectedCwdProp || selectedCwd;
+                        if (activeCwd) {
+                          checkWorkspaceStatus(activeCwd, newActive);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        background: "var(--bg)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "5px",
+                        padding: "3px 6px",
+                        fontSize: "12px",
+                        fontFamily: "var(--font-serif)",
+                        color: "var(--text)",
+                        outline: "none",
+                        cursor: "pointer",
+                        minWidth: 0,
+                      }}
+                    >
+                      {availableBooks.map((book) => (
+                        <option key={book} value={book}>
+                          {book}
+                        </option>
+                      ))}
+
+                    </select>
+                    
+                    <button
+                      onClick={() => {
+                        setDeleteBookError(null);
+                        setIsDeleteBookModalOpen(true);
+                      }}
+                      title="删除当前书籍 (Delete Book)"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 24,
+                        height: 24,
+                        padding: 0,
+                        background: "none",
+                        border: "none",
+                        color: "var(--text-dim)",
+                        cursor: "pointer",
+                        borderRadius: 4,
+                        transition: "color 0.2s, background-color 0.2s"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#ef4444";
+                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "var(--text-dim)";
+                        e.currentTarget.style.background = "none";
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                    </button>
+                  </div>
+
                   {/* Consolidation Advisory Alert Card */}
+
                   {consolidationRecommend && (
                     <div style={{
                       margin: "8px 10px",
@@ -3656,8 +3843,139 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         defaultModel={defaultModel}
       />
       
+      {/* Delete Book Confirmation Modal */}
+      {isDeleteBookModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            width: "min(420px, 90vw)",
+            padding: "20px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+            fontFamily: "var(--font-serif)",
+          }}>
+            <h3 style={{
+              margin: "0 0 12px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#ef4444",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              borderBottom: "1px solid var(--border)",
+              paddingBottom: "10px",
+            }}>
+              <span>⚠️</span>
+              <span>删除书籍确认 (Delete Book)</span>
+            </h3>
+
+            {isDeletingBook ? (
+              <div style={{ padding: "20px 10px", textAlign: "center" }}>
+                <div style={{
+                  width: "30px",
+                  height: "30px",
+                  border: "3px solid var(--border)",
+                  borderTopColor: "#ef4444",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                  margin: "0 auto 16px",
+                }} />
+                <div style={{ fontWeight: 600, color: "var(--text)", fontSize: "12px" }}>
+                  正在彻底删除书籍及相关数据...
+                </div>
+              </div>
+            ) : (
+              <div>
+                {deleteBookError && (
+                  <div style={{
+                    background: "rgba(239, 68, 68, 0.08)",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                    borderRadius: "6px",
+                    padding: "10px",
+                    color: "#ef4444",
+                    fontSize: "11px",
+                    marginBottom: "16px",
+                    lineHeight: 1.5,
+                  }}>
+                    ⚠️ {deleteBookError}
+                  </div>
+                )}
+                
+                <p style={{ fontSize: "12px", color: "var(--text)", lineHeight: 1.6, margin: "0 0 16px" }}>
+                  您确定要永久删除书籍 <strong style={{ color: "#ef4444" }}>{activeBookId}</strong> 吗？
+                </p>
+
+                
+                <div style={{
+                  background: "rgba(239, 68, 68, 0.04)",
+                  border: "1px dashed rgba(239, 68, 68, 0.25)",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  fontSize: "11px",
+                  color: "var(--text-muted)",
+                  lineHeight: 1.5,
+                  marginBottom: "20px"
+                }}>
+                  <strong>此操作不可逆！</strong> 它将永久清除：
+                  <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
+                    <li>该书的所有章节草稿正文</li>
+                    <li>人物卡片设定与世界观设定</li>
+                    <li>所有的历史修订版本快照与大纲</li>
+                  </ul>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteBookModalOpen(false)}
+                    style={{
+                      padding: "6px 14px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                      background: "transparent",
+                      color: "var(--text-muted)",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteBook}
+                    style={{
+                      padding: "6px 16px",
+                      background: "#ef4444",
+                      border: "none",
+                      borderRadius: "6px",
+                      color: "white",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    确认删除
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Create Book Modal */}
       {isBookModalOpen && (
+
         <div style={{
           position: "fixed",
           inset: 0,

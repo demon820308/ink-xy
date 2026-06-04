@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import "@/lib/env-init";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";

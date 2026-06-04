@@ -1,10 +1,11 @@
+import "./env-init";
 import { execFile, execSync, spawn } from "child_process";
 import { promisify } from "util";
 import { existsSync, readFileSync } from "fs";
 import { dirname, join, delimiter } from "path";
 import { execPath } from "process";
 import { homedir } from "os";
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { AuthStorage, ModelRegistry, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { findModel } from "./model-resolver";
 
 const execFileAsync = promisify(execFile);
@@ -182,8 +183,7 @@ interface ProviderConfig {
 function resolveModelsEnv(): Record<string, string> {
   const envs: Record<string, string> = {};
   try {
-    const home = homedir();
-    const agentDir = process.env.PI_CODING_AGENT_DIR || join(home, ".ink", "agent");
+    const agentDir = process.env.PI_CODING_AGENT_DIR || getAgentDir();
     const settingsPath = join(agentDir, "settings.json");
 
     let defaultProvider = "";
@@ -252,9 +252,17 @@ function resolveModelsEnv(): Record<string, string> {
 
     // 2. Set default active provider config to INKOS_LLM_ environment keys
     if (defaultProvider && defaultModel) {
-      const activeModel = findModel(registry, defaultProvider, defaultModel);
+      let resolvedProvider = defaultProvider;
+      if (defaultProvider.includes("xiaomi-token-plan") || defaultProvider.toLowerCase().includes("mimo")) {
+        const actualMimo = allModels.find(m => m.provider.toLowerCase().includes("mimo"))?.provider;
+        if (actualMimo) {
+          resolvedProvider = actualMimo;
+        }
+      }
+
+      const activeModel = findModel(registry, resolvedProvider, defaultModel);
       if (activeModel) {
-        const auth = authStorage.get(defaultProvider) as { key?: string } | undefined;
+        const auth = (authStorage.get(defaultProvider) || authStorage.get(resolvedProvider)) as { key?: string } | undefined;
         
         if (auth?.key) {
           envs["INKOS_LLM_API_KEY"] = auth.key;

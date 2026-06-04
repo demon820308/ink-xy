@@ -1,3 +1,4 @@
+import "@/lib/env-init";
 import { NextResponse } from "next/server";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { findModel } from "../../../../lib/model-resolver";

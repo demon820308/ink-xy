@@ -1,3 +1,4 @@
+import "@/lib/env-init";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";

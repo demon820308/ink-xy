@@ -1,3 +1,4 @@
+import "@/lib/env-init";
 import { AuthStorage } from "@earendil-works/pi-coding-agent";
 
 export const dynamic = "force-dynamic";

@@ -1,3 +1,4 @@
+import "@/lib/env-init";
 import { AuthStorage, ModelRegistry, SettingsManager, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 import { writeFileSync, readFileSync, existsSync } from "fs";

@@ -277,14 +277,41 @@ export function AppShell() {
         handleCloseFileTab(`file:${customEvent.detail.filePath}`);
       }
     };
+    const handleCloseDirEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ dirPath: string }>;
+      if (customEvent.detail && customEvent.detail.dirPath) {
+        const prefix = customEvent.detail.dirPath.replace(/\\/g, "/").toLowerCase();
+        setFileTabs((prev) => {
+          const next = prev.filter((t) => {
+            const normalizedPath = t.filePath.replace(/\\/g, "/").toLowerCase();
+            return !normalizedPath.startsWith(prefix);
+          });
+          if (next.length === 0) setRightPanelOpen(false);
+          
+          setActiveFileTabId((cur) => {
+            if (!cur) return null;
+            const currentPath = cur.replace(/^file:/, "").replace(/\\/g, "/").toLowerCase();
+            if (currentPath.startsWith(prefix)) {
+              return next.length > 0 ? next[next.length - 1].id : null;
+            }
+            return cur;
+          });
+          
+          return next;
+        });
+      }
+    };
     window.addEventListener("refresh-explorer", handleRefresh);
     window.addEventListener("open-file", handleOpenFileEvent);
     window.addEventListener("close-file", handleCloseFileEvent);
+    window.addEventListener("close-directory", handleCloseDirEvent);
     return () => {
       window.removeEventListener("refresh-explorer", handleRefresh);
       window.removeEventListener("open-file", handleOpenFileEvent);
       window.removeEventListener("close-file", handleCloseFileEvent);
+      window.removeEventListener("close-directory", handleCloseDirEvent);
     };
+
   }, [handleOpenFile, handleCloseFileTab]);
 
   // Show chat area if a session is selected, or if we have a cwd to start a new session in

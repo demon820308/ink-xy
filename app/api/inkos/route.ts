@@ -1,3 +1,4 @@
+import "@/lib/env-init";
 import { NextRequest, NextResponse } from "next/server";
 import { runInkos, spawnInkos } from "@/lib/npx";
 import { existsSync, mkdirSync } from "fs";
@@ -615,6 +616,16 @@ export async function POST(request: NextRequest) {
         }
         break;
 
+      case "book-delete":
+        if (!args.bookId) {
+          return NextResponse.json({ error: "要删除的书籍 ID 不能为空" }, { status: 400 });
+        }
+        cliArgs = ["book", "delete", args.bookId, "--force"];
+        if (args.json) {
+          cliArgs.push("--json");
+        }
+        break;
+
       case "export":
         cliArgs = ["export"];
         if (args.bookId) {
@@ -956,7 +967,9 @@ export async function POST(request: NextRequest) {
           send({
             type: "result",
             success: code === 0 && !hasTimedOut,
-            error: hasTimedOut ? "任务运行超时（超过 1800 秒），已自动终止。" : undefined,
+            error: hasTimedOut
+              ? "任务运行超时（超过 1800 秒），已自动终止。"
+              : (code !== 0 ? (stderrAccumulator.trim() || `任务执行失败，退出码: ${code}`) : undefined),
             stdout: stdoutAccumulator,
             stderr: stderrAccumulator,
             code,

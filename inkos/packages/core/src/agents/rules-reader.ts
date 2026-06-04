@@ -1,11 +1,28 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 import { parseGenreProfile, type ParsedGenreProfile } from "../models/genre-profile.js";
 import { parseBookRules, tryParseBookRulesFrontmatter, type ParsedBookRules } from "../models/book-rules.js";
 import { BookConfigSchema } from "../models/book.js";
 
-const BUILTIN_GENRES_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../genres");
+function resolveBuiltinGenresDir(): string {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(currentDir, "../../core/genres"), // when running bundled in packages/cli/dist/index.js
+    join(currentDir, "../../genres"),      // when running inside packages/core/dist/
+    join(currentDir, "../genres"),         // other possible structures
+    join(currentDir, "genres"),            // direct subdirectory
+  ];
+  for (const c of candidates) {
+    if (existsSync(join(c, "other.md"))) {
+      return c;
+    }
+  }
+  return join(currentDir, "../../genres");
+}
+
+const BUILTIN_GENRES_DIR = resolveBuiltinGenresDir();
 
 async function tryReadFile(path: string): Promise<string | null> {
   try {
