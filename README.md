@@ -171,17 +171,17 @@ npx @zwbigi/ink-xy@latest
 npm install -g @zwbigi/ink-xy
 
 # 启动客户端
-pi-agent-xy
+ink-xy
 ```
 启动后自动在浏览器拉起工作台：`http://localhost:30142`
 
 #### 3. 丰富命令行参数
 ```bash
-pi-agent-xy --port 8080               # 自定义启动端口
-pi-agent-xy --hostname 127.0.0.1      # 限制仅本机回环访问
-pi-agent-xy -p 8080 -H 127.0.0.1      # 参数组合使用
+ink-xy --port 8080               # 自定义启动端口
+ink-xy --hostname 127.0.0.1      # 限制仅本机回环访问
+ink-xy -p 8080 -H 127.0.0.1      # 参数组合使用
 
-PORT=8080 pi-agent-xy                 # 也支持环境变量注入
+PORT=8080 ink-xy                 # 也支持环境变量注入
 ```
 
 ---

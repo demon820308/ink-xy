@@ -9,7 +9,7 @@
     "url": "git+https://github.com/demon820308/ink-xy.git"
   },
   "bin": {
-    "pi-agent-xy": "bin/pi-web.js"
+    "ink-xy": "bin/pi-web.js"
   },
   "files": [
     "bin",
