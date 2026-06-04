@@ -275,18 +275,47 @@ function resolveModelsEnv(): Record<string, string> {
 }
 
 /**
+ * Recursively search upwards starting from a directory to find the local InkOS CLI index.js.
+ */
+function findInkosCliPath(): string {
+  const candidates = [
+    process.env.INK_XY_APP_DIR,
+    __dirname,
+    process.cwd(),
+  ];
+
+  for (const startDir of candidates) {
+    if (!startDir) continue;
+    let dir = startDir;
+    while (true) {
+      const candidate = join(dir, "inkos", "packages", "cli", "dist", "index.js");
+      try {
+        if (existsSync(candidate)) {
+          return candidate;
+        }
+      } catch {
+        // ignore
+      }
+      const parent = dirname(dir);
+      if (parent === dir) {
+        break;
+      }
+      dir = parent;
+    }
+  }
+
+  // Fallback to static resolution if searching fails
+  return join(process.cwd(), "inkos", "packages", "cli", "dist", "index.js");
+}
+
+/**
  * Cross-platform runner for the locally migrated InkOS CLI.
  * Spawns the compiled packages/cli/dist/index.js directly using the resolved Node binary.
  */
 export async function runInkos(args: string[], opts: RunNpxOptions = {}): Promise<RunNpxResult> {
   const resolved = resolveNpx();
   const nodeBin = resolved ? resolved.nodePath : "node";
-  // The absolute path of the local compiled CLI dist/index.js inside the migrated inkos/ packages.
-  // Must be resolved relative to the Next.js project root (E:\ink-xY) rather than the active workspace (opts.cwd).
-  let cliPath = join(process.cwd(), "inkos", "packages", "cli", "dist", "index.js");
-  if (!existsSync(cliPath)) {
-    cliPath = join(__dirname, "..", "inkos", "packages", "cli", "dist", "index.js");
-  }
+  const cliPath = findInkosCliPath();
 
   const modelsEnv = resolveModelsEnv();
   console.log(`[runInkos] invoking local InkOS CLI: "${nodeBin} ${cliPath} ${args.join(" ")}"`);
@@ -305,10 +334,8 @@ export async function runInkos(args: string[], opts: RunNpxOptions = {}): Promis
 export function spawnInkos(args: string[], opts: RunNpxOptions = {}) {
   const resolved = resolveNpx();
   const nodeBin = resolved ? resolved.nodePath : "node";
-  let cliPath = join(process.cwd(), "inkos", "packages", "cli", "dist", "index.js");
-  if (!existsSync(cliPath)) {
-    cliPath = join(__dirname, "..", "inkos", "packages", "cli", "dist", "index.js");
-  }
+  const cliPath = findInkosCliPath();
+
   const modelsEnv = resolveModelsEnv();
   console.log(`[spawnInkos] spawning local InkOS CLI: "${nodeBin} ${cliPath} ${args.join(" ")}"`);
   return spawn(nodeBin, [cliPath, ...args], {

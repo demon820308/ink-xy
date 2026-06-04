@@ -19,14 +19,15 @@
     "!.next/**/*.js.map",
     "public",
     "next.config.ts",
-    "package.json"
+    "package.json",
+    "inkos"
   ],
   "scripts": {
     "dev": "next dev -p 30143 --webpack",
     "build": "next build --webpack",
     "start": "next start -p 30143",
     "lint": "eslint .",
-    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --registry https://registry.npmjs.org --access public",
+    "release": "npm version patch --no-git-tag-version && cd inkos && pnpm install && pnpm build && cd .. && npm run build && npm publish --registry https://registry.npmjs.org --access public",
     "electron:dev": "concurrently \"next dev -p 3030 --webpack\" \"wait-on http://localhost:3030 && electron .\"",
     "electron:build": "npm run build && electron-builder"
   },

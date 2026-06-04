@@ -39,7 +39,7 @@
     "postpack": "node ../../scripts/restore-package-json.mjs",
     "prepublishOnly": "node ../../scripts/verify-no-workspace-protocol.mjs .",
     "prebuild": "pnpm run prepare:workspace-core",
-    "build": "tsc",
+    "build": "tsc && esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js --external:react-devtools-core",
     "dev": "tsc --watch",
     "pretest": "pnpm run build",
     "test": "vitest run --passWithNoTests",
@@ -62,6 +62,7 @@
     "@types/marked-terminal": "^6.1.1",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.14",
+    "esbuild": "^0.28.0",
     "ink-testing-library": "^4.0.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"
