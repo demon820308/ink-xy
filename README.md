@@ -113,49 +113,76 @@ graph TD
 
 ## 🧭 快速开始 (Quick Start)
 
-### 1. 基础依赖准备
-确保您的开发环境安装了 **Node.js v20+** 与 **pnpm**：
+### 📦 桌面端 (Standalone App)
 
+#### ⚙️ 1. 前置依赖准备（重要）
+为了能完整使用软件的所有高级功能（例如 Add Skill / 安装外部技能插件），您的系统需要安装并配置好 **Git**：
+* **常见问题**：如果在添加 Skill 时遇到红色报错 `spawn git ENOENT`，说明您的电脑尚未安装 Git，或者 Git 路径未正确配置到系统的环境变量中。
+* **配置步骤**：
+  1. 前往 [Git 官方网站](https://git-scm.com/) 下载适用于 Windows 或 macOS 的最新版安装程序。
+  2. 安装时，建议选择默认设置（特别注意确保勾选 *"Git from the command line and also from 3rd-party software"*，这会自动将 Git 自动添加至系统环境变量 `PATH` 中）。
+  3. 安装完成后，务必完全退出并重启 Pi Agent xY 桌面客户端，以便软件重新加载最新的环境变量。
+
+#### 🖥️ 2. Windows 安装与运行
+1. 前往 GitHub Releases 下载最新生成的 `Pi Agent xY Desktop Setup.exe` 一键安装包。
+2. 双击运行 `.exe` 文件，跟随向导完成一键安装。
+3. 安装完成后，即可直接通过桌面快捷方式或开始菜单打开客户端。
+
+#### 🍏 3. macOS 安装与运行 (重要)
+1. 前往 GitHub Releases 下载 `.dmg` 安装包。
+2. 双击打开并将应用拖拽至 `Applications` (应用程序) 目录中。
+3. ⚠️ **macOS 提示“文件已损坏”或“身份不明的开发者”解决办法**：由于 standalone 桌面客户端未在 Apple 开发者账号进行官方代码签名，macOS Gatekeeper 安全体系可能会在首次打开应用时拦截，并弹出“软件已损坏，无法打开”或“无法验证开发者”等警告。
+4. **极速解锁与绕过指令**：请打开您的 Mac 终端（Terminal），直接复制并执行以下命令（以清除 macOS 的隔离 quarantine 标识属性）：
+   ```bash
+   xattr -cr /Applications/Pi\ Agent\ xY\ Desktop.app
+   ```
+   运行后，即可直接在 Launchpad 或 Applications 中双击秒开，完美运行！
+
+#### 🛠️ 开发调试 (Dev Mode)
 ```bash
-# 全局安装 pnpm (如果尚未安装)
-npm install -g pnpm
-```
+# 1. 编译本地 InkOS 子模块 (首次或代码更新后需要)
+cd inkos && pnpm install && pnpm build && cd ..
 
-### 2. 编译本地 InkOS 子模块
-`ink-xY` 将 `InkOS` monorepo 仓库作为核心写作算力子包，存放于根目录下的 `inkos/` 中。启动前需要完成子包的本地构建：
-
-```bash
-# 进入 inkos 文件夹并安装依赖
-cd inkos
-pnpm install
-
-# 执行 InkOS 引擎编译
-pnpm build
-cd ..
-```
-
-### 3. 运行本地开发服务器
-回到 `ink-xY` 项目根目录，安装主项目依赖并启动 Web 开发服务器：
-
-```bash
-# 安装主项目依赖
+# 2. 安装 Next.js 项目依赖
 npm install
 
-# 启动 Next.js 极速开发服务（本地监听端口 30142）
-npm run dev
+# 3. 并发启动 Next.js 本地微服务并自动唤起 Electron 主窗口
+npm run electron:dev
 ```
 
-### 4. 运行 Typecheck 与 Lint 校验
+#### 📦 生产打包 (Production Build)
 ```bash
-# 静态类型安全校验 (忽略 inkos 嵌套干扰)
-node_modules/.bin/tsc --noEmit
-
-# 运行代码规范检测
-node_modules/.bin/eslint .
+# 自动编译 Next.js production 优化包并生成 Windows/macOS 原生安装程序
+npm run electron:build
 ```
 
-> [!WARNING]
-> **绝对不要在开发期间运行 `next build`**。这会污染 `.next/` 生成文件，从而导致 `npm run dev` 运行异常。
+---
+
+### 🌐 网页端 (Web UI)
+
+#### 1. 免安装瞬时运行 (NPX)
+```bash
+npx @zwbigi/ink-xy@latest
+```
+
+#### 2. 全局安装使用
+```bash
+# 全局安装包
+npm install -g @zwbigi/ink-xy
+
+# 启动客户端
+pi-agent-xy
+```
+启动后自动在浏览器拉起工作台：`http://localhost:30142`
+
+#### 3. 丰富命令行参数
+```bash
+pi-agent-xy --port 8080               # 自定义启动端口
+pi-agent-xy --hostname 127.0.0.1      # 限制仅本机回环访问
+pi-agent-xy -p 8080 -H 127.0.0.1      # 参数组合使用
+
+PORT=8080 pi-agent-xy                 # 也支持环境变量注入
+```
 
 ---
 
