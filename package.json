@@ -6,7 +6,7 @@
   "main": "electron/main.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/demon820308/Pi-agent-xY.git"
+    "url": "git+https://github.com/demon820308/ink-xy.git"
   },
   "bin": {
     "pi-agent-xy": "bin/pi-web.js"
