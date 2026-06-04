@@ -39,7 +39,7 @@
     "postpack": "node ../../scripts/restore-package-json.mjs",
     "prepublishOnly": "node ../../scripts/verify-no-workspace-protocol.mjs .",
     "prebuild": "pnpm run prepare:workspace-core",
-    "build": "tsc && esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js --alias:react-devtools-core=./src/stubs/react-devtools-core.ts --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "build": "tsc && esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js --alias:react-devtools-core=./src/stubs/react-devtools-core.ts --banner:js=\"import { createRequire as __createRequireShim__ } from 'node:module'; const require = __createRequireShim__(import.meta.url);\"",
     "dev": "tsc --watch",
     "pretest": "pnpm run build",
     "test": "vitest run --passWithNoTests",
