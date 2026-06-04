@@ -3106,7 +3106,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </button>
                 </div>
               )}
-              {isInkosWorkspace && !hasBooks && !hasShorts && (
+              {isInkosWorkspace && (
                 <div style={{
                   margin: "8px 10px",
                   padding: "12px",
@@ -3118,10 +3118,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
                     <span style={{ fontSize: 13 }}>📚</span>
-                    <span>小说宇宙内尚无书籍</span>
+                    <span>{hasBooks ? "创建新小说书籍" : "小说宇宙内尚无书籍"}</span>
                   </div>
                   <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
-                    在 InkOS 中，设定与大纲是以“书籍”为单位存储的。立即创建您的第一本书，AI 架构师将为您搭建创作地基。
+                    {hasBooks
+                      ? "在当前创作宇宙中创建另一本新书。新书将拥有独立的设定大纲、章节规划和人设体系。"
+                      : "在 InkOS 中，设定与大纲是以“书籍”为单位存储的。立即创建您的第一本书，AI 架构师将为您搭建创作地基。"}
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <button
@@ -3140,9 +3142,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                         transition: "opacity 0.15s",
                       }}
                     >
-                      ✍️ 创建小说书籍
+                      {hasBooks ? "➕ 创建新书籍" : "✍️ 创建小说书籍"}
                     </button>
-                    {showImportDraft && (
+                    {!hasBooks && showImportDraft && (
                       <button
                         onClick={() => {
                           setIsImportModalOpen(true);
@@ -3177,7 +3179,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                       </button>
                     )}
                   </div>
-                  {showAutoGenerateShort && (
+                  {!hasBooks && showAutoGenerateShort && (
                     <button
                       onClick={() => {
                         setIsShortRunModalOpen(true);
