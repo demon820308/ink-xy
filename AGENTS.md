@@ -17,7 +17,7 @@ Lint: `node node_modules/next/dist/bin/next lint`
 ```
 Browser                Next.js Server              AgentSession (in-process)
   │                        │                               │
-  ├─ GET /api/sessions ────▶ reads ~/.pi/agent/sessions/   │
+  ├─ GET /api/sessions ────▶ reads ~/.ink/agent/sessions/   │
   ├─ GET /api/sessions/[id] reads .jsonl file directly     │
   │                        │                               │
   ├─ send message ─────────▶ POST /api/agent/[id]          │
@@ -47,7 +47,7 @@ app/api/
   agent/[id]/events/route.ts      GET SSE stream
   files/[...path]/route.ts        GET file contents for viewer
   models/route.ts                 GET { models, modelList, defaultModel }
-  models-config/route.ts          GET/POST — read/write ~/.pi/agent/models.json
+  models-config/route.ts          GET/POST — read/write ~/.ink/agent/models.json
 
 lib/
   rpc-manager.ts      AgentSessionWrapper + registry + startRpcSession
@@ -99,7 +99,7 @@ Pi stores toolCall blocks as `{type:"toolCall", id, name, arguments}` but `ToolC
 Tool names are passed at session creation (`POST /api/agent/new` → `toolNames[]`). For existing sessions, the active preset is inferred on mount via `get_tools` → `getPresetFromTools()`. When tools are fully disabled (`toolNames = []`), `rpc-manager.ts` injects a minimal system prompt via `system-prompt-off.ts` + `DefaultResourceLoader`.
 
 ### Model defaults for new sessions
-`GET /api/models` returns `defaultModel` read from `~/.pi/agent/settings.json`. `ChatWindow` pre-selects this on mount for new sessions.
+`GET /api/models` returns `defaultModel` read from `~/.ink/agent/settings.json`. `ChatWindow` pre-selects this on mount for new sessions.
 
 ### SSE reconnect on page refresh mid-stream
 On `ChatWindow` mount, `GET /api/agent/[id]` is called. If `state.isStreaming === true`, SSE is reconnected automatically. `thinkingLevel` and `isCompacting` are also synced from this response.
@@ -114,7 +114,7 @@ Sessions whose first line can't be parsed as a valid header are marked `orphaned
 
 ## Pi Session File Format
 
-Location: `~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
+Location: `~/.ink/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
 
 ```jsonl
 {"type":"session","version":3,"id":"<uuid>","timestamp":"...","cwd":"/path","parentSession":"/abs/path/to/parent.jsonl"}

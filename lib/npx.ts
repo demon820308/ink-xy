@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from "fs";
 import { dirname, join, delimiter } from "path";
 import { execPath } from "process";
 import { homedir } from "os";
+import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { findModel } from "./model-resolver";
 
 const execFileAsync = promisify(execFile);
 
@@ -183,7 +185,6 @@ function resolveModelsEnv(): Record<string, string> {
     const home = homedir();
     const agentDir = process.env.PI_CODING_AGENT_DIR || join(home, ".ink", "agent");
     const settingsPath = join(agentDir, "settings.json");
-    const modelsPath = join(agentDir, "models.json");
 
     let defaultProvider = "";
     let defaultModel = "";
@@ -197,48 +198,74 @@ function resolveModelsEnv(): Record<string, string> {
       }
     }
 
-    if (existsSync(modelsPath)) {
-      const data = JSON.parse(readFileSync(modelsPath, "utf8"));
-      if (data && data.providers) {
-        // Map all providers
-        for (const [providerName, providerConfig] of Object.entries(data.providers)) {
-          if (providerConfig && typeof providerConfig === "object") {
-            const config = providerConfig as ProviderConfig;
-            const upperProvider = providerName.toUpperCase();
-            if (config.apiKey) {
-              envs[`${upperProvider}_API_KEY`] = config.apiKey;
-              // Set fallback OPENAI_API_KEY if not already set
-              if (!envs["OPENAI_API_KEY"]) {
-                envs["OPENAI_API_KEY"] = config.apiKey;
-              }
-            }
-            if (config.baseUrl) {
-              envs[`${upperProvider}_BASE_URL`] = config.baseUrl;
-              envs[`${upperProvider}_API_URL`] = config.baseUrl;
-              if (!envs["OPENAI_BASE_URL"]) {
-                envs["OPENAI_BASE_URL"] = config.baseUrl;
-              }
-            }
-          }
-        }
+    const authStorage = AuthStorage.create();
+    const registry = ModelRegistry.create(authStorage);
 
-        // Map default selected provider to INKOS_LLM_ environment keys
-        const activeProvider = defaultProvider ? data.providers[defaultProvider] : null;
-        if (activeProvider && typeof activeProvider === "object") {
-          const config = activeProvider as ProviderConfig;
-          if (config.apiKey) {
-            envs["INKOS_LLM_API_KEY"] = config.apiKey;
-          }
-          if (config.baseUrl) {
-            envs["INKOS_LLM_BASE_URL"] = config.baseUrl;
-          }
-          if (defaultModel) {
-            envs["INKOS_LLM_MODEL"] = defaultModel;
-          }
-          envs["INKOS_LLM_PROVIDER"] = "openai";
-          envs["INKOS_LLM_API_FORMAT"] = "chat";
-          envs["INKOS_LLM_STREAM"] = "true";
+    // 1. Populate all configured provider env keys dynamically from ModelRegistry
+    const allModels = registry.getAll();
+    const seenProviders = new Set<string>();
+
+    const PROVIDER_ENV_MAP: Record<string, string[]> = {
+      "minimax-cn": ["MINIMAX"],
+      "xiaomi-token-plan-cn": ["XIAOMIMIMO"],
+      "xiaomi-token-plan-ams": ["XIAOMIMIMO"],
+      "xiaomi-token-plan-sgp": ["XIAOMIMIMO"],
+      "xiaomi": ["XIAOMIMIMO"],
+      "moonshotai-cn": ["MOONSHOT"],
+      "moonshotai": ["MOONSHOT"],
+    };
+
+    for (const model of allModels) {
+      if (seenProviders.has(model.provider)) continue;
+      seenProviders.add(model.provider);
+
+      const upperProvider = model.provider.toUpperCase().replace(/-/g, "_");
+      
+      const auth = authStorage.get(model.provider) as { key?: string } | undefined;
+      if (auth?.key) {
+        envs[`${upperProvider}_API_KEY`] = auth.key;
+        if (!envs["OPENAI_API_KEY"]) {
+          envs["OPENAI_API_KEY"] = auth.key;
         }
+      }
+
+      if (model.baseUrl) {
+        envs[`${upperProvider}_BASE_URL`] = model.baseUrl;
+        envs[`${upperProvider}_API_URL`] = model.baseUrl;
+        if (!envs["OPENAI_BASE_URL"]) {
+          envs["OPENAI_BASE_URL"] = model.baseUrl;
+        }
+      }
+
+      // Remap keys for InkOS CLI compatibility
+      const remapKeys = PROVIDER_ENV_MAP[model.provider] || [];
+      for (const k of remapKeys) {
+        if (auth?.key) {
+          envs[`${k}_API_KEY`] = auth.key;
+        }
+        if (model.baseUrl) {
+          envs[`${k}_BASE_URL`] = model.baseUrl;
+          envs[`${k}_API_URL`] = model.baseUrl;
+        }
+      }
+    }
+
+    // 2. Set default active provider config to INKOS_LLM_ environment keys
+    if (defaultProvider && defaultModel) {
+      const activeModel = findModel(registry, defaultProvider, defaultModel);
+      if (activeModel) {
+        const auth = authStorage.get(defaultProvider) as { key?: string } | undefined;
+        
+        if (auth?.key) {
+          envs["INKOS_LLM_API_KEY"] = auth.key;
+        }
+        if (activeModel.baseUrl) {
+          envs["INKOS_LLM_BASE_URL"] = activeModel.baseUrl;
+        }
+        envs["INKOS_LLM_MODEL"] = activeModel.id;
+        envs["INKOS_LLM_PROVIDER"] = "openai";
+        envs["INKOS_LLM_API_FORMAT"] = "chat";
+        envs["INKOS_LLM_STREAM"] = "true";
       }
     }
   } catch (e) {

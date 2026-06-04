@@ -31,6 +31,7 @@ shortCommand
   .option("--out-dir <path>", "Output directory", "shorts")
   .option("--chapters <n>", "Complete short chapter count (12-18)", String(SHORT_FICTION_DEFAULT_CHAPTERS))
   .option("--chars <n>", "Target characters per chapter (900-1200)", String(SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER))
+  .option("--stage <stage>", "Execution stage (outline | draft | package | all)", "all")
   .option("--llm-base-url <url>", "Override LLM base URL")
   .option("--model <model>", "Fallback model for all short stages")
   .option("--planner-model <model>", "Model for outline creation/revision")
@@ -113,6 +114,7 @@ shortCommand
         outDir: opts.outDir,
         chapterCount,
         charsPerChapter,
+        stage: opts.stage,
         cover: opts.cover,
         coverBaseUrl: opts.coverBaseUrl,
         coverEndpoint: opts.coverEndpoint,
@@ -147,6 +149,7 @@ interface ShortRunOptions {
   readonly outDir: string;
   readonly chapters?: string;
   readonly chars?: string;
+  readonly stage?: "outline" | "draft" | "package" | "all";
   readonly llmBaseUrl?: string;
   readonly model?: string;
   readonly plannerModel?: string;

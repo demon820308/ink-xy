@@ -6,7 +6,7 @@ import {
   analyzeDetectionInsights,
   type DetectionConfig,
 } from "@actalk/inkos-core";
-import { loadConfig, findProjectRoot, resolveBookId, log, logError } from "../utils.js";
+import { loadConfig, findProjectRoot, resolveBookId, log, logError, buildPipelineConfig } from "../utils.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -17,12 +17,21 @@ export const detectCommand = new Command("detect")
   .option("--all", "Detect all chapters")
   .option("--stats", "Show detection statistics")
   .option("--json", "Output JSON")
-  .action(async (bookIdArg: string | undefined, chapterStr: string | undefined, opts) => {
+  .option("--provider <provider>", "Override detection provider (llm, local, gptzero, originality, custom)")
+  .action(async (bookIdArg: string | undefined, chapterStr: string | undefined, opts: { all?: boolean; stats?: boolean; json?: boolean; provider?: string }) => {
     try {
-      const config = await loadConfig();
+      const config = await loadConfig({ requireApiKey: false });
       const root = findProjectRoot();
 
-      if (!config.detection?.enabled) {
+      const detectionConfig = {
+        ...(config.detection as DetectionConfig),
+      };
+      if (opts.provider) {
+        detectionConfig.provider = opts.provider as any;
+        detectionConfig.enabled = true;
+      }
+
+      if (!detectionConfig.enabled) {
         logError("AIGC detection is not enabled. Add detection config to inkos.json.");
         process.exit(1);
       }
@@ -64,14 +73,14 @@ export const detectCommand = new Command("detect")
         return;
       }
 
-      const detectionConfig = config.detection as DetectionConfig;
+      const pipelineConfig = buildPipelineConfig(config, root, { quiet: !!opts.json });
 
       if (opts.all) {
         const index = await state.loadChapterIndex(bookId);
         for (const ch of index) {
           const content = await readChapterContent(bookDir, ch.number);
-          const result = await detectChapter(detectionConfig, content, ch.number);
-          printResult(result, opts.json);
+          const result = await detectChapter(detectionConfig, content, ch.number, pipelineConfig);
+          printResult(result, !!opts.json);
         }
       } else {
         const targetChapter = chapterNumber ?? (await state.getNextChapterNumber(bookId)) - 1;
@@ -80,8 +89,8 @@ export const detectCommand = new Command("detect")
           process.exit(1);
         }
         const content = await readChapterContent(bookDir, targetChapter);
-        const result = await detectChapter(detectionConfig, content, targetChapter);
-        printResult(result, opts.json);
+        const result = await detectChapter(detectionConfig, content, targetChapter, pipelineConfig);
+        printResult(result, !!opts.json);
       }
     } catch (e) {
       logError(`Detection failed: ${e}`);

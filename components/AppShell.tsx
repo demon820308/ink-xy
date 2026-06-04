@@ -9,6 +9,8 @@ import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { BranchNavigator } from "./BranchNavigator";
+import { SettingsModal } from "./SettingsModal";
+import { HelpModal } from "./HelpModal";
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
@@ -27,6 +29,14 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [showExecutionConfirm, setShowExecutionConfirm] = useState(true);
+  const [styleConfirm, setStyleConfirm] = useState<{
+    targetStyle: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
@@ -84,6 +94,25 @@ export function AppShell() {
     ro.observe(topBarRef.current);
     return () => ro.disconnect();
   }, [activeTopPanel]);
+
+  useEffect(() => {
+    const val = localStorage.getItem("ink-show-execution-confirm");
+    if (val !== null) {
+      setShowExecutionConfirm(val === "true");
+    } else {
+      setShowExecutionConfirm(true);
+    }
+    const handleSettingsChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ showExecutionConfirm: boolean }>;
+      if (customEvent.detail) {
+        setShowExecutionConfirm(customEvent.detail.showExecutionConfirm);
+      }
+    };
+    window.addEventListener("ink-settings-changed", handleSettingsChanged);
+    return () => {
+      window.removeEventListener("ink-settings-changed", handleSettingsChanged);
+    };
+  }, []);
 
   // Right panel — file tabs only
   const [fileTabs, setFileTabs] = useState<Tab[]>([]);
@@ -266,6 +295,49 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
+  const [availableStyles, setAvailableStyles] = useState<string[]>([]);
+  const [activeStyleName, setActiveStyleName] = useState<string | null>(null);
+  const [isInkosWorkspace, setIsInkosWorkspace] = useState(false);
+  const [hasBooks, setHasBooks] = useState(false);
+  const [isStyleSwitching, setIsStyleSwitching] = useState(false);
+
+  const handleStylesChange = useCallback((styles: string[], activeStyle: string | null) => {
+    setAvailableStyles(styles);
+    setActiveStyleName(activeStyle);
+    setIsStyleSwitching(false);
+  }, []);
+
+  const triggerStyleSwitch = useCallback((styleName: string) => {
+    setIsStyleSwitching(true);
+    window.dispatchEvent(new CustomEvent("trigger-style-switch", { detail: { styleName } }));
+  }, []);
+
+  const handleStyleSelectChange = useCallback((targetValue: string) => {
+    const previousValue = activeStyleName || "default";
+    if (targetValue === previousValue) return;
+
+    if (!showExecutionConfirm) {
+      triggerStyleSwitch(targetValue);
+      return;
+    }
+
+    setStyleConfirm({
+      targetStyle: targetValue,
+      onConfirm: () => {
+        triggerStyleSwitch(targetValue);
+        setStyleConfirm(null);
+      },
+      onCancel: () => {
+        setStyleConfirm(null);
+      }
+    });
+  }, [activeStyleName, showExecutionConfirm, triggerStyleSwitch]);
+
+  const handleWorkspaceStatusChange = useCallback((isInkos: boolean, books: boolean) => {
+    setIsInkosWorkspace(isInkos);
+    setHasBooks(books);
+  }, []);
+
   const sidebarContent = (
     <>
       <SessionSidebar
@@ -282,6 +354,10 @@ export function AppShell() {
         explorerRefreshKey={explorerRefreshKey}
         onAtMention={handleAtMention}
         activeGemId={activeGemId}
+        availableStyles={availableStyles}
+        activeStyleName={activeStyleName}
+        onStylesChange={handleStylesChange}
+        onWorkspaceStatusChange={handleWorkspaceStatusChange}
       />
     </>
   );
@@ -345,37 +421,129 @@ export function AppShell() {
               </svg>
             )}
           </button>
-          <button
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-            }}
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-pressed={isDark}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              width: 36, height: 36, padding: 0,
-              background: "none", border: "none", borderRight: "1px solid var(--border)",
-              color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-          >
-            {isDark ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
-          </button>
+
+          {/* Writer Toolbar integrated in-between toggle buttons */}
+          {isInkosWorkspace && (
+            <div style={{ display: "flex", alignItems: "center", flexShrink: 0, height: "100%" }}>
+              {/* 1. Style Switcher (切换风格) */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0 10px",
+                borderRight: "1px solid var(--border)",
+                height: "100%",
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "rgba(99, 102, 241, 0.08)",
+                  border: "1px solid rgba(99, 102, 241, 0.4)",
+                  borderRadius: "6px",
+                  padding: "4px 8px",
+                  height: 24,
+                  transition: "all 0.2s ease",
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}>
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  <select
+                    value={styleConfirm ? styleConfirm.targetStyle : (activeStyleName || "default")}
+                    disabled={isStyleSwitching}
+                    onChange={(e) => handleStyleSelectChange(e.target.value)}
+                    style={{
+                      background: "none",
+                      color: "#818cf8",
+                      border: "none",
+                      fontSize: "11px",
+                      outline: "none",
+                      cursor: (availableStyles && availableStyles.length > 1) ? "pointer" : "default",
+                      padding: "0 4px",
+                      fontWeight: 600,
+                      fontFamily: "var(--font-serif)",
+                    }}
+                  >
+                    {availableStyles && availableStyles.length > 0 ? (
+                      availableStyles.map((style) => (
+                        <option key={style} value={style} style={{ background: "var(--bg-panel)", color: "var(--text)" }}>
+                          {style}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="default" style={{ background: "var(--bg-panel)", color: "var(--text)" }}>default</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* 2. Style Clone Workshop (文风克隆工坊) */}
+              {hasBooks && (
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new Event("trigger-style-clone"));
+                  }}
+                  title="文风克隆工坊 (Style Clone)"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    height: "100%",
+                    padding: "0 12px",
+                    background: "none",
+                    border: "none",
+                    borderRight: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    transition: "color 0.12s, background 0.12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 2 }}>
+                    <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" />
+                    <path d="M8 10h.01M16 10h.01" strokeWidth="3" />
+                    <path d="M12 14a3 3 0 0 0-3 3h6a3 3 0 0 0-3-3z" />
+                  </svg>
+                  <span>文风克隆工坊</span>
+                </button>
+              )}
+
+              {/* 3. Market Radar (市场雷达) */}
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new Event("trigger-radar"));
+                }}
+                title="市场雷达 (Market Intelligence Scan)"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  height: "100%",
+                  padding: "0 12px",
+                  background: "none",
+                  border: "none",
+                  borderRight: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  transition: "color 0.12s, background 0.12s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 2 }}>
+                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                  <path d="M12 17c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5z" />
+                  <circle cx="12" cy="12" r="1" fill="currentColor" />
+                </svg>
+                <span>市场雷达</span>
+              </button>
+            </div>
+          )}
+
           {/* Branches and System buttons hidden for novelist-oriented Zen UI */}
           {/* Session stats — right-aligned in top bar */}
           {showChat && (sessionStats || contextUsage) && (() => {
@@ -412,9 +580,12 @@ export function AppShell() {
                 title={tooltip}
                 style={{
                   marginLeft: "auto",
+                  flex: "0 1 auto",
+                  minWidth: 0,
+                  overflow: "hidden",
                   display: "flex", alignItems: "center", gap: 10,
                   paddingLeft: 12,
-                  paddingRight: rightPanelOpen ? 12 : 48,
+                  paddingRight: rightPanelOpen ? 12 : 156,
                   height: "100%",
                   fontSize: 11, color: "var(--text-muted)",
                   whiteSpace: "nowrap", cursor: "default",
@@ -519,7 +690,13 @@ export function AppShell() {
         {/* Editor Main Content Area */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative", background: "var(--bg)" }}>
           {activeFileTab?.filePath ? (
-            <FileViewer filePath={activeFileTab.filePath} cwd={activeCwd ?? undefined} />
+            <FileViewer
+              filePath={activeFileTab.filePath}
+              cwd={activeCwd ?? undefined}
+              availableStyles={availableStyles}
+              activeStyleName={activeStyleName}
+              showExecutionConfirm={showExecutionConfirm}
+            />
           ) : (
             <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", padding: 32, textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>✍️</div>
@@ -594,12 +771,12 @@ export function AppShell() {
         </div>
       </div>
     </div>
-    {/* Models Config toggle — always visible at top-right, left of the right panel toggle */}
+    {/* Models Config toggle — always visible at top-right, left of the settings toggle */}
     <button
       onClick={() => setModelsConfigOpen(true)}
       title="配置模型"
       style={{
-        position: "fixed", top: 0, right: 36, zIndex: 300,
+        position: "fixed", top: 0, right: 144, zIndex: 300,
         display: "flex", alignItems: "center", justifyContent: "center",
         width: 36, height: 36, padding: 0,
         background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
@@ -616,6 +793,81 @@ export function AppShell() {
         <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
         <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
       </svg>
+    </button>
+    {/* Global Settings toggle — placed between Models Config and Help buttons */}
+    <button
+      onClick={() => setSettingsOpen(true)}
+      title="全局设置"
+      style={{
+        position: "fixed", top: 0, right: 108, zIndex: 300,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, padding: 0,
+        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+        color: "var(--text-muted)",
+        cursor: "pointer", transition: "color 0.12s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </button>
+    {/* Novel Writing Guide Help toggle — placed between Settings and Theme buttons */}
+    <button
+      onClick={() => setHelpOpen(true)}
+      title="小说创作实战手册"
+      style={{
+        position: "fixed", top: 0, right: 72, zIndex: 300,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, padding: 0,
+        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+        color: "var(--text-muted)",
+        cursor: "pointer", transition: "color 0.12s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3" />
+      </svg>
+    </button>
+    {/* Theme toggle (Moon/Sun) — fixed at right: 36 */}
+    <button
+      onClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      }}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-pressed={isDark}
+      style={{
+        position: "fixed", top: 0, right: 36, zIndex: 300,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, padding: 0,
+        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+        color: "var(--text-muted)",
+        cursor: "pointer", transition: "color 0.12s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+    >
+      {isDark ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      )}
     </button>
     {/* Right panel toggle — always visible at top-right */}
     <button
@@ -639,6 +891,165 @@ export function AppShell() {
     {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
     {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
       <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} />
+    )}
+    {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+    {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+    {styleConfirm && (
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1200,
+        background: "rgba(10, 10, 10, 0.4)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        animation: "fadeIn 0.2s ease-out"
+      }}
+      onClick={styleConfirm.onCancel}
+      >
+        <div style={{
+          width: "min(500px, 92%)",
+          background: "var(--bg-panel)",
+          border: "1px solid var(--border)",
+          borderRadius: "16px",
+          boxShadow: "0 24px 60px rgba(0, 0, 0, 0.3)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          fontFamily: "var(--font-serif)"
+        }}
+        onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "18px 24px",
+            background: "rgba(99, 102, 241, 0.08)",
+            borderBottom: "1px solid var(--border)",
+          }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              background: "var(--bg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+              border: `1px solid #818cf833`,
+              boxShadow: `0 2px 8px rgba(99, 102, 241, 0.15)`
+            }}>
+              🎭
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>确认更换写作文风</span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>将风格切换至：{styleConfirm.targetStyle}</span>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{
+              fontSize: 13,
+              color: "var(--text)",
+              lineHeight: "1.6",
+            }}>
+              您正在准备将当前书籍的写作风格切换为 <strong style={{ color: "#818cf8" }}>「{styleConfirm.targetStyle}」</strong>。
+            </div>
+            
+            <div style={{
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderLeft: `4px solid #818cf8`,
+              borderRadius: "8px",
+              padding: "14px 18px",
+              fontSize: 12,
+              color: "var(--text-muted)",
+              lineHeight: "1.7",
+            }}>
+              <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 6 }}>⚠️ 注意事项：</span>
+              此操作将使用该文风模板自动覆盖当前书籍的活动文风指南（`story/style_guide.md`）与统计特征库（`style_profile.json`）。历史章节正文不会被修改。
+            </div>
+
+            <div style={{
+              background: "var(--bg-hover)",
+              borderRadius: "8px",
+              padding: "12px 16px",
+              fontSize: 11,
+              color: "var(--text-muted)",
+              lineHeight: "1.6",
+            }}>
+              <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 4 }}>💡 后续操作指引：</span>
+              切换成功后，接下来的「智能续写」、「极速草稿」、「文本润色」和「剧情重写」等 AI 生成动作，都将自动采用该风格进行写作。
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 12,
+            padding: "16px 24px",
+            background: "var(--bg-panel)",
+            borderTop: "1px solid var(--border)"
+          }}>
+            <button
+              onClick={styleConfirm.onCancel}
+              style={{
+                padding: "7px 16px",
+                fontSize: 12,
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontWeight: 500,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--bg)";
+                e.currentTarget.style.color = "var(--text-muted)";
+              }}
+            >
+              取消
+            </button>
+            <button
+              onClick={styleConfirm.onConfirm}
+              style={{
+                padding: "7px 20px",
+                fontSize: 12,
+                borderRadius: 8,
+                border: "none",
+                background: "#818cf8",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+                boxShadow: `0 4px 12px rgba(99, 102, 241, 0.33)`,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.9";
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = `0 6px 16px rgba(99, 102, 241, 0.44)`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
+                e.currentTarget.style.transform = "none";
+                e.currentTarget.style.boxShadow = `0 4px 12px rgba(99, 102, 241, 0.33)`;
+              }}
+            >
+              确定更换
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </>
   );

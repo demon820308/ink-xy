@@ -21,6 +21,11 @@ interface Props {
   explorerRefreshKey?: number;
   onAtMention?: (relativePath: string) => void;
   activeGemId?: string | null;
+
+  availableStyles?: string[];
+  activeStyleName?: string | null;
+  onStylesChange?: (styles: string[], activeStyle: string | null) => void;
+  onWorkspaceStatusChange?: (isInkos: boolean, hasBooks: boolean) => void;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -54,11 +59,7 @@ function getRecentCwds(sessions: SessionInfo[]): string[] {
 }
 
 function shortenCwd(cwd: string, homeDir?: string): string {
-  const path = (homeDir && cwd.startsWith(homeDir)) ? "~" + cwd.slice(homeDir.length) : cwd;
-  const sep = path.includes("/") ? "/" : "\\";
-  const parts = path.split(sep).filter(Boolean);
-  if (parts.length <= 2) return path;
-  return "…/" + parts.slice(-2).join(sep);
+  return (homeDir && cwd.startsWith(homeDir)) ? "~" + cwd.slice(homeDir.length) : cwd;
 }
 
 
@@ -208,7 +209,7 @@ function StudioTitle() {
 import GemEditorModal from "./GemEditorModal";
 import type { GemProfile } from "@/lib/types";
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, activeGemId }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, activeGemId, availableStyles = [], activeStyleName = null, onStylesChange, onWorkspaceStatusChange }: Props) {
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -225,6 +226,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   // Gem-xY custom agent states
   const [gems, setGems] = useState<GemProfile[]>([]);
   const [modelList, setModelList] = useState<{ id: string; name: string; provider: string }[]>([]);
+  const [defaultModel, setDefaultModel] = useState<{ provider: string; modelId: string } | null>(null);
   const [isGemModalOpen, setIsGemModalOpen] = useState(false);
   const [editingGemId, setEditingGemId] = useState<string | null>(null);
   const [gemsExpanded, setGemsExpanded] = useState(true);
@@ -233,10 +235,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   // InkOS workspace states
   const [isInkosWorkspace, setIsInkosWorkspace] = useState(true);
   const [hasBooks, setHasBooks] = useState(true);
+  const [hasShorts, setHasShorts] = useState(false);
+  const [showImportDraft, setShowImportDraft] = useState(true);
+  const [showAutoGenerateShort, setShowAutoGenerateShort] = useState(true);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isCreatingBook, setIsCreatingBook] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
   const [hasChapters, setHasChapters] = useState(false);
+  const [hasFirstChapterBlueprint, setHasFirstChapterBlueprint] = useState(false);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [isWriteLoading, setIsWriteLoading] = useState(false);
   const [writeProgressText, setWriteProgressText] = useState("");
@@ -275,11 +281,137 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [newBookId, setNewBookId] = useState("");
   const [newBookTitle, setNewBookTitle] = useState("");
 
+  // InkOS style clone states
+  const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
+  const [styleMode, setStyleMode] = useState<"paste" | "path">("paste");
+  const [styleName, setStyleName] = useState("");
+  const [styleText, setStyleText] = useState("");
+  const [stylePath, setStylePath] = useState("");
+  const [isCloning, setIsCloning] = useState(false);
+  const [isStyleSwitching, setIsStyleSwitching] = useState(false);
+  const [styleLogs, setStyleLogs] = useState<string[]>([]);
+  const [styleError, setStyleError] = useState<string | null>(null);
+  const [styleSuccessText, setStyleSuccessText] = useState<string | null>(null);
+  const [styleGuidePath, setStyleGuidePath] = useState<string | null>(null);
+
+  // InkOS fanfic states
+  const [fanficMode, setFanficMode] = useState<"canon" | "au" | "ooc" | "cp">("canon");
+  const [fanficSource, setFanficSource] = useState("");
+  const [isFanfic, setIsFanfic] = useState(false);
+  const [activeFanficMode, setActiveFanficMode] = useState<string | null>(null);
+
+  // Fanfic refresh states
+  const [isFanficRefreshModalOpen, setIsFanficRefreshModalOpen] = useState(false);
+  const [fanficRefreshSource, setFanficRefreshSource] = useState("");
+  const [isRefreshingCanon, setIsRefreshingCanon] = useState(false);
+  const [fanficRefreshLogs, setFanficRefreshLogs] = useState<string[]>([]);
+  const [fanficRefreshError, setFanficRefreshError] = useState<string | null>(null);
+  const [fanficRefreshSuccess, setFanficRefreshSuccess] = useState<string | null>(null);
+  const fanficRefreshConsoleRef = useRef<HTMLDivElement>(null);
+
+  // Radar scan states
+  const [isRadarModalOpen, setIsRadarModalOpen] = useState(false);
+  const [isScanningRadar, setIsScanningRadar] = useState(false);
+  const [radarLogs, setRadarLogs] = useState<string[]>([]);
+  const [radarError, setRadarError] = useState<string | null>(null);
+  const [radarResult, setRadarResult] = useState<any>(null);
+  const radarConsoleRef = useRef<HTMLDivElement>(null);
+
+  // Short fiction production states
+  const [isShortRunModalOpen, setIsShortRunModalOpen] = useState(false);
+  const [isRunningShort, setIsRunningShort] = useState(false);
+  const [shortLogs, setShortLogs] = useState<string[]>([]);
+  const [shortError, setShortError] = useState<string | null>(null);
+  const [shortSuccess, setShortSuccess] = useState<string | null>(null);
+  const [shortDirection, setShortDirection] = useState("");
+  const [shortChapters, setShortChapters] = useState(12);
+  const [shortChars, setShortChars] = useState(1000);
+  const [shortCover, setShortCover] = useState(true);
+  const [shortStoryId, setShortStoryId] = useState<string | null>(null);
+  const [shortFictionStage, setShortFictionStage] = useState<"outline" | "draft" | "package" | "completed" | "idle">("idle");
+  const shortConsoleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (fanficRefreshConsoleRef.current) {
+      fanficRefreshConsoleRef.current.scrollTop = fanficRefreshConsoleRef.current.scrollHeight;
+    }
+  }, [fanficRefreshLogs]);
+
+  useEffect(() => {
+    if (radarConsoleRef.current) {
+      radarConsoleRef.current.scrollTop = radarConsoleRef.current.scrollHeight;
+    }
+  }, [radarLogs]);
+
+  useEffect(() => {
+    if (shortConsoleRef.current) {
+      shortConsoleRef.current.scrollTop = shortConsoleRef.current.scrollHeight;
+    }
+  }, [shortLogs]);
+
+  useEffect(() => {
+    const importVal = localStorage.getItem("ink-show-import-draft");
+    if (importVal !== null) {
+      setShowImportDraft(importVal === "true");
+    }
+    const autoShortVal = localStorage.getItem("ink-show-auto-generate-short");
+    if (autoShortVal !== null) {
+      setShowAutoGenerateShort(autoShortVal === "true");
+    }
+
+    const handleSettings = (e: Event) => {
+      const customEvent = e as CustomEvent<{ showImportDraft?: boolean; showAutoGenerateShort?: boolean }>;
+      if (customEvent.detail) {
+        if (typeof customEvent.detail.showImportDraft === "boolean") {
+          setShowImportDraft(customEvent.detail.showImportDraft);
+        }
+        if (typeof customEvent.detail.showAutoGenerateShort === "boolean") {
+          setShowAutoGenerateShort(customEvent.detail.showAutoGenerateShort);
+        }
+      }
+    };
+    window.addEventListener("ink-settings-changed", handleSettings);
+    return () => {
+      window.removeEventListener("ink-settings-changed", handleSettings);
+    };
+  }, []);
+
+  // InkOS consolidate states
+  const [consolidationRecommend, setConsolidationRecommend] = useState(false);
+  const [recommendVolumeName, setRecommendVolumeName] = useState<string>("");
+  const [isConsolidating, setIsConsolidating] = useState(false);
+  const [isConsolidationModalOpen, setIsConsolidationModalOpen] = useState(false);
+  const [consolidationLogs, setConsolidationLogs] = useState<string[]>([]);
+  const [consolidationError, setConsolidationError] = useState<string | null>(null);
+  const [consolidationResult, setConsolidationResult] = useState<{ archivedVolumes: number; retainedChapters: number } | null>(null);
+
+  const importConsoleRef = useRef<HTMLDivElement>(null);
+  const styleConsoleRef = useRef<HTMLDivElement>(null);
+  const consolidateConsoleRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (consoleRef.current) {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
     }
   }, [logs]);
+
+  useEffect(() => {
+    if (importConsoleRef.current) {
+      importConsoleRef.current.scrollTop = importConsoleRef.current.scrollHeight;
+    }
+  }, [importLogs]);
+
+  useEffect(() => {
+    if (styleConsoleRef.current) {
+      styleConsoleRef.current.scrollTop = styleConsoleRef.current.scrollHeight;
+    }
+  }, [styleLogs]);
+
+  useEffect(() => {
+    if (consolidateConsoleRef.current) {
+      consolidateConsoleRef.current.scrollTop = consolidateConsoleRef.current.scrollHeight;
+    }
+  }, [consolidationLogs]);
 
   // Book creation form state
   const [bookTitle, setBookTitle] = useState("");
@@ -370,7 +502,20 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     try {
       const encoded = encodeFilePathForApi(cwd);
       const res = await fetch(`/api/files/${encoded}?type=list`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        setIsInkosWorkspace(false);
+        setHasBooks(false);
+        setHasShorts(false);
+        setActiveBookId(null);
+        setHasChapters(false);
+        setChapterStatusMap({});
+        setAvailableBooks([]);
+        setConsolidationRecommend(false);
+        setRecommendVolumeName("");
+        setIsFanfic(false);
+        setActiveFanficMode(null);
+        return;
+      }
       const data = await res.json();
       const entries = data.entries || [];
       const hasSignature = entries.some(
@@ -379,6 +524,23 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       setIsInkosWorkspace(hasSignature);
 
       if (hasSignature) {
+        // Check if there are generated short stories in shorts directory
+        let hasShortsVal = false;
+        try {
+          const shortsDir = joinFilePath(cwd, "shorts");
+          const shortsEncoded = encodeFilePathForApi(shortsDir);
+          const shortsRes = await fetch(`/api/files/${shortsEncoded}?type=list`);
+          if (shortsRes.ok) {
+            const shortsData = await shortsRes.json();
+            const shortsEntries = shortsData.entries || [];
+            const actualShorts = shortsEntries.filter((e: any) => e.name !== ".gitkeep" && !e.name.startsWith("."));
+            hasShortsVal = actualShorts.length > 0;
+          }
+        } catch (e) {
+          console.error("Failed to check shorts folder status:", e);
+        }
+        setHasShorts(hasShortsVal);
+
         const booksDir = joinFilePath(cwd, "books");
         const booksEncoded = encodeFilePathForApi(booksDir);
         const booksRes = await fetch(`/api/files/${booksEncoded}?type=list`);
@@ -394,9 +556,35 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             const firstBook = actualBooks[0].name;
             setActiveBookId(firstBook);
 
+            // Check if it is a fanfic book
+            try {
+              const bookJsonPath = joinFilePath(cwd, `books/${firstBook}/book.json`);
+              const bookJsonEncoded = encodeFilePathForApi(bookJsonPath);
+              const bookJsonRes = await fetch(`/api/files/${bookJsonEncoded}?type=read`);
+              if (bookJsonRes.ok) {
+                const bookJsonData = await bookJsonRes.json();
+                const bookParsed = JSON.parse(bookJsonData.content);
+                if (bookParsed && bookParsed.fanficMode) {
+                  setIsFanfic(true);
+                  setActiveFanficMode(bookParsed.fanficMode);
+                } else {
+                  setIsFanfic(false);
+                  setActiveFanficMode(null);
+                }
+              } else {
+                setIsFanfic(false);
+                setActiveFanficMode(null);
+              }
+            } catch (err) {
+              console.error("Failed to parse book.json for fanfic mode:", err);
+              setIsFanfic(false);
+              setActiveFanficMode(null);
+            }
+
             const chaptersDir = joinFilePath(cwd, `books/${firstBook}/chapters`);
             const chaptersEncoded = encodeFilePathForApi(chaptersDir);
             const chaptersRes = await fetch(`/api/files/${chaptersEncoded}?type=list`);
+            let maxChapter = 0;
             if (chaptersRes.ok) {
               const chaptersData = await chaptersRes.json();
               const chapterEntries = chaptersData.entries || [];
@@ -404,8 +592,132 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 (e: any) => !e.isDir && e.name.endsWith(".md") && /^\d{4}/.test(e.name)
               );
               setHasChapters(mdFiles.length > 0);
+
+              const fileNumbers = mdFiles.map((f: any) => {
+                const m = f.name.match(/^(\d+)/);
+                return m ? parseInt(m[1], 10) : 0;
+              }).filter((n: number) => n > 0);
+              maxChapter = fileNumbers.length > 0 ? Math.max(...fileNumbers) : 0;
             } else {
               setHasChapters(false);
+            }
+
+            // Check if Chapter 1 plan exists
+            let hasPlan = false;
+            try {
+              const planPath = joinFilePath(cwd, `books/${firstBook}/story/runtime/chapter-0001.plan.md`);
+              const planEncoded = encodeFilePathForApi(planPath);
+              const planRes = await fetch(`/api/files/${planEncoded}?type=read`);
+              if (planRes.ok) {
+                hasPlan = true;
+              }
+            } catch (e) {
+              console.error("Failed to check chapter-0001.plan.md:", e);
+            }
+            setHasFirstChapterBlueprint(hasPlan);
+
+            // Consolidation recommendation check
+            try {
+              let volumeMapText = "";
+              const newPath = joinFilePath(cwd, `books/${firstBook}/story/outline/volume_map.md`);
+              const newEncoded = encodeFilePathForApi(newPath);
+              const newRes = await fetch(`/api/files/${newEncoded}?type=read`);
+              if (newRes.ok) {
+                const fileData = await newRes.json();
+                if (fileData && fileData.content) volumeMapText = fileData.content;
+              }
+              if (!volumeMapText.trim()) {
+                const legacyPath = joinFilePath(cwd, `books/${firstBook}/story/volume_outline.md`);
+                const legacyEncoded = encodeFilePathForApi(legacyPath);
+                const legacyRes = await fetch(`/api/files/${legacyEncoded}?type=read`);
+                if (legacyRes.ok) {
+                  const fileData = await legacyRes.json();
+                  if (fileData && fileData.content) volumeMapText = fileData.content;
+                }
+              }
+
+              if (volumeMapText.trim()) {
+                const parseVolumeBoundaries = (text: string) => {
+                  const volumes: Array<{ name: string; startCh: number; endCh: number }> = [];
+                  const lines = text.split("\n");
+                  const volumeHeader = /^(第[一二三四五六七八九十百千万零〇\d]+卷|Volume\s+\d+)/i;
+                  const rangePattern = /[（(]\s*(?:第|[Cc]hapters?\s+)?(\d+)\s*[-–~～—]\s*(\d+)\s*(?:章)?\s*[）)]|(?:第|[Cc]hapters?\s+)(\d+)\s*[-–~～—]\s*(\d+)\s*(?:章)?/i;
+
+                  for (const rawLine of lines) {
+                    const line = rawLine.replace(/^#+\s*/, "").trim();
+                    if (!volumeHeader.test(line)) continue;
+
+                    const rangeMatch = line.match(rangePattern);
+                    if (!rangeMatch) continue;
+
+                    const startCh = parseInt(rangeMatch[1] ?? rangeMatch[3] ?? "0", 10);
+                    const endCh = parseInt(rangeMatch[2] ?? rangeMatch[4] ?? "0", 10);
+                    if (startCh <= 0 || endCh <= 0) continue;
+
+                    const nameMatch = line.match(/^([^\(（]+)/);
+                    const name = nameMatch ? nameMatch[1].trim() : line;
+                    volumes.push({ name, startCh, endCh });
+                  }
+                  return volumes;
+                };
+
+                const volumes = parseVolumeBoundaries(volumeMapText);
+                
+                let volSummariesText = "";
+                const volSummariesPath = joinFilePath(cwd, `books/${firstBook}/story/volume_summaries.md`);
+                const volSummariesEncoded = encodeFilePathForApi(volSummariesPath);
+                const volSummariesRes = await fetch(`/api/files/${volSummariesEncoded}?type=read`);
+                if (volSummariesRes.ok) {
+                  const fileData = await volSummariesRes.json();
+                  if (fileData && fileData.content) volSummariesText = fileData.content;
+                }
+
+                let recommend = false;
+                let recommendVolName = "";
+
+                for (const vol of volumes) {
+                  if (maxChapter >= vol.endCh) {
+                    const isConsolidated = volSummariesText.includes(vol.name) || 
+                                           volSummariesText.includes(`Ch.${vol.startCh}-${vol.endCh}`) ||
+                                           volSummariesText.includes(`vol_${vol.startCh}-${vol.endCh}`);
+                    if (!isConsolidated) {
+                      recommend = true;
+                      recommendVolName = `${vol.name} (${vol.startCh}-${vol.endCh}章)`;
+                      break;
+                    }
+                  }
+                }
+                setConsolidationRecommend(recommend);
+                setRecommendVolumeName(recommendVolName);
+              } else {
+                setConsolidationRecommend(false);
+                setRecommendVolumeName("");
+              }
+            } catch (err) {
+              console.error("Failed to check consolidation status:", err);
+              setConsolidationRecommend(false);
+              setRecommendVolumeName("");
+            }
+
+            // Fetch styles list and active style for the book
+            try {
+              const stylesRes = await fetch("/api/inkos", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "style-list",
+                  cwd,
+                  args: { bookId: firstBook }
+                })
+              });
+              if (stylesRes.ok) {
+                const stylesData = await stylesRes.json();
+                if (onStylesChange) {
+                  onStylesChange(stylesData.styles || [], stylesData.activeStyle || null);
+                }
+              }
+            } catch (err) {
+              console.error("Failed to load style list:", err);
             }
 
             // Load chapter index.json to retrieve statuses
@@ -436,6 +748,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             setActiveBookId(null);
             setHasChapters(false);
             setChapterStatusMap({});
+            setConsolidationRecommend(false);
+            setRecommendVolumeName("");
+            setIsFanfic(false);
+            setActiveFanficMode(null);
           }
         } else {
           setHasBooks(false);
@@ -443,13 +759,22 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           setHasChapters(false);
           setChapterStatusMap({});
           setAvailableBooks([]);
+          setConsolidationRecommend(false);
+          setRecommendVolumeName("");
+          setIsFanfic(false);
+          setActiveFanficMode(null);
         }
       } else {
         setHasBooks(false);
+        setHasShorts(false);
         setActiveBookId(null);
         setHasChapters(false);
         setChapterStatusMap({});
         setAvailableBooks([]);
+        setConsolidationRecommend(false);
+        setRecommendVolumeName("");
+        setIsFanfic(false);
+        setActiveFanficMode(null);
       }
     } catch (e) {
       console.error("Failed to verify workspace status:", e);
@@ -562,6 +887,119 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       setExportError(err.message || "书稿导出失败，请重试。");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleRunConsolidate = async () => {
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    setIsConsolidating(true);
+    setConsolidationError(null);
+    setConsolidationResult(null);
+    setConsolidationLogs([]);
+    setIsConsolidationModalOpen(true);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "consolidate",
+          cwd: activeCwd,
+          args: { bookId: activeBookId, json: true }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setConsolidationLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {
+            console.error("Failed to parse stream chunk:", e);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        let errMsg = "";
+        if (finalResult) {
+          if (finalResult.error) {
+            errMsg = finalResult.error;
+          } else if (finalResult.stdout) {
+            try {
+              const parsed = JSON.parse(finalResult.stdout);
+              if (parsed && parsed.error) {
+                errMsg = parsed.error;
+              } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[parsed.length - 1]?.error) {
+                errMsg = parsed[parsed.length - 1].error;
+              }
+            } catch (e) {}
+          }
+          if (!errMsg && finalResult.stderr) {
+            errMsg = finalResult.stderr.trim();
+          }
+        }
+        throw new Error(errMsg || "大纲摘要压缩执行失败");
+      }
+
+      let result: any = null;
+      try {
+        result = JSON.parse(finalResult.stdout);
+      } catch (e) {
+        console.error("Failed to parse consolidate JSON output:", e);
+      }
+
+      if (result) {
+        setConsolidationResult({
+          archivedVolumes: result.archivedVolumes ?? 0,
+          retainedChapters: result.retainedChapters ?? 0,
+        });
+      } else {
+        setConsolidationResult({ archivedVolumes: 1, retainedChapters: 0 });
+      }
+
+      await checkWorkspaceStatus(activeCwd);
+      setExplorerKey((prev) => prev + 1);
+
+    } catch (err: any) {
+      console.error(err);
+      setConsolidationError(err.message || String(err));
+    } finally {
+      setIsConsolidating(false);
     }
   };
 
@@ -755,6 +1193,360 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     }
   };
 
+  const handleStyleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    setIsCloning(true);
+    setStyleError(null);
+    setStyleSuccessText(null);
+    setStyleLogs([]);
+    setStyleGuidePath(null);
+
+    try {
+      const name = styleName.trim();
+      if (!name) {
+        throw new Error("文风名称不能为空");
+      }
+
+      let body: Record<string, unknown> = {};
+      if (styleMode === "paste") {
+        if (!styleText.trim()) {
+          throw new Error("克隆样文本内容不能为空");
+        }
+        body = {
+          action: "style-import",
+          cwd: activeCwd,
+          args: {
+            bookId: activeBookId,
+            content: styleText.trim(),
+            name: name,
+            json: true
+          }
+        };
+      } else {
+        if (!stylePath.trim()) {
+          throw new Error("克隆样文绝对路径不能为空");
+        }
+        body = {
+          action: "style-import",
+          cwd: activeCwd,
+          args: {
+            bookId: activeBookId,
+            from: stylePath.trim(),
+            name: name,
+            json: true
+          }
+        };
+      }
+
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; stdout?: string; stderr?: string; error?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setStyleLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (err) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (err) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "文风导入执行失败，请检查路径或日志。");
+      }
+
+      setStyleSuccessText(`🎉 成功完成文风克隆分析！统计学特征已存入 style_profile.json，大模型文风提示词已写入 style_guide.md。后续写作 AI 将会自动参照该文风书写。`);
+      
+      const fullGuidePath = joinFilePath(activeCwd, `books/${activeBookId}/story/style_guide.md`);
+      setStyleGuidePath(fullGuidePath);
+
+      // Refresh explorer tree
+      await checkWorkspaceStatus(activeCwd);
+      setExplorerKey((k) => k + 1);
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+    } catch (err: any) {
+      console.error(err);
+      setStyleError(err.message || "文风导入执行失败，请重试。");
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
+  const handleStyleSwitch = async (styleName: string) => {
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    setIsStyleSwitching(true);
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "style-switch",
+          cwd: activeCwd,
+          args: { bookId: activeBookId, styleName }
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `HTTP error ${res.status}`);
+      }
+      if (onStylesChange) {
+        onStylesChange(availableStyles, styleName);
+      }
+      setExplorerKey((k) => k + 1);
+    } catch (err: any) {
+      alert(`切换文风失败: ${err.message || err}`);
+    } finally {
+      setIsStyleSwitching(false);
+    }
+  };
+
+  useEffect(() => {
+    onWorkspaceStatusChange?.(isInkosWorkspace, hasBooks);
+  }, [isInkosWorkspace, hasBooks, onWorkspaceStatusChange]);
+
+  useEffect(() => {
+    const handleTriggerStyleClone = () => {
+      setIsStyleModalOpen(true);
+      setStyleSuccessText(null);
+      setStyleError(null);
+      setStyleLogs([]);
+      setStyleName("");
+      setStyleText("");
+      setStylePath("");
+      setStyleGuidePath(null);
+    };
+
+    const handleTriggerRadar = () => {
+      setIsRadarModalOpen(true);
+      setRadarError(null);
+      setRadarResult(null);
+      setRadarLogs([]);
+    };
+
+    const handleTriggerStyleSwitch = (e: Event) => {
+      const customEvent = e as CustomEvent<{ styleName: string }>;
+      if (customEvent.detail && customEvent.detail.styleName) {
+        handleStyleSwitch(customEvent.detail.styleName);
+      }
+    };
+
+    window.addEventListener("trigger-style-clone", handleTriggerStyleClone);
+    window.addEventListener("trigger-radar", handleTriggerRadar);
+    window.addEventListener("trigger-style-switch", handleTriggerStyleSwitch);
+
+    return () => {
+      window.removeEventListener("trigger-style-clone", handleTriggerStyleClone);
+      window.removeEventListener("trigger-radar", handleTriggerRadar);
+      window.removeEventListener("trigger-style-switch", handleTriggerStyleSwitch);
+    };
+  }, [handleStyleSwitch]);
+
+  const handleFanficRefresh = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    if (!fanficRefreshSource.trim()) {
+      setFanficRefreshError("请输入原作素材的绝对路径");
+      return;
+    }
+
+    setIsRefreshingCanon(true);
+    setFanficRefreshError(null);
+    setFanficRefreshSuccess(null);
+    setFanficRefreshLogs([]);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "fanfic-refresh",
+          cwd: activeCwd,
+          args: {
+            bookId: activeBookId,
+            from: fanficRefreshSource.trim(),
+            json: true,
+          }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setFanficRefreshLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch (e) {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "刷新原作设定执行失败");
+      }
+
+      setFanficRefreshSuccess("同人原作正典设定已刷新！");
+      setExplorerKey((k) => k + 1);
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+    } catch (err: any) {
+      console.error(err);
+      setFanficRefreshError(err.message || String(err));
+    } finally {
+      setIsRefreshingCanon(false);
+    }
+  };
+
+  const handlePlanBlueprint = async () => {
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd || !activeBookId) return;
+
+    setIsWriteLoading(true);
+    setWriteProgressText("正在为您规划首章蓝图，请稍候...");
+    setWriteReportTitle("");
+    setWriteReportContent("");
+    setLogs([]);
+    setWriteError(null);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "plan",
+          cwd: activeCwd,
+          args: { bookId: activeBookId, json: true }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应正文流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; error?: string; stdout?: string; stderr?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              const text = chunk.data || "";
+              setLogs((prev) => [...prev, text]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (error) {
+            console.error("Failed to parse stream chunk:", error);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "首章蓝图规划失败");
+      }
+
+      setWriteReportTitle("首章蓝图规划完成");
+      setWriteReportContent("已成功规划首章大纲与大纲意图栈！\n已在 books/" + activeBookId + "/story/runtime/ 目录下生成了 chapter-0001.plan.md。接下来，您可以点击“智能写作”按钮以起草正文。");
+      setIsWriteReportOpen(true);
+      window.dispatchEvent(new CustomEvent("refresh-explorer"));
+      await checkWorkspaceStatus(activeCwd);
+    } catch (err) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      setWriteError(message);
+    } finally {
+      setIsWriteLoading(false);
+    }
+  };
+
   const handleStartWriting = async () => {
     const activeCwd = selectedCwdProp || selectedCwd;
     if (!activeCwd || !activeBookId) return;
@@ -919,7 +1711,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       console.error(err);
       const isTimeout = err.message.includes("超时") || err.message.includes("timed out") || logs.some(l => l.includes("超时"));
       if (isTimeout) {
-        setWriteError("任务运行超时（已超过 600 秒）。建议在右上角「模型配置」中，更换速度较快且稳定的标准模型（例如将 reasoning/思索模型切换为标准对话模型），并检查您的 API Key 与接口代理连接状态。");
+        setWriteError("任务运行超时（已超过 1800 秒）。建议在右上角「模型配置」中，更换速度较快且稳定的标准模型（例如将 reasoning/思索模型切换为标准对话模型），并检查您的 API Key 与接口代理连接状态。");
       } else {
         setWriteError(err.message || String(err));
       }
@@ -939,13 +1731,25 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     setBookError(null);
 
     try {
+      const isFanficGenre = bookGenre === "fanfic";
+      if (isFanficGenre && !fanficSource.trim()) {
+        throw new Error("同人小说原作素材磁盘路径不能为空");
+      }
+
       const res = await fetch("/api/inkos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "book-create",
+          action: isFanficGenre ? "fanfic-init" : "book-create",
           cwd: activeCwd,
-          args: {
+          args: isFanficGenre ? {
+            title: bookTitle.trim(),
+            from: fanficSource.trim(),
+            mode: fanficMode,
+            genre: "fanfic",
+            platform: bookPlatform,
+            json: true,
+          } : {
             title: bookTitle.trim(),
             genre: bookGenre,
             platform: bookPlatform,
@@ -1002,12 +1806,216 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       
       setBookTitle("");
       setBookBrief("");
+      setFanficSource("");
       setIsBookModalOpen(false);
     } catch (err: any) {
       console.error(err);
       setBookError(err.message || "创建书籍失败，请确认侧边栏左下角 Models 中 API Key 填写正确且模型支持当前题材生成。");
     } finally {
       setIsCreatingBook(false);
+    }
+  };
+
+  const handleRadarScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd) return;
+
+    setIsScanningRadar(true);
+    setRadarError(null);
+    setRadarResult(null);
+    setRadarLogs([]);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "radar-scan",
+          cwd: activeCwd,
+          args: { json: true }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; error?: string; stdout?: string; stderr?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setRadarLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (error) {
+            console.error("Failed to parse stream chunk:", error);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || "扫描市场情报失败");
+      }
+
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = JSON.parse(finalResult.stdout || "");
+      } catch (error) {
+        console.error("Failed to parse radar scan result JSON:", error);
+      }
+
+      if (parsed) {
+        setRadarResult(parsed);
+      } else {
+        throw new Error("检测引擎未返回有效的 JSON 结构");
+      }
+    } catch (err) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      setRadarError(message);
+    } finally {
+      setIsScanningRadar(false);
+    }
+  };
+
+  const handleShortRunStep = async (stepStage: "outline" | "draft" | "package") => {
+    if (!shortDirection.trim()) {
+      setShortError("创作方向不能为空");
+      return;
+    }
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (!activeCwd) return;
+
+    setIsRunningShort(true);
+    setShortError(null);
+    setShortSuccess(null);
+    setShortLogs([]);
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "short-run",
+          cwd: activeCwd,
+          args: {
+            direction: shortDirection.trim(),
+            chapters: shortChapters,
+            chars: shortChars,
+            noCover: !shortCover,
+            json: true,
+            stage: stepStage,
+            storyId: shortStoryId || undefined,
+          }
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 异常 ${res.status}`);
+      }
+
+      if (!res.body) {
+        throw new Error("响应流为空");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: { success: boolean; error?: string; stdout?: string; stderr?: string } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              setShortLogs((prev) => [...prev, chunk.data || ""]);
+            } else if (chunk.type === "result") {
+              finalResult = chunk;
+            }
+          } catch (error) {
+            console.error("Failed to parse stream chunk:", error);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "result") finalResult = chunk;
+        } catch {}
+      }
+
+      if (!finalResult || !finalResult.success) {
+        throw new Error(finalResult?.error || `${stepStage === "outline" ? "大纲规划" : stepStage === "draft" ? "正文写作" : "封面与包装"} 阶段任务执行失败`);
+      }
+
+      let parsed: { storyId?: string } | null = null;
+      try {
+        parsed = JSON.parse(finalResult.stdout || "");
+      } catch (error) {
+        console.error("Failed to parse short fiction result JSON:", error);
+      }
+
+      if (parsed && parsed.storyId) {
+        setShortStoryId(parsed.storyId);
+        if (stepStage === "outline") {
+          setShortSuccess(`【第一步：生成大纲】执行完成！故事 ID 为: ${parsed.storyId}\n大纲与大纲评审文件已输出至 shorts/${parsed.storyId}/outline/v002.md，请查阅无误后点击下方【第二步】开始起草章节。`);
+          setShortFictionStage("draft");
+        } else if (stepStage === "draft") {
+          setShortSuccess(`【第二步：批量起草】执行完成！故事 ID 为: ${parsed.storyId}\n所有章节的初稿已经全部起草完毕，文件输出在 shorts/${parsed.storyId}/final/full.md。点击下方【第三步】即可一键打包与制作封面。`);
+          setShortFictionStage("package");
+        } else if (stepStage === "package") {
+          setShortSuccess(`【第三步：生成书封包装】执行完成！\n故事销售包装和封面图文件已成功生成。至此，该短篇小说已全部创作完毕！`);
+          setShortFictionStage("completed");
+        }
+        window.dispatchEvent(new CustomEvent("refresh-explorer"));
+        await checkWorkspaceStatus(activeCwd);
+      } else {
+        setShortSuccess(`全自动短篇生成运行完成！已将成果输出至 shorts/ 目录下，请检查文件浏览器。`);
+        window.dispatchEvent(new CustomEvent("refresh-explorer"));
+        await checkWorkspaceStatus(activeCwd);
+      }
+    } catch (err) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      setShortError(message);
+    } finally {
+      setIsRunningShort(false);
     }
   };
 
@@ -1121,8 +2129,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   useEffect(() => {
     fetch("/api/models")
       .then((r) => r.json())
-      .then((d: { modelList?: { id: string; name: string; provider: string }[] }) => {
+      .then((d: { modelList?: { id: string; name: string; provider: string }[]; defaultModel?: { provider: string; modelId: string } | null }) => {
         if (d.modelList) setModelList(d.modelList);
+        if (d.defaultModel) setDefaultModel(d.defaultModel);
       })
       .catch(() => {});
   }, []);
@@ -1195,17 +2204,68 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     onCwdChange?.(selectedCwd);
   }, [selectedCwd, onCwdChange]);
 
-  // Check existence of recent cwds whenever allSessions changes
+  // Save selected Cwd to localStorage for persistence
+  useEffect(() => {
+    if (!selectedCwd) return;
+    try {
+      const stored = localStorage.getItem("ink-xy-recent-cwds");
+      let list: string[] = [];
+      if (stored) {
+        list = JSON.parse(stored);
+      }
+      if (!Array.isArray(list)) list = [];
+      const updated = [selectedCwd, ...list.filter((c) => c !== selectedCwd)].slice(0, 10);
+      localStorage.setItem("ink-xy-recent-cwds", JSON.stringify(updated));
+    } catch (e) {
+      console.error("Failed to save recent CWD to localStorage:", e);
+    }
+  }, [selectedCwd]);
+
+  // Check existence of recent cwds whenever allSessions, selectedCwd, or explorerKey changes
   useEffect(() => {
     const rawCwds = getRecentCwds(allSessions);
-    if (rawCwds.length === 0) {
+    let customCwds: string[] = [];
+    try {
+      const stored = localStorage.getItem("ink-xy-recent-cwds");
+      if (stored) {
+        customCwds = JSON.parse(stored);
+      }
+    } catch (e) {}
+    if (!Array.isArray(customCwds)) customCwds = [];
+
+    // Filter out deleted/excluded CWDs
+    let deletedCwds: string[] = [];
+    try {
+      const deletedStored = localStorage.getItem("ink-xy-deleted-cwds");
+      if (deletedStored) {
+        deletedCwds = JSON.parse(deletedStored);
+      }
+    } catch (e) {}
+    if (!Array.isArray(deletedCwds)) deletedCwds = [];
+
+    const combined = [...new Set([...rawCwds, ...customCwds])].filter(
+      (c) => !deletedCwds.includes(c)
+    );
+
+    if (combined.length === 0) {
       setValidRecentCwds([]);
       setRecentCwdsChecked(true);
       return;
     }
     const checkAll = async () => {
+      // First, register them with the backend so they are in allowed roots
+      try {
+        await fetch("/api/register-cwd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cwds: combined })
+        });
+      } catch (e) {
+        console.error("Failed to register combined CWDs:", e);
+      }
+
       const results = await Promise.all(
-        rawCwds.map(async (cwd) => {
+        combined.map(async (cwd) => {
           try {
             const res = await fetch(`/api/files/${encodeFilePathForApi(cwd)}?type=list&check=true`);
             if (res.ok) {
@@ -1221,7 +2281,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       setRecentCwdsChecked(true);
     };
     checkAll();
-  }, [allSessions]);
+  }, [allSessions, selectedCwd, explorerKey]);
 
   // Auto-select cwd and restore session from URL on first load
   useEffect(() => {
@@ -1263,6 +2323,19 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     const path = customPathValue.trim();
     if (path) {
       setSelectedCwd(path);
+      // Remove from deleted list if they manually re-added it
+      try {
+        const deletedStored = localStorage.getItem("ink-xy-deleted-cwds");
+        if (deletedStored) {
+          let deletedList: string[] = JSON.parse(deletedStored);
+          if (Array.isArray(deletedList) && deletedList.includes(path)) {
+            deletedList = deletedList.filter((c) => c !== path);
+            localStorage.setItem("ink-xy-deleted-cwds", JSON.stringify(deletedList));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to remove re-added path from deleted list:", e);
+      }
     }
     setCustomPathOpen(false);
     setCustomPathValue("");
@@ -1281,6 +2354,50 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       // ignore
     }
   }, []);
+
+  const handleDeleteRecentCwd = useCallback((cwdToDelete: string) => {
+    // 1. Add to deleted/excluded CWDs list in localStorage
+    try {
+      const deletedStored = localStorage.getItem("ink-xy-deleted-cwds");
+      let deletedList: string[] = [];
+      if (deletedStored) deletedList = JSON.parse(deletedStored);
+      if (!Array.isArray(deletedList)) deletedList = [];
+      if (!deletedList.includes(cwdToDelete)) {
+        deletedList.push(cwdToDelete);
+        localStorage.setItem("ink-xy-deleted-cwds", JSON.stringify(deletedList));
+      }
+    } catch (e) {
+      console.error("Failed to update deleted CWDs list:", e);
+    }
+
+    // 2. Remove from ink-xy-recent-cwds in localStorage
+    try {
+      const stored = localStorage.getItem("ink-xy-recent-cwds");
+      if (stored) {
+        let list: string[] = JSON.parse(stored);
+        if (Array.isArray(list)) {
+          const updated = list.filter((c) => c !== cwdToDelete);
+          localStorage.setItem("ink-xy-recent-cwds", JSON.stringify(updated));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to remove CWD from localStorage:", e);
+    }
+
+    // 3. Update the state to immediately reflect the deletion in the UI
+    setValidRecentCwds((prev) => prev.filter((c) => c !== cwdToDelete));
+
+    // 4. If the deleted path was currently selected, select another one or fallback
+    const activeCwd = selectedCwdProp || selectedCwd;
+    if (activeCwd === cwdToDelete) {
+      const remaining = validRecentCwds.filter((c) => c !== cwdToDelete);
+      if (remaining.length > 0) {
+        setSelectedCwd(remaining[0]);
+      } else {
+        handleDefaultCwd();
+      }
+    }
+  }, [validRecentCwds, selectedCwdProp, selectedCwd, handleDefaultCwd]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -1456,42 +2573,98 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               }}
             >
               {validRecentCwds.map((cwd) => (
-                <button
+                <div
                   key={cwd}
-                  onClick={() => {
-                    setSelectedCwd(cwd);
-                    setCustomPathOpen(false);
-                    setCustomPathValue("");
-                    setDropdownOpen(false);
-                  }}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 7,
+                    justifyContent: "space-between",
                     width: "100%",
-                    padding: "8px 10px",
                     background: cwd === selectedCwd ? "var(--bg-selected)" : "none",
-                    border: "none",
                     borderBottom: "1px solid var(--border)",
-                    color: cwd === selectedCwd ? "var(--text)" : "var(--text-muted)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    fontSize: 11,
-                    fontFamily: "var(--font-mono)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    transition: "background 0.2s",
                   }}
-                  title={cwd}
+                  onMouseEnter={(e) => {
+                    if (cwd !== selectedCwd) {
+                      e.currentTarget.style.background = "var(--bg-panel)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (cwd !== selectedCwd) {
+                      e.currentTarget.style.background = "none";
+                    }
+                  }}
                 >
-                  {cwd === selectedCwd && (
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <polyline points="1.5 5 4 7.5 8.5 2.5" />
+                  <button
+                    onClick={() => {
+                      setSelectedCwd(cwd);
+                      setCustomPathOpen(false);
+                      setCustomPathValue("");
+                      setDropdownOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 7,
+                      flex: 1,
+                      padding: "8px 10px",
+                      background: "none",
+                      border: "none",
+                      color: cwd === selectedCwd ? "var(--text)" : "var(--text-muted)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontSize: 11,
+                      fontFamily: "var(--font-mono)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={cwd}
+                  >
+                    {cwd === selectedCwd && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="1.5 5 4 7.5 8.5 2.5" />
+                      </svg>
+                    )}
+                    {cwd !== selectedCwd && <span style={{ width: 10, flexShrink: 0 }} />}
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortenCwd(cwd, homeDir)}</span>
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteRecentCwd(cwd);
+                    }}
+                    title="从列表中移除该路径"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 20,
+                      height: 20,
+                      marginRight: 6,
+                      background: "none",
+                      border: "none",
+                      color: "var(--text-dim)",
+                      cursor: "pointer",
+                      borderRadius: 4,
+                      transition: "color 0.2s, background 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#ef4444";
+                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--text-dim)";
+                      e.currentTarget.style.background = "none";
+                    }}
+                  >
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
-                  )}
-                  {cwd !== selectedCwd && <span style={{ width: 10, flexShrink: 0 }} />}
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortenCwd(cwd, homeDir)}</span>
-                </button>
+                  </button>
+                </div>
               ))}
 
               {/* Default cwd shortcut */}
@@ -1688,6 +2861,33 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     </svg>
                   </button>
                 )}
+                {isFanfic && (
+                  <button
+                    onClick={() => {
+                      setIsFanficRefreshModalOpen(true);
+                      setFanficRefreshSuccess(null);
+                      setFanficRefreshError(null);
+                      setFanficRefreshLogs([]);
+                      setFanficRefreshSource("");
+                    }}
+                    title="刷新同人原作背景设定 (Refresh Fanfic Canon)"
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 26, height: 26, padding: 0,
+                      background: "none",
+                      border: "none",
+                      color: "var(--text-dim)",
+                      cursor: "pointer",
+                      borderRadius: 5,
+                      flexShrink: 0,
+                      transition: "color 0.3s, background 0.3s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
+                  >
+                    <span style={{ fontSize: 13 }}>🎬</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setIsImportModalOpen(true);
@@ -1806,7 +3006,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </button>
                 </div>
               )}
-              {isInkosWorkspace && !hasBooks && (
+              {isInkosWorkspace && !hasBooks && !hasShorts && (
                 <div style={{
                   margin: "8px 10px",
                   padding: "12px",
@@ -1842,39 +3042,81 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     >
                       ✍️ 创建小说书籍
                     </button>
+                    {showImportDraft && (
+                      <button
+                        onClick={() => {
+                          setIsImportModalOpen(true);
+                          setImportSuccessText(null);
+                          setImportError(null);
+                          setImportLogs([]);
+                          setImportFromPath("");
+                          setImportSplitRegex("");
+                          setImportResumeFrom("");
+                          setImportIsSeries(false);
+                          setImportBookSelection("new");
+                          setNewBookId("");
+                          setNewBookTitle("");
+                          const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
+                          setImportCanonFromBookId(otherBook);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "6px 0",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          color: "var(--text)",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          textAlign: "center",
+                          fontSize: "11px",
+                          transition: "opacity 0.15s",
+                        }}
+                      >
+                        📥 导入已有旧稿
+                      </button>
+                    )}
+                  </div>
+                  {showAutoGenerateShort && (
                     <button
                       onClick={() => {
-                        setIsImportModalOpen(true);
-                        setImportSuccessText(null);
-                        setImportError(null);
-                        setImportLogs([]);
-                        setImportFromPath("");
-                        setImportSplitRegex("");
-                        setImportResumeFrom("");
-                        setImportIsSeries(false);
-                        setImportBookSelection("new");
-                        setNewBookId("");
-                        setNewBookTitle("");
-                        const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
-                        setImportCanonFromBookId(otherBook);
+                        setIsShortRunModalOpen(true);
+                        setShortError(null);
+                        setShortSuccess(null);
+                        setShortLogs([]);
+                        setShortDirection("");
+                        setShortChapters(12);
+                        setShortChars(1000);
+                        setShortCover(true);
                       }}
                       style={{
-                        flex: 1,
+                        width: "100%",
+                        marginTop: 8,
                         padding: "6px 0",
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
+                        background: "rgba(139, 92, 246, 0.08)",
+                        border: "1px solid rgba(139, 92, 246, 0.3)",
                         borderRadius: "6px",
-                        color: "var(--text)",
+                        color: "#a78bfa",
                         fontWeight: 600,
                         cursor: "pointer",
                         textAlign: "center",
                         fontSize: "11px",
-                        transition: "opacity 0.15s",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(139, 92, 246, 0.16)";
+                        e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.5)";
+                        e.currentTarget.style.color = "#c084fc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(139, 92, 246, 0.08)";
+                        e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.3)";
+                        e.currentTarget.style.color = "#a78bfa";
                       }}
                     >
-                      📥 导入已有旧稿
+                      🚀 一键全自动生成短篇
                     </button>
-                  </div>
+                  )}
                 </div>
               )}
               {isInkosWorkspace && hasBooks && !hasChapters && (
@@ -1892,70 +3134,245 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     <span>书籍已创建，准备开始首章创作</span>
                   </div>
                   <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
-                    您的创作宇宙和人设基础已准备就绪！点击下方按钮，由 AI 协同起草第一章正文，拉开故事序幕。
+                    {hasFirstChapterBlueprint 
+                      ? "第一章蓝图已规划完成！点击下方按钮，由 AI 协同起草第一章正文，拉开故事序幕。"
+                      : "您的创作宇宙和人设基础已准备就绪！开始写作前，请先点击下方按钮规划首章蓝图，确立开篇方向。"}
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                    <button
-                      onClick={handleStartWriting}
-                      disabled={isWriteLoading}
-                      style={{
-                        flex: 1,
-                        padding: "6px 0",
-                        background: "var(--accent)",
-                        border: "none",
-                        borderRadius: "6px",
-                        color: "white",
-                        fontWeight: 600,
-                        cursor: isWriteLoading ? "not-allowed" : "pointer",
-                        textAlign: "center",
-                        fontSize: "11px",
-                        transition: "opacity 0.15s",
-                      }}
-                    >
-                      ✍️ 智能写作正文
-                    </button>
+                    {!hasFirstChapterBlueprint ? (
+                      <button
+                        onClick={handlePlanBlueprint}
+                        disabled={isWriteLoading}
+                        style={{
+                          flex: 1,
+                          padding: "6px 0",
+                          background: "var(--accent)",
+                          border: "none",
+                          borderRadius: "6px",
+                          color: "white",
+                          fontWeight: 600,
+                          cursor: isWriteLoading ? "not-allowed" : "pointer",
+                          textAlign: "center",
+                          fontSize: "11px",
+                          transition: "opacity 0.15s",
+                        }}
+                      >
+                        🗺️ 规划首章蓝图
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleStartWriting}
+                        disabled={isWriteLoading}
+                        style={{
+                          flex: 1,
+                          padding: "6px 0",
+                          background: "var(--accent)",
+                          border: "none",
+                          borderRadius: "6px",
+                          color: "white",
+                          fontWeight: 600,
+                          cursor: isWriteLoading ? "not-allowed" : "pointer",
+                          textAlign: "center",
+                          fontSize: "11px",
+                          transition: "opacity 0.15s",
+                        }}
+                      >
+                        ✍️ 智能写作
+                      </button>
+                    )}
+                    {showImportDraft && (
+                      <button
+                        onClick={() => {
+                          setIsImportModalOpen(true);
+                          setImportSuccessText(null);
+                          setImportError(null);
+                          setImportLogs([]);
+                          setImportFromPath("");
+                          setImportSplitRegex("");
+                          setImportResumeFrom("");
+                          setImportIsSeries(false);
+                          const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
+                          setImportCanonFromBookId(otherBook);
+                        }}
+                        disabled={isWriteLoading}
+                        style={{
+                          flex: 1,
+                          padding: "6px 0",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          color: "var(--text)",
+                          fontWeight: 600,
+                          cursor: isWriteLoading ? "not-allowed" : "pointer",
+                          textAlign: "center",
+                          fontSize: "11px",
+                          transition: "opacity 0.15s",
+                        }}
+                      >
+                        📥 导入已有旧稿
+                      </button>
+                    )}
+                  </div>
+                  {showAutoGenerateShort && (
                     <button
                       onClick={() => {
-                        setIsImportModalOpen(true);
-                        setImportSuccessText(null);
-                        setImportError(null);
-                        setImportLogs([]);
-                        setImportFromPath("");
-                        setImportSplitRegex("");
-                        setImportResumeFrom("");
-                        setImportIsSeries(false);
-                        const otherBook = availableBooks.find((b) => b !== activeBookId) || "";
-                        setImportCanonFromBookId(otherBook);
+                        setIsShortRunModalOpen(true);
+                        setShortError(null);
+                        setShortSuccess(null);
+                        setShortLogs([]);
+                        setShortDirection("");
+                        setShortChapters(12);
+                        setShortChars(1000);
+                        setShortCover(true);
                       }}
-                      disabled={isWriteLoading}
                       style={{
-                        flex: 1,
+                        width: "calc(100% - 20px)",
+                        margin: "8px 10px 0 10px",
                         padding: "6px 0",
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
+                        background: "rgba(139, 92, 246, 0.08)",
+                        border: "1px solid rgba(139, 92, 246, 0.3)",
                         borderRadius: "6px",
-                        color: "var(--text)",
+                        color: "#a78bfa",
                         fontWeight: 600,
-                        cursor: isWriteLoading ? "not-allowed" : "pointer",
+                        cursor: "pointer",
                         textAlign: "center",
                         fontSize: "11px",
-                        transition: "opacity 0.15s",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(139, 92, 246, 0.16)";
+                        e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.5)";
+                        e.currentTarget.style.color = "#c084fc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(139, 92, 246, 0.08)";
+                        e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.3)";
+                        e.currentTarget.style.color = "#a78bfa";
                       }}
                     >
-                      📥 导入已有旧稿
+                      🚀 一键全自动生成短篇
                     </button>
-                  </div>
+                  )}
                 </div>
               )}
               {registeredCwd === (selectedCwdProp ?? selectedCwd) && (
-                <div style={{ flex: 1 }}>
-                  <FileExplorer
-                    cwd={selectedCwdProp ?? selectedCwd!}
-                    onOpenFile={onOpenFile ?? (() => {})}
-                    refreshKey={explorerKey}
-                    onAtMention={onAtMention}
-                    chapterStatusMap={chapterStatusMap}
-                  />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                  {/* Consolidation Advisory Alert Card */}
+                  {consolidationRecommend && (
+                    <div style={{
+                      margin: "8px 10px",
+                      padding: "10px 12px",
+                      background: "rgba(249, 115, 22, 0.04)",
+                      border: "1px solid rgba(249, 115, 22, 0.25)",
+                      borderRadius: "8px",
+                      fontSize: "11px",
+                      fontFamily: "var(--font-serif)",
+                      boxShadow: "0 2px 8px rgba(249, 115, 22, 0.05)",
+                      flexShrink: 0,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#e07a34", marginBottom: 4 }}>
+                        <span style={{ fontSize: 13 }}>🗜️</span>
+                        <span>建议进行大纲摘要压缩</span>
+                      </div>
+                      <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
+                        检测到完结卷 <strong>{recommendVolumeName}</strong>，建议运行压缩归档以优化大语言模型上下文，防止远期伏笔记忆衰退。
+                      </div>
+                      <button
+                        onClick={handleRunConsolidate}
+                        disabled={isConsolidating}
+                        style={{
+                          width: "100%",
+                          padding: "5px 0",
+                          background: "rgba(249, 115, 22, 0.08)",
+                          border: "1px solid rgba(249, 115, 22, 0.35)",
+                          borderRadius: "6px",
+                          color: "#ff903f",
+                          fontWeight: 600,
+                          cursor: isConsolidating ? "not-allowed" : "pointer",
+                          textAlign: "center",
+                          fontSize: "11px",
+                          transition: "all 0.2s",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isConsolidating) {
+                            e.currentTarget.style.background = "rgba(249, 115, 22, 0.16)";
+                            e.currentTarget.style.borderColor = "#f97316";
+                            e.currentTarget.style.color = "#ffaa64";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isConsolidating) {
+                            e.currentTarget.style.background = "rgba(249, 115, 22, 0.08)";
+                            e.currentTarget.style.borderColor = "rgba(249, 115, 22, 0.35)";
+                            e.currentTarget.style.color = "#ff903f";
+                          }
+                        }}
+                      >
+                        {isConsolidating ? "正在压缩..." : "🗜️ 一键压缩归档"}
+                      </button>
+                    </div>
+                  )}
+                  {/* Fanfiction Mode Indicator Panel */}
+                  {isFanfic && (
+                    <div style={{
+                      margin: "0 10px 8px 10px",
+                      padding: "8px 12px",
+                      background: "var(--bg-panel)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      fontSize: "11px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexShrink: 0,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: 13 }}>🎬</span>
+                        <span>同人创作模式:</span>
+                        <strong style={{ color: "var(--accent)", fontWeight: 600 }}>
+                          {activeFanficMode === "canon" ? "正典延续" :
+                           activeFanficMode === "au" ? "平行宇宙" :
+                           activeFanficMode === "ooc" ? "角色偏离" :
+                           activeFanficMode === "cp" ? "角色配对" : activeFanficMode || "未知"}
+                        </strong>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsFanficRefreshModalOpen(true);
+                          setFanficRefreshSuccess(null);
+                          setFanficRefreshError(null);
+                          setFanficRefreshLogs([]);
+                          setFanficRefreshSource("");
+                        }}
+                        style={{
+                          padding: "2px 6px",
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "4px",
+                          fontSize: "10px",
+                          outline: "none",
+                          cursor: "pointer",
+                          fontWeight: 500,
+                          transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                      >
+                        🔄 刷新设定
+                      </button>
+                    </div>
+                  )}
+                  <div style={{ flex: 1, overflowY: "auto" }}>
+                    <FileExplorer
+                      cwd={selectedCwdProp ?? selectedCwd!}
+                      onOpenFile={onOpenFile ?? (() => {})}
+                      refreshKey={explorerKey}
+                      onAtMention={onAtMention}
+                      chapterStatusMap={chapterStatusMap}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -2236,6 +3653,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         gemId={editingGemId}
         onSave={() => loadGems()}
         modelList={modelList}
+        defaultModel={defaultModel}
       />
       
       {/* Create Book Modal */}
@@ -2411,12 +3829,28 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                         outline: "none",
                       }}
                     >
-                      <option value="xuanhuan">玄幻奇幻 (Xuanhuan)</option>
-                      <option value="urban">都市异能 (Urban)</option>
-                      <option value="history">历史同人 (History)</option>
-                      <option value="scifi">科幻未来 (Sci-Fi)</option>
-                      <option value="game">网游竞技 (Game)</option>
-                      <option value="fanfic">同人创作 (Fanfic)</option>
+                      <optgroup label="中文网文题材 (Chinese Genres)" style={{ background: "var(--bg-panel)", color: "var(--text)" }}>
+                        <option value="xuanhuan">玄幻奇幻 (Xuanhuan)</option>
+                        <option value="xianxia">仙侠修真 (Xianxia)</option>
+                        <option value="urban">都市异能 (Urban)</option>
+                        <option value="horror">悬疑恐怖 (Horror)</option>
+                        <option value="other">其它通用 (Other)</option>
+                      </optgroup>
+                      <optgroup label="英文原生题材 (English Genres)" style={{ background: "var(--bg-panel)", color: "var(--text)" }}>
+                        <option value="litrpg">数据无限流/系统流 (LitRPG)</option>
+                        <option value="progression">升级流奇幻 (Progression Fantasy)</option>
+                        <option value="cozy">温馨奇幻 (Cozy Fantasy)</option>
+                        <option value="cultivation">英文修真 (English Cultivation)</option>
+                        <option value="dungeon-core">地下城核心流 (Dungeon Core)</option>
+                        <option value="isekai">异世界穿梭 (Isekai / Portal Fantasy)</option>
+                        <option value="romantasy">浪漫奇幻 (Romantasy)</option>
+                        <option value="sci-fi">科学幻想 (Science Fiction)</option>
+                        <option value="system-apocalypse">系统废土流 (System Apocalypse)</option>
+                        <option value="tower-climber">爬塔闯关流 (Tower Climbing)</option>
+                      </optgroup>
+                      <optgroup label="特殊创作模式 (Special Modes)" style={{ background: "var(--bg-panel)", color: "var(--text)" }}>
+                        <option value="fanfic">同人创作 (Fanfic)</option>
+                      </optgroup>
                     </select>
                   </div>
                   
@@ -2445,30 +3879,85 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </div>
                 </div>
                 
-                <div style={{ marginBottom: "20px" }}>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
-                    大纲梗概/创意简报 (Brief - 可选)
-                  </label>
-                  <textarea
-                    value={bookBrief}
-                    onChange={(e) => setBookBrief(e.target.value)}
-                    placeholder="在此输入您的创意构想（例如：主角是退役兵王、金手指是万界交易面板、核心冲突为世家倾轧）。AI 架构师将优先融合您的创意进行大纲设定设计。"
-                    rows={4}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "6px",
-                      background: "var(--bg)",
-                      color: "var(--text)",
-                      fontSize: "12px",
-                      fontFamily: "var(--font-serif)",
-                      lineHeight: "1.6",
-                      outline: "none",
-                      resize: "vertical",
-                    }}
-                  />
-                </div>
+                {bookGenre === "fanfic" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+                        同人创作模式 (Fanfic Mode)
+                      </label>
+                      <select
+                        value={fanficMode}
+                        onChange={(e) => setFanficMode(e.target.value as any)}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                          fontSize: "12px",
+                          outline: "none",
+                        }}
+                      >
+                        <option value="canon">正典延续 (Canon - 忠实原著剧情补完)</option>
+                        <option value="au">平行宇宙 (AU - 相同设定不同时空/世界)</option>
+                        <option value="ooc">角色偏离 (OOC - 性格反转与脑洞脑侧)</option>
+                        <option value="cp">角色配对 (CP - 深入刻画人物关系与情感)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+                        原作素材文件/目录绝对路径 (Source Path - 必填)
+                      </label>
+                      <input
+                        type="text"
+                        value={fanficSource}
+                        onChange={(e) => setFanficSource(e.target.value)}
+                        placeholder="请输入原作素材的绝对路径，例如: D:/novel/source.txt"
+                        required
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                          fontSize: "12px",
+                          fontFamily: "var(--font-serif)",
+                          outline: "none",
+                        }}
+                      />
+                      <div style={{ color: "var(--text-dim)", fontSize: "10px", marginTop: "4px", lineHeight: 1.4 }}>
+                        支持指向一个 `.txt` / `.md` 文本文件，或包含若干原作设定/故事文本的文件夹绝对路径。AI 将会自动提取并解析作为同人设定依据。
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: "20px" }}>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>
+                      大纲梗概/创意简报 (Brief - 可选)
+                    </label>
+                    <textarea
+                      value={bookBrief}
+                      onChange={(e) => setBookBrief(e.target.value)}
+                      placeholder="在此输入您的创意构想（例如：主角是退役兵王、金手指是万界交易面板、核心冲突为世家倾轧）。AI 架构师将优先融合您的创意进行大纲设定设计。"
+                      rows={4}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        background: "var(--bg)",
+                        color: "var(--text)",
+                        fontSize: "12px",
+                        fontFamily: "var(--font-serif)",
+                        lineHeight: "1.6",
+                        outline: "none",
+                        resize: "vertical",
+                      }}
+                    />
+                  </div>
+                )}
                 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
                   <button
@@ -3186,13 +4675,16 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     </div>
                   )}
                   {importLogs.length > 0 && (
-                    <div style={{
-                      maxHeight: "80px", overflowY: "auto",
-                      fontFamily: "var(--font-mono)", fontSize: 10,
-                      color: "var(--text-dim)", background: "#121214",
-                      padding: "6px", borderRadius: 4, whiteSpace: "pre-wrap",
-                      textAlign: "left",
-                    }}>
+                    <div
+                      ref={importConsoleRef}
+                      style={{
+                        maxHeight: "80px", overflowY: "auto",
+                        fontFamily: "var(--font-mono)", fontSize: 10,
+                        color: "var(--text-dim)", background: "#121214",
+                        padding: "6px", borderRadius: 4, whiteSpace: "pre-wrap",
+                        textAlign: "left",
+                      }}
+                    >
                       {importLogs.map((log, index) => (
                         <div key={index} style={{ marginBottom: 2 }}>{log}</div>
                       ))}
@@ -3234,6 +4726,1174 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Novel Style Clone Modal */}
+      {isStyleModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            width: "500px",
+            maxWidth: "95%",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)",
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 20px", borderBottom: "1px solid var(--border)",
+              background: "var(--bg)",
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                🎭 ink-xY 文风克隆工坊 ({activeBookId})
+              </span>
+              <button
+                onClick={() => { if (!isCloning) setIsStyleModalOpen(false); }}
+                disabled={isCloning}
+                style={{
+                  background: "none", border: "none", color: "var(--text-dim)",
+                  fontSize: 14, cursor: isCloning ? "not-allowed" : "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tab Headers */}
+            <div style={{
+              display: "flex",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--bg-panel)",
+            }}>
+              <button
+                type="button"
+                onClick={() => { if (!isCloning) setStyleMode("paste"); }}
+                disabled={isCloning}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  background: styleMode === "paste" ? "var(--bg)" : "transparent",
+                  color: styleMode === "paste" ? "var(--accent)" : "var(--text-muted)",
+                  borderBottom: styleMode === "paste" ? "2px solid var(--accent)" : "none",
+                  cursor: isCloning ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                📝 直接粘贴样文
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!isCloning) setStyleMode("path"); }}
+                disabled={isCloning}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  background: styleMode === "path" ? "var(--bg)" : "transparent",
+                  color: styleMode === "path" ? "var(--accent)" : "var(--text-muted)",
+                  borderBottom: styleMode === "path" ? "2px solid var(--accent)" : "none",
+                  cursor: isCloning ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                📂 指定本地文件
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleStyleImport} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Style Name Input */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                  文风名称 (如：金庸、江南、科幻冷峻、言情华丽)*
+                </label>
+                <input
+                  type="text"
+                  value={styleName}
+                  onChange={(e) => setStyleName(e.target.value)}
+                  placeholder="如: 金庸"
+                  disabled={isCloning}
+                  style={{
+                    width: "100%", padding: "8px 10px", borderRadius: 6,
+                    background: "var(--bg)", border: "1px solid var(--border)",
+                    color: "var(--text)", fontSize: 12, fontFamily: "var(--font-serif)",
+                    outline: "none"
+                  }}
+                  required
+                />
+              </div>
+
+              {styleMode === "paste" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                    粘贴样文本内容 (建议 1000 - 5000 字)*
+                  </label>
+                  <textarea
+                    value={styleText}
+                    onChange={(e) => setStyleText(e.target.value)}
+                    placeholder="在此处粘贴您想让 AI 模仿写作的样文本内容（例如从金庸、江南等作家的作品中复制一两页经典段落）..."
+                    disabled={isCloning}
+                    style={{
+                      width: "100%", height: "120px", padding: "8px 10px", borderRadius: 6,
+                      background: "var(--bg)", border: "1px solid var(--border)",
+                      color: "var(--text)", fontSize: 11, fontFamily: "var(--font-serif)",
+                      outline: "none", resize: "none", lineHeight: 1.5,
+                    }}
+                    required
+                  />
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                    输入源文本文件绝对路径 (from)*
+                  </label>
+                  <input
+                    type="text"
+                    value={stylePath}
+                    onChange={(e) => setStylePath(e.target.value)}
+                    placeholder="如: D:/novel/samples/jinyong_sample.txt"
+                    disabled={isCloning}
+                    style={{
+                      width: "100%", padding: "8px 10px", borderRadius: 6,
+                      background: "var(--bg)", border: "1px solid var(--border)",
+                      color: "var(--text)", fontSize: 12, fontFamily: "var(--font-mono)",
+                      outline: "none"
+                    }}
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Targets select */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                  应用的目标书籍 (克隆成果将写入该书)*
+                </label>
+                <select
+                  value={activeBookId || ""}
+                  onChange={(e) => setActiveBookId(e.target.value)}
+                  disabled={isCloning}
+                  style={{
+                    width: "100%", padding: "8px 10px", borderRadius: 6,
+                    background: "var(--bg)", border: "1px solid var(--border)",
+                    color: "var(--text)", fontSize: 12, fontFamily: "var(--font-serif)",
+                    outline: "none", cursor: "pointer"
+                  }}
+                  required
+                >
+                  {availableBooks.map((book) => (
+                    <option key={book} value={book}>{book}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Console log / feedback */}
+              {(isCloning || styleLogs.length > 0 || styleError || styleSuccessText) && (
+                <div style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "12px",
+                  fontSize: 11,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}>
+                  {styleError && (
+                    <div style={{ color: "#ef4444", fontWeight: 600 }}>
+                      ⚠️ 克隆失败: {styleError}
+                    </div>
+                  )}
+                  {styleSuccessText && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <div style={{ color: "#10b981", fontWeight: 600 }}>
+                        {styleSuccessText}
+                      </div>
+                      {styleGuidePath && onOpenFile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onOpenFile(styleGuidePath, "style_guide.md");
+                            setIsStyleModalOpen(false);
+                          }}
+                          style={{
+                            alignSelf: "flex-start",
+                            padding: "4px 10px",
+                            background: "rgba(16,185,129,0.08)",
+                            border: "1px solid #10b981",
+                            borderRadius: 4,
+                            color: "#10b981",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          📖 查看生成的文风指南 (style_guide.md)
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {isCloning && (
+                    <div style={{ color: "var(--accent)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin" style={{ animation: "spin 1s linear infinite" }}>
+                        <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" /><line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" /><line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                      </svg>
+                      <span>正在提取分析统计特征并由 LLM 克隆生成文风指南，请稍候...</span>
+                    </div>
+                  )}
+                  {styleLogs.length > 0 && (
+                    <div
+                      ref={styleConsoleRef}
+                      style={{
+                        maxHeight: "80px", overflowY: "auto",
+                        fontFamily: "var(--font-mono)", fontSize: 10,
+                        color: "var(--text-dim)", background: "#121214",
+                        padding: "6px", borderRadius: 4, whiteSpace: "pre-wrap",
+                        textAlign: "left",
+                      }}
+                    >
+                      {styleLogs.map((log, index) => (
+                        <div key={index} style={{ marginBottom: 2 }}>{log}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Form Actions */}
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button
+                  type="submit"
+                  disabled={isCloning}
+                  style={{
+                    flex: 1, height: 38,
+                    background: "var(--accent)",
+                    border: "none", borderRadius: 8,
+                    color: "white", fontSize: 12, fontWeight: 600,
+                    cursor: isCloning ? "not-allowed" : "pointer",
+                    opacity: isCloning ? 0.7 : 1,
+                  }}
+                >
+                  {isCloning ? "正在克隆分析..." : "确认克隆文风"}
+                </button>
+                {!isCloning && (
+                  <button
+                    type="button"
+                    onClick={() => setIsStyleModalOpen(false)}
+                    style={{
+                      padding: "0 16px", height: 38,
+                      background: "var(--bg-hover)",
+                      border: "1px solid var(--border)", borderRadius: 8,
+                      color: "var(--text-muted)", fontSize: 12, fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    取消
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Novel Fanfic Refresh Modal */}
+      {isFanficRefreshModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            width: "500px",
+            maxWidth: "95%",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)",
+          }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 20px", borderBottom: "1px solid var(--border)",
+              background: "rgba(139, 92, 246, 0.08)",
+              color: "#a78bfa",
+            }}>
+              <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>🔄</span>
+                <span>刷新同人原作设定 ({activeBookId})</span>
+              </h3>
+              {!isRefreshingCanon && (
+                <button
+                  onClick={() => setIsFanficRefreshModalOpen(false)}
+                  style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16 }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleFanficRefresh} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {fanficRefreshError && (
+                <div style={{ padding: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 11 }}>
+                  ⚠️ {fanficRefreshError}
+                </div>
+              )}
+              {fanficRefreshSuccess && (
+                <div style={{ padding: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 8, color: "#10b981", fontSize: 11 }}>
+                  ✨ {fanficRefreshSuccess}
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                  同人原作素材绝对路径 (Source Path - 必填)
+                </label>
+                <input
+                  type="text"
+                  value={fanficRefreshSource}
+                  onChange={(e) => setFanficRefreshSource(e.target.value)}
+                  placeholder="请输入最新的原著素材路径，例如: D:/novel/source_v2.txt"
+                  required
+                  disabled={isRefreshingCanon}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    background: "var(--bg)",
+                    color: "var(--text)",
+                    fontSize: "12px",
+                    fontFamily: "var(--font-serif)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              {fanficRefreshLogs.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                    刷新运行日志
+                  </label>
+                  <div
+                    ref={fanficRefreshConsoleRef}
+                    style={{
+                      height: "150px",
+                      background: "#1e1e1e",
+                      color: "#d4d4d4",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      overflowY: "auto",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: "1.5",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    {fanficRefreshLogs.map((log, i) => (
+                      <div key={i}>{log}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, borderTop: "1px solid var(--border)", paddingTop: "14px", justifyContent: "flex-end" }}>
+                <button
+                  type="submit"
+                  disabled={isRefreshingCanon}
+                  style={{
+                    padding: "0 16px", height: 38,
+                    background: "#a78bfa",
+                    border: "none", borderRadius: 8,
+                    color: "white", fontSize: 12, fontWeight: 600,
+                    cursor: isRefreshingCanon ? "not-allowed" : "pointer",
+                    opacity: isRefreshingCanon ? 0.7 : 1,
+                  }}
+                >
+                  {isRefreshingCanon ? "正在分析刷新..." : "开始刷新"}
+                </button>
+                {!isRefreshingCanon && (
+                  <button
+                    type="button"
+                    onClick={() => setIsFanficRefreshModalOpen(false)}
+                    style={{
+                      padding: "0 16px", height: 38,
+                      background: "var(--bg-hover)",
+                      border: "1px solid var(--border)", borderRadius: 8,
+                      color: "var(--text-muted)", fontSize: 12, fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    取消
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Novel Consolidation Modal */}
+      {isConsolidationModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            width: "500px",
+            maxWidth: "90%",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)",
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 20px", borderBottom: "1px solid var(--border)",
+              background: "var(--bg)",
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
+                <span>🗜️</span> 大纲摘要压缩归档
+              </span>
+              <button
+                onClick={() => { if (!isConsolidating) setIsConsolidationModalOpen(false); }}
+                disabled={isConsolidating}
+                style={{
+                  background: "none", border: "none", color: "var(--text-dim)",
+                  fontSize: 14, cursor: isConsolidating ? "not-allowed" : "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
+                运行大纲摘要压缩会将已完结分卷的逐章梗概合并提炼，输出到分卷摘要中，并对已完结章节的明细梗概进行历史归档，以大幅缩减大语言模型上下文 Token 占用，提升续写连贯性，防止远期情节记忆退化。
+              </div>
+
+              {/* Console Logs */}
+              {(isConsolidating || consolidationLogs.length > 0) && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                    {isConsolidating && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin" style={{ animation: "spin 1s linear infinite" }}>
+                        <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" /><line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" /><line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                      </svg>
+                    )}
+                    <span>执行控制台日志：</span>
+                  </div>
+                  <div
+                    ref={consolidateConsoleRef}
+                    style={{
+                      height: "150px", overflowY: "auto",
+                      fontFamily: "var(--font-mono)", fontSize: 10,
+                      color: "var(--text-dim)", background: "#121214",
+                      padding: "8px 12px", borderRadius: 6, whiteSpace: "pre-wrap",
+                      textAlign: "left", border: "1px solid var(--border)",
+                      lineHeight: 1.4
+                    }}
+                  >
+                    {consolidationLogs.length === 0 ? (
+                      <div style={{ color: "#6b7280" }}>正在初始化并启动命令行脚本...</div>
+                    ) : (
+                      consolidationLogs.map((log, index) => (
+                        <div key={index} style={{ marginBottom: 2 }}>{log}</div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Success Result Info */}
+              {consolidationResult && (
+                <div style={{
+                  background: "rgba(16, 185, 129, 0.04)",
+                  border: "1px solid rgba(16, 185, 129, 0.25)",
+                  borderRadius: 8,
+                  padding: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#10b981", fontSize: "12px" }}>
+                    <span>✨</span> 压缩归档完成
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    <div style={{ marginBottom: 4 }}>
+                      • 成功压缩归档卷数：<strong>{consolidationResult.archivedVolumes} 卷</strong>
+                    </div>
+                    <div>
+                      • 当前内存保留近期章节：<strong>{consolidationResult.retainedChapters} 章</strong>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: 4, borderTop: "1px dashed rgba(16, 185, 129, 0.15)", paddingTop: 4 }}>
+                    已将对应卷的章节梗概安全移动至归档目录，活动大纲摘要已刷新。
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {consolidationError && (
+                <div style={{
+                  background: "rgba(239, 68, 68, 0.04)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  borderRadius: 8,
+                  padding: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#ef4444", fontSize: "12px" }}>
+                    <span>⚠️</span> 执行出错
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
+                    {consolidationError}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer Actions */}
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {isConsolidating ? (
+                  <button
+                    disabled
+                    style={{
+                      flex: 1, height: 38,
+                      background: "var(--accent)", opacity: 0.7,
+                      border: "none", borderRadius: 8,
+                      color: "white", fontSize: 12, fontWeight: 600,
+                      cursor: "not-allowed"
+                    }}
+                  >
+                    正在压缩...
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsConsolidationModalOpen(false)}
+                    style={{
+                      flex: 1, height: 38,
+                      background: "var(--accent)",
+                      border: "none", borderRadius: 8,
+                      color: "white", fontSize: 12, fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {consolidationError ? "关闭" : "确认并关闭"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Market Radar Scan Modal */}
+      {isRadarModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            width: "650px",
+            maxWidth: "95%",
+            maxHeight: "85vh",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)",
+          }}>
+            {/* Header */}
+            <div style={{
+              display: "flex", alignItems: "center",
+              padding: "16px 20px", borderBottom: "1px solid var(--border)",
+              background: "rgba(16, 185, 129, 0.08)",
+              color: "#10b981",
+              justifyContent: "space-between"
+            }}>
+              <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>📡</span>
+                <span>智能市场分析雷达 (Radar Market Scanner)</span>
+              </h3>
+              {!isScanningRadar && (
+                <button
+                  onClick={() => setIsRadarModalOpen(false)}
+                  style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16 }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div style={{ padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
+              {radarError && (
+                <div style={{ padding: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 11 }}>
+                  ⚠️ 扫描失败: {radarError}
+                </div>
+              )}
+
+              {/* Progress Console */}
+              {isScanningRadar && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-muted)" }}>
+                    <div style={{
+                      width: "12px", height: "12px",
+                      border: "2px solid var(--border)", borderTopColor: "#10b981",
+                      borderRadius: "50%", animation: "spin 1s linear infinite"
+                    }} />
+                    <span>雷达天线展开，正在扫描各大网文平台潜力题材与受众风向...</span>
+                  </div>
+                  <div
+                    ref={radarConsoleRef}
+                    style={{
+                      height: "220px",
+                      background: "#121214",
+                      color: "#d4d4d4",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      padding: "10px 12px",
+                      borderRadius: "6px",
+                      overflowY: "auto",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: "1.5",
+                      border: "1px solid var(--border)",
+                      textAlign: "left"
+                    }}
+                  >
+                    {radarLogs.map((log, i) => (
+                      <div key={i}>{log}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Scan Results Display */}
+              {!isScanningRadar && radarResult && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Summary Card */}
+                  <div style={{
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "14px 16px",
+                    fontSize: "12px",
+                    lineHeight: "1.6"
+                  }}>
+                    <div style={{ fontWeight: 600, color: "#10b981", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>📊</span> 市场概况总结 (Global Trend Summary)
+                    </div>
+                    <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{radarResult.marketSummary}</ReactMarkdown>
+                    </div>
+                  </div>
+
+                  {/* Recommendations Cards */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ fontWeight: 600, fontSize: "12px", color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>🎯</span> AI 潜力选题方向推荐 (AIGC Concept Prompts)
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {radarResult.recommendations?.map((rec: any, idx: number) => {
+                        const confidencePercent = Math.round(rec.confidence * 100);
+                        const isHigh = confidencePercent >= 75;
+                        const badgeColor = isHigh ? "#10b981" : "#f59e0b";
+                        const badgeBg = isHigh ? "rgba(16, 185, 129, 0.08)" : "rgba(245, 158, 11, 0.08)";
+
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              background: "var(--bg)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "8px",
+                              padding: "14px",
+                              transition: "all 0.2s",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.05)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text)" }}>
+                                {rec.platform} / {rec.genre}
+                              </span>
+                              <span style={{
+                                fontSize: "10px", fontWeight: 600, padding: "2px 8px",
+                                borderRadius: "10px", color: badgeColor, background: badgeBg,
+                                border: `1px solid ${badgeColor}33`
+                              }}>
+                                潜力指数: {confidencePercent}%
+                              </span>
+                            </div>
+
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                              <strong style={{ color: "var(--text)" }}>核心概念:</strong> {rec.concept}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                              <strong style={{ color: "var(--text)" }}>推荐逻辑:</strong> {rec.reasoning}
+                            </div>
+                            {rec.benchmarkTitles?.length > 0 && (
+                              <div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                <span>🏷️ 对标书目:</span>
+                                {rec.benchmarkTitles.map((b: string, i: number) => (
+                                  <span key={i} style={{ background: "var(--bg-hover)", padding: "1px 6px", borderRadius: 4 }}>《{b}》</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Start Scan view */}
+              {!isScanningRadar && !radarResult && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "30px 10px", gap: 14, textAlign: "center" }}>
+                  <span style={{ fontSize: "40px" }}>📡</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>扫描当前网文市场热点</div>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", maxWidth: 360, lineHeight: 1.6 }}>
+                      AI 市场雷达将深度挖掘当前各大发布平台的热门标签、高互动率流派以及对标爆款，为您提供高置信度的写作题材概念指南。
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleRadarScan}
+                    style={{
+                      padding: "8px 24px",
+                      background: "#10b981", border: "none", borderRadius: "8px",
+                      color: "white", fontSize: 12, fontWeight: 600,
+                      cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      transition: "opacity 0.15s"
+                    }}
+                  >
+                    <span>📡</span> 启动雷达行情扫描
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              display: "flex", gap: 8, padding: "12px 20px",
+              background: "var(--bg-panel)", borderTop: "1px solid var(--border)",
+              justifyContent: "flex-end"
+            }}>
+              {!isScanningRadar && (
+                <button
+                  onClick={() => setIsRadarModalOpen(false)}
+                  style={{
+                    padding: "6px 16px",
+                    background: "var(--bg-hover)", border: "1px solid var(--border)",
+                    borderRadius: 8, color: "var(--text-muted)",
+                    fontSize: 12, fontWeight: 500, cursor: "pointer"
+                  }}
+                >
+                  关闭
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Short Fiction production Modal */}
+      {isShortRunModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            width: "520px",
+            maxWidth: "95%",
+            maxHeight: "85vh",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)",
+          }}>
+            {/* Header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 20px", borderBottom: "1px solid var(--border)",
+              background: "rgba(139, 92, 246, 0.08)",
+              color: "#a78bfa",
+            }}>
+              <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>🚀</span>
+                <span>全自动短篇小说工坊 (Auto Short Fiction Pipeline)</span>
+              </h3>
+              {!isRunningShort && (
+                <button
+                  onClick={() => setIsShortRunModalOpen(false)}
+                  style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16 }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+             <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", flex: 1 }}>
+              {shortError && (
+                <div style={{ padding: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 11 }}>
+                  ⚠️ 运行错误: {shortError}
+                </div>
+              )}
+              {shortSuccess && (
+                <div style={{
+                  background: "rgba(16, 185, 129, 0.04)",
+                  border: "1px solid rgba(16, 185, 129, 0.25)",
+                  borderRadius: 8,
+                  padding: "14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#10b981", fontSize: "13px" }}>
+                    <span>✨</span> 阶段任务完成！
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                    {shortSuccess}
+                  </div>
+                </div>
+              )}
+
+              {/* Stepper Wizard Progress */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border)", marginBottom: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: shortStoryId ? "#10b981" : (isRunningShort && shortFictionStage === "idle" ? "var(--accent)" : "var(--bg-hover)"),
+                    color: shortStoryId ? "white" : "var(--text-muted)",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold"
+                  }}>
+                    {shortStoryId ? "✓" : "1"}
+                  </div>
+                  <span style={{ fontSize: 10, marginTop: 4, color: isRunningShort && shortFictionStage === "idle" ? "var(--accent)" : "var(--text-muted)" }}>大纲规划</span>
+                </div>
+                <div style={{ flex: 1, height: 2, background: shortStoryId ? "#10b981" : "var(--border)", margin: "0 -10px" }} />
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: shortFictionStage === "package" || shortFictionStage === "completed" ? "#10b981" : (isRunningShort && shortFictionStage === "draft" ? "var(--accent)" : "var(--bg-hover)"),
+                    color: shortFictionStage === "package" || shortFictionStage === "completed" ? "white" : "var(--text-muted)",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold"
+                  }}>
+                    {shortFictionStage === "package" || shortFictionStage === "completed" ? "✓" : "2"}
+                  </div>
+                  <span style={{ fontSize: 10, marginTop: 4, color: isRunningShort && shortFictionStage === "draft" ? "var(--accent)" : "var(--text-muted)" }}>正文写作</span>
+                </div>
+                <div style={{ flex: 1, height: 2, background: shortFictionStage === "package" || shortFictionStage === "completed" ? "#10b981" : "var(--border)", margin: "0 -10px" }} />
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: shortFictionStage === "completed" ? "#10b981" : (isRunningShort && shortFictionStage === "package" ? "var(--accent)" : "var(--bg-hover)"),
+                    color: shortFictionStage === "completed" ? "white" : "var(--text-muted)",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold"
+                  }}>
+                    {shortFictionStage === "completed" ? "✓" : "3"}
+                  </div>
+                  <span style={{ fontSize: 10, marginTop: 4, color: isRunningShort && shortFictionStage === "package" ? "var(--accent)" : "var(--text-muted)" }}>书封包装</span>
+                </div>
+              </div>
+
+              {!isRunningShort && (
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                      故事创意与走向方向 (Story Direction - 必填)*
+                    </label>
+                    <input
+                      type="text"
+                      value={shortDirection}
+                      onChange={(e) => setShortDirection(e.target.value)}
+                      placeholder="例如: 女频短篇 婚姻背叛 商业争夺 证据反杀 爽文"
+                      disabled={!!shortStoryId}
+                      required
+                      style={{
+                        padding: "8px 12px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        background: "var(--bg)",
+                        color: "var(--text)",
+                        fontSize: "12px",
+                        fontFamily: "var(--font-serif)",
+                        outline: "none",
+                        opacity: shortStoryId ? 0.7 : 1,
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                        章节数量 (Chapter Count)*
+                      </label>
+                      <select
+                        value={shortChapters}
+                        onChange={(e) => setShortChapters(parseInt(e.target.value, 10))}
+                        disabled={!!shortStoryId}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          color: "var(--text)",
+                          fontSize: 12,
+                          fontFamily: "var(--font-serif)",
+                          outline: "none",
+                          cursor: shortStoryId ? "not-allowed" : "pointer",
+                          opacity: shortStoryId ? 0.7 : 1,
+                        }}
+                      >
+                        {[12, 13, 14, 15, 16, 17, 18].map((n) => (
+                          <option key={n} value={n}>{n} 章</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                        单章目标字数 (Words Target)*
+                      </label>
+                      <select
+                        value={shortChars}
+                        onChange={(e) => setShortChars(parseInt(e.target.value, 10))}
+                        disabled={!!shortStoryId}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          color: "var(--text)",
+                          fontSize: 12,
+                          fontFamily: "var(--font-serif)",
+                          outline: "none",
+                          cursor: shortStoryId ? "not-allowed" : "pointer",
+                          opacity: shortStoryId ? 0.7 : 1,
+                        }}
+                      >
+                        {[900, 1000, 1100, 1200].map((n) => (
+                          <option key={n} value={n}>{n} 字/章</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+                    <input
+                      type="checkbox"
+                      id="shortCoverCheckbox"
+                      checked={shortCover}
+                      onChange={(e) => setShortCover(e.target.checked)}
+                      disabled={!!shortStoryId}
+                      style={{ cursor: shortStoryId ? "not-allowed" : "pointer", accentColor: "#a78bfa" }}
+                    />
+                    <label htmlFor="shortCoverCheckbox" style={{ fontSize: 11, color: "var(--text-muted)", cursor: shortStoryId ? "not-allowed" : "pointer", userSelect: "none", opacity: shortStoryId ? 0.7 : 1 }}>
+                      🌌 全自动生成配图故事封面 (AI Cover Generation)
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {/* Console Output */}
+              {isRunningShort && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-muted)" }}>
+                    <div style={{
+                      width: "12px", height: "12px",
+                      border: "2px solid var(--border)", borderTopColor: "#a78bfa",
+                      borderRadius: "50%", animation: "spin 1s linear infinite"
+                    }} />
+                    <span>
+                      {shortFictionStage === "idle" || shortFictionStage === "outline"
+                        ? "正在运行 步骤一：AI 规划大纲与大纲精修评审..."
+                        : shortFictionStage === "draft"
+                        ? "正在运行 步骤二：AI 协同批量起草各章节正文..."
+                        : "正在运行 步骤三：AI 生成故事简介、卖点与封面提示词，并调用模型生成书封..."}
+                    </span>
+                  </div>
+                  <div
+                    ref={shortConsoleRef}
+                    style={{
+                      height: "220px",
+                      background: "#121214",
+                      color: "#d4d4d4",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      padding: "10px 12px",
+                      borderRadius: "6px",
+                      overflowY: "auto",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: "1.5",
+                      border: "1px solid var(--border)",
+                      textAlign: "left"
+                    }}
+                  >
+                    {shortLogs.map((log, i) => (
+                      <div key={i}>{log}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions Footer */}
+              <div style={{ display: "flex", gap: 10, borderTop: "1px solid var(--border)", paddingTop: "14px", justifyContent: "flex-end", alignItems: "center" }}>
+                {shortStoryId && !isRunningShort && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShortStoryId(null);
+                      setShortFictionStage("idle");
+                      setShortSuccess(null);
+                      setShortError(null);
+                      setShortLogs([]);
+                    }}
+                    style={{
+                      padding: "0 12px", height: 38,
+                      background: "rgba(239, 68, 68, 0.08)",
+                      border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 8,
+                      color: "#ef4444", fontSize: 11, fontWeight: 500,
+                      cursor: "pointer", marginRight: "auto"
+                    }}
+                  >
+                    🔄 重置新故事
+                  </button>
+                )}
+
+                {isRunningShort ? (
+                  <button
+                    type="button"
+                    disabled
+                    style={{
+                      padding: "0 20px", height: 38,
+                      background: "var(--border)",
+                      border: "none", borderRadius: 8,
+                      color: "var(--text-muted)", fontSize: 12, fontWeight: 600,
+                      cursor: "not-allowed"
+                    }}
+                  >
+                    正在生成中...
+                  </button>
+                ) : (
+                  <>
+                    {!shortStoryId && (
+                      <button
+                        type="button"
+                        onClick={() => handleShortRunStep("outline")}
+                        disabled={!shortDirection.trim()}
+                        style={{
+                          padding: "0 20px", height: 38,
+                          background: "#a78bfa",
+                          border: "none", borderRadius: 8,
+                          color: "white", fontSize: 12, fontWeight: 600,
+                          cursor: !shortDirection.trim() ? "not-allowed" : "pointer",
+                          opacity: !shortDirection.trim() ? 0.6 : 1,
+                        }}
+                      >
+                        🚀 步骤一：生成大纲
+                      </button>
+                    )}
+                    {shortStoryId && shortFictionStage === "draft" && (
+                      <button
+                        type="button"
+                        onClick={() => handleShortRunStep("draft")}
+                        style={{
+                          padding: "0 20px", height: 38,
+                          background: "#8b5cf6",
+                          border: "none", borderRadius: 8,
+                          color: "white", fontSize: 12, fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        ✍️ 步骤二：批量起草正文
+                      </button>
+                    )}
+                    {shortStoryId && shortFictionStage === "package" && (
+                      <button
+                        type="button"
+                        onClick={() => handleShortRunStep("package")}
+                        style={{
+                          padding: "0 20px", height: 38,
+                          background: "#ec4899",
+                          border: "none", borderRadius: 8,
+                          color: "white", fontSize: 12, fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        🎨 步骤三：生成封面与包装
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {!isRunningShort && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsShortRunModalOpen(false);
+                      setShortSuccess(null);
+                      setShortError(null);
+                    }}
+                    style={{
+                      padding: "0 16px", height: 38,
+                      background: "var(--bg-hover)",
+                      border: "1px solid var(--border)", borderRadius: 8,
+                      color: "var(--text-muted)", fontSize: 12, fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {shortFictionStage === "completed" ? "完成" : "关闭"}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

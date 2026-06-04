@@ -64,9 +64,9 @@ export const NotifyChannelSchema = z.discriminatedUnion("type", [
 export type NotifyChannel = z.infer<typeof NotifyChannelSchema>;
 
 export const DetectionConfigSchema = z.object({
-  provider: z.enum(["gptzero", "originality", "custom"]).default("custom"),
-  apiUrl: z.string().url(),
-  apiKeyEnv: z.string().min(1),
+  provider: z.enum(["gptzero", "originality", "custom", "local", "llm"]).default("llm"),
+  apiUrl: z.string().url().optional(),
+  apiKeyEnv: z.string().min(1).optional(),
   threshold: z.number().min(0).max(1).default(0.5),
   enabled: z.boolean().default(false),
   autoRewrite: z.boolean().default(false),

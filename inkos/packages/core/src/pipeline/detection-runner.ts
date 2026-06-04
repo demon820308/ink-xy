@@ -31,8 +31,9 @@ export async function detectChapter(
   config: DetectionConfig,
   content: string,
   chapterNumber: number,
+  ctx?: AgentContext,
 ): Promise<DetectChapterResult> {
-  const detection = await detectAIContent(config, content);
+  const detection = await detectAIContent(config, content, ctx);
   return {
     chapterNumber,
     detection,
@@ -55,7 +56,7 @@ export async function detectAndRewrite(
   const maxRetries = config.maxRetries;
 
   let currentContent = content;
-  const firstDetection = await detectAIContent(config, currentContent);
+  const firstDetection = await detectAIContent(config, currentContent, ctx);
   const originalScore = firstDetection.score;
 
   if (firstDetection.score <= config.threshold) {
@@ -103,7 +104,7 @@ export async function detectAndRewrite(
     currentContent = reviseOutput.revisedContent;
 
     // Re-detect
-    const reDetection = await detectAIContent(config, currentContent);
+    const reDetection = await detectAIContent(config, currentContent, ctx);
     finalScore = reDetection.score;
 
     await recordHistory(bookDir, {

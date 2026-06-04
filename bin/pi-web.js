@@ -9,6 +9,11 @@ const path = require("path");
 const fs = require("fs");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { parseArgs } = require("util");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const os = require("os");
+
+// Ensure that all writes to settings, sessions and cache are under ~/.ink/agent
+process.env.PI_CODING_AGENT_DIR = process.env.PI_CODING_AGENT_DIR || path.join(os.homedir(), ".ink", "agent");
 
 const pkgDir = path.join(__dirname, "..");
 const nextDir = path.join(pkgDir, ".next");

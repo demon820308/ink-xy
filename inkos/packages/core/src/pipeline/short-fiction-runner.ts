@@ -51,6 +51,7 @@ export interface ShortFictionRunOptions {
   readonly coverSize?: string;
   readonly coverApiKeyEnv?: string;
   readonly onProgress?: (message: string) => void;
+  readonly stage?: "outline" | "draft" | "package" | "all";
 }
 
 export interface ShortFictionRunResult {
@@ -106,80 +107,143 @@ export async function runShortFictionProduction(
     SHORT_FICTION_MAX_CHARS_PER_CHAPTER,
   );
 
-  options.onProgress?.("Creating short fiction outline...");
-  const outlineAgent = new ShortFictionOutlineAgent(options.runtimes.planner);
-  const outlineV1 = await outlineAgent.createOutline({
-    direction: options.direction,
-    chapterCount,
-    charsPerChapter,
-    reference: options.reference,
-  });
+  const stage = options.stage ?? "all";
+  let storyId = options.storyId ? safeSegment(options.storyId) : "";
+  let baseDir = "";
+  let outlineV2Content = "";
 
-  const storyId = safeSegment(options.storyId || slugify(outlineV1.storyTitle || options.direction));
-  const baseDir = join(normalizeOutputDir(options.outDir ?? "shorts"), storyId);
-  await writeText(root, join(baseDir, "outline", "v001.md"), outlineV1.rawContent);
+  if (stage === "outline" || stage === "all") {
+    options.onProgress?.("Creating short fiction outline...");
+    const outlineAgent = new ShortFictionOutlineAgent(options.runtimes.planner);
+    const outlineV1 = await outlineAgent.createOutline({
+      direction: options.direction,
+      chapterCount,
+      charsPerChapter,
+      reference: options.reference,
+    });
 
-  options.onProgress?.("Reviewing outline...");
-  const outlineReviewer = new ShortFictionOutlineReviewerAgent(options.runtimes.outlineReview);
-  const outlineReview = await outlineReviewer.reviewOutline({
-    direction: options.direction,
-    outline: outlineV1,
-    reference: options.reference,
-  });
-  await writeText(root, join(baseDir, "reviews", "outline-v001.md"), outlineReview);
+    if (!storyId) {
+      storyId = safeSegment(slugify(outlineV1.storyTitle || options.direction));
+    }
+    baseDir = join(normalizeOutputDir(options.outDir ?? "shorts"), storyId);
+    await writeText(root, join(baseDir, "outline", "v001.md"), outlineV1.rawContent);
 
-  options.onProgress?.("Revising outline once...");
-  const outlineReviser = new ShortFictionOutlineReviserAgent(options.runtimes.planner);
-  const outlineV2 = await outlineReviser.reviseOutline({
-    direction: options.direction,
-    outline: outlineV1,
-    review: outlineReview,
-    reference: options.reference,
-    chapterCount,
-    charsPerChapter,
-  });
-  await writeText(root, join(baseDir, "outline", "v002.md"), outlineV2.rawContent);
+    options.onProgress?.("Reviewing outline...");
+    const outlineReviewer = new ShortFictionOutlineReviewerAgent(options.runtimes.outlineReview);
+    const outlineReview = await outlineReviewer.reviewOutline({
+      direction: options.direction,
+      outline: outlineV1,
+      reference: options.reference,
+    });
+    await writeText(root, join(baseDir, "reviews", "outline-v001.md"), outlineReview);
 
-  options.onProgress?.("Writing full short fiction draft...");
-  const writer = new ShortFictionWriterAgent(options.runtimes.writer);
-  const draftV1 = await writer.writeDraft({
-    direction: options.direction,
-    outlineMarkdown: outlineV2.rawContent,
-    chapterCount,
-    charsPerChapter,
-  });
-  await writeDraftArtifacts(root, baseDir, "v001", draftV1);
+    options.onProgress?.("Revising outline once...");
+    const outlineReviser = new ShortFictionOutlineReviserAgent(options.runtimes.planner);
+    const outlineV2 = await outlineReviser.reviseOutline({
+      direction: options.direction,
+      outline: outlineV1,
+      review: outlineReview,
+      reference: options.reference,
+      chapterCount,
+      charsPerChapter,
+    });
+    await writeText(root, join(baseDir, "outline", "v002.md"), outlineV2.rawContent);
+    outlineV2Content = outlineV2.rawContent;
+  } else {
+    if (!storyId) {
+      storyId = safeSegment(slugify(options.direction));
+    }
+    baseDir = join(normalizeOutputDir(options.outDir ?? "shorts"), storyId);
+    try {
+      const outlinePath = safeChildPath(root, join(baseDir, "outline", "v002.md"));
+      outlineV2Content = await readFile(outlinePath, "utf-8");
+    } catch (e) {
+      throw new Error(`Failed to read outline/v002.md at ${join(baseDir, "outline", "v002.md")}. Make sure Step 1 (outline) ran successfully first. Error: ${String(e)}`);
+    }
+  }
 
-  options.onProgress?.("Reviewing full draft...");
-  const draftReviewer = new ShortFictionDraftReviewerAgent(options.runtimes.draftReview);
-  const draftReview = await draftReviewer.reviewDraft({
-    direction: options.direction,
-    outlineMarkdown: outlineV2.rawContent,
-    draft: draftV1,
-    chapterCount,
-    charsPerChapter,
-  });
-  await writeText(root, join(baseDir, "reviews", "draft-v001.md"), draftReview);
+  if (stage === "outline") {
+    return {
+      storyId,
+      outlinePath: projectPath(join(baseDir, "outline", "v002.md")),
+      outlineReviewPath: projectPath(join(baseDir, "reviews", "outline-v001.md")),
+      draftReviewPath: "",
+      finalMarkdownPath: "",
+      finalJsonPath: "",
+      salesPackagePath: "",
+      coverPromptPath: "",
+    };
+  }
 
-  options.onProgress?.("Revising full draft once...");
-  const reviser = new ShortFictionDraftReviserAgent(options.runtimes.revise);
-  const draftV2 = await reviser.reviseDraft({
-    direction: options.direction,
-    outlineMarkdown: outlineV2.rawContent,
-    draft: draftV1,
-    review: draftReview,
-    chapterCount,
-    charsPerChapter,
-  });
-  validateShortFictionDraftForFinal(draftV2, { expectedChapters: chapterCount });
-  await writeDraftArtifacts(root, baseDir, "v002", draftV2);
-  await writeFinalArtifacts(root, baseDir, draftV2);
+  let draftV2: ShortFictionBatchDraft | undefined;
+
+  if (stage === "draft" || stage === "all") {
+    options.onProgress?.("Writing full short fiction draft...");
+    const writer = new ShortFictionWriterAgent(options.runtimes.writer);
+    const draftV1 = await writer.writeDraft({
+      direction: options.direction,
+      outlineMarkdown: outlineV2Content,
+      chapterCount,
+      charsPerChapter,
+    });
+    await writeDraftArtifacts(root, baseDir, "v001", draftV1);
+
+    options.onProgress?.("Reviewing full draft...");
+    const draftReviewer = new ShortFictionDraftReviewerAgent(options.runtimes.draftReview);
+    const draftReview = await draftReviewer.reviewDraft({
+      direction: options.direction,
+      outlineMarkdown: outlineV2Content,
+      draft: draftV1,
+      chapterCount,
+      charsPerChapter,
+    });
+    await writeText(root, join(baseDir, "reviews", "draft-v001.md"), draftReview);
+
+    options.onProgress?.("Revising full draft once...");
+    const reviser = new ShortFictionDraftReviserAgent(options.runtimes.revise);
+    const draftV2Result = await reviser.reviseDraft({
+      direction: options.direction,
+      outlineMarkdown: outlineV2Content,
+      draft: draftV1,
+      review: draftReview,
+      chapterCount,
+      charsPerChapter,
+    });
+    validateShortFictionDraftForFinal(draftV2Result, { expectedChapters: chapterCount });
+    await writeDraftArtifacts(root, baseDir, "v002", draftV2Result);
+    await writeFinalArtifacts(root, baseDir, draftV2Result);
+    draftV2 = draftV2Result;
+  } else {
+    try {
+      const finalJsonPath = safeChildPath(root, join(baseDir, "final", "short-story.json"));
+      const jsonRaw = await readFile(finalJsonPath, "utf-8");
+      draftV2 = JSON.parse(jsonRaw);
+    } catch (e) {
+      throw new Error(`Failed to read final/short-story.json. Make sure Step 2 (draft) ran successfully first. Error: ${String(e)}`);
+    }
+  }
+
+  if (stage === "draft") {
+    return {
+      storyId,
+      outlinePath: projectPath(join(baseDir, "outline", "v002.md")),
+      outlineReviewPath: projectPath(join(baseDir, "reviews", "outline-v001.md")),
+      draftReviewPath: projectPath(join(baseDir, "reviews", "draft-v001.md")),
+      finalMarkdownPath: projectPath(join(baseDir, "final", "full.md")),
+      finalJsonPath: projectPath(join(baseDir, "final", "short-story.json")),
+      salesPackagePath: "",
+      coverPromptPath: "",
+    };
+  }
 
   options.onProgress?.("Generating synopsis and cover prompt...");
   const packager = new ShortFictionPackagingAgent(options.runtimes.package);
+  if (!draftV2) {
+    throw new Error("Draft data not found. Cannot package.");
+  }
   const salesPackage = await packager.generatePackage({
     direction: options.direction,
-    outlineMarkdown: outlineV2.rawContent,
+    outlineMarkdown: outlineV2Content,
     draft: draftV2,
   });
   await writePackageArtifacts(root, baseDir, salesPackage);

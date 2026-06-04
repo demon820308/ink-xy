@@ -1,4 +1,4 @@
-﻿# Pi Agent xY — 产品需求文档 (PRD)
+# Pi Agent xY — 产品需求文档 (PRD)
 
 > **版本**: v0.6.14  
 > **最后更新**: 2026-05-27  
@@ -120,8 +120,8 @@ avigate_tree 创建新分支 |
 | 需求项 | 描述 |
 |--------|------|
 | 模型列表 | GET /api/models 返回可用模型列表、默认模型 |
-| 默认模型 | 从 ~/.pi/agent/settings.json 读取 |
-| 模型配置 | GET/POST /api/models-config 读写 ~/.pi/agent/models.json |
+| 默认模型 | 从 ~/.ink/agent/settings.json 读取 |
+| 模型配置 | GET/POST /api/models-config 读写 ~/.ink/agent/models.json |
 | 对话中切换 | 对话中途随时切换模型，触发 model_change 条目 |
 | 配置界面 | ModelsConfig 模态框，可视化编辑 models.json |
 
@@ -142,7 +142,7 @@ avigate_tree 创建新分支 |
 | 模型绑定 | 每个 Gem 可绑定不同的 Provider + Model |
 | 工具过滤 | 限制 Gem 可访问的工具集（如仅允许只读工具） |
 | 知识库文件 | 附加本地文件作为 RAG 上下文，会话时自动加载 |
-| 存储位置 | ~/.pi/agent/gem_xy.json |
+| 存储位置 | ~/.ink/agent/gem_xy.json |
 | CRUD API | GET/POST/PUT/DELETE /api/gem-xy + /api/gem-xy/[id] |
 
 ### 2.6 文件浏览
@@ -225,7 +225,7 @@ avigate_tree 创建新分支 |
 `
 浏览器                    Next.js Server                  AgentSession (进程内)
   │                            │                               │
-  ├─ GET /api/sessions ────────▶ 读取 ~/.pi/agent/sessions/     │
+  ├─ GET /api/sessions ────────▶ 读取 ~/.ink/agent/sessions/     │
   ├─ GET /api/sessions/[id]    ▶ 直接解析 .jsonl 文件           │
   │                            │                               │
   ├─ 发送消息 ──────────────────▶ POST /api/agent/[id]          │
@@ -241,10 +241,10 @@ avigate_tree 创建新分支 |
 
 | 数据 | 格式 | 位置 |
 |------|------|------|
-| 会话文件 | .jsonl（每行一个 JSON entry） | ~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl |
-| 模型配置 | JSON | ~/.pi/agent/models.json |
-| 用户设置 | JSON | ~/.pi/agent/settings.json |
-| Gem 模板 | JSON | ~/.pi/agent/gem_xy.json |
+| 会话文件 | .jsonl（每行一个 JSON entry） | ~/.ink/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl |
+| 模型配置 | JSON | ~/.ink/agent/models.json |
+| 用户设置 | JSON | ~/.ink/agent/settings.json |
+| Gem 模板 | JSON | ~/.ink/agent/gem_xy.json |
 
 ### 3.4 会话文件格式 (.jsonl)
 
@@ -465,7 +465,7 @@ pi-agent-xy --port 8080 --hostname 127.0.0.1
 
 | 变量 | 说明 |
 |------|------|
-| PI_CODING_AGENT_DIR | 自定义会话数据目录（默认 ~/.pi/agent/sessions） |
+| PI_CODING_AGENT_DIR | 自定义会话数据目录（默认 ~/.ink/agent/sessions） |
 | PORT | 服务端口（默认 30142） |
 
 ---

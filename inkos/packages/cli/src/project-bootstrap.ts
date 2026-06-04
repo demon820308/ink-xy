@@ -74,6 +74,12 @@ function buildProjectConfig(projectDir: string, language: "zh" | "en") {
       stream: true,
     },
     notify: [],
+    detection: {
+      enabled: false,
+      provider: "llm" as const,
+      threshold: 0.5,
+      autoRewrite: false,
+    },
     inputGovernanceMode: "v2" as const,
     daemon: {
       schedule: {

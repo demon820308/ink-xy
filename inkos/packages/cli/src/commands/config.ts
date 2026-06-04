@@ -32,6 +32,9 @@ configCommand
         "daemon.maxConcurrentBooks", "daemon.chaptersPerCycle",
         "daemon.retryDelayMs", "daemon.cooldownAfterChapterMs",
         "daemon.maxChaptersPerDay",
+        "detection.enabled", "detection.provider", "detection.apiUrl",
+        "detection.apiKeyEnv", "detection.threshold", "detection.autoRewrite",
+        "detection.maxRetries",
       ]);
       // Allow any key under llm.extra.* (passthrough to API)
       if (!KNOWN_KEYS.has(key) && !key.startsWith("llm.extra.")) {

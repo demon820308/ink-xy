@@ -271,6 +271,7 @@ export class Scheduler {
         this.config.detection,
         chapterContent,
         chapterNumber,
+        this.config,
       );
       if (!detResult.passed && this.config.detection.autoRewrite) {
         await detectAndRewrite(
