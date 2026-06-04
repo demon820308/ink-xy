@@ -1,7 +1,12 @@
 # 🖋️ ink-xY Novel Studio — 智能协同写作空间
 
+[![Next.js](https://img.shields.io/badge/Framework-Next.js%2015-blue?style=flat-square&logo=nextdotjs)](https://nextjs.org/)
+[![Electron](https://img.shields.io/badge/Desktop-Electron%20v42-663399?style=flat-square&logo=electron)](https://www.electronjs.org/)
+[![pnpm](https://img.shields.io/badge/Package_Manager-pnpm%209+-f69220?style=flat-square&logo=pnpm)](https://pnpm.io/)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-red?style=flat-square)](LICENSE)
+
 > 🌌 **ink-xY Novel Studio** 是一款专为网络小说作家、独立编剧以及文学创作者量身定制的 **非线性沉浸式智能协同写作空间 (Literary IDE)**。
-> 基于 Next.js 15 Web 技术与 Electron Standalone 独立桌面客户端完美融合，秉承温润如纸的视觉底色、高雅文学排版、极简非线性大纲管理器，并深度整合了本地多智能体小说协作引擎 **`InkOS`**，让创作者能够真正实现“人机无缝共创”。
+> 基于 Next.js 15 与 Electron 独立桌面客户端完美融合，秉承温润如纸的视觉底色、高雅文学排版、极简非线性大纲管理器，并深度整合了本地多智能体小说协作引擎 **`InkOS`**，实现真正意义上的“人机无缝共创”。
 
 ---
 
@@ -23,10 +28,10 @@
 
 ## 🎨 视觉与设计哲学 (Zen Aesthetic Mode)
 
-* **禅意温润护眼肤色**：摒弃冰冷刺眼的程序员黑白界面，默认采用温润纸张黄（Soft Warm Beige）与深邃静心绿（Zen Forest Green）双色主题，有效降低长时间创作的视觉疲劳。
+* **禅意温润护眼肤色**：默认采用温润纸张黄（Soft Warm Beige）与深邃静心绿（Zen Forest Green）双色主题，有效降低长时间创作的视觉疲劳。
 * **高雅文学衬线排版**：中文字体默认优化为优雅的宋体/楷体排版，英文采用 **Outfit** 与 **Lora** 衬线字体组合，间距宽松（Line-height 1.8），赋予文字以纸质墨水的呼吸感。
 * **极简无干扰画布**：全平台移除所有属于程序员的技术性调试日志与极客控制台，将技术细节安全收纳于后端，把灵感与故事毫无保留地留给写作者。
-* **安全防抖内存保护**：集成了前端 `1500ms` 本地大文件防抖保存（Debounced Save），防止在 AI 写入多达几万字的大纲或章节时产生频繁 Markdown 重绘卡顿，提供行云流水的打字体验。
+* **安全防抖内存保护**：集成了前端 `1500ms` 本地大文件防抖保存（Debounced Save），防止在 AI 写入多达几万字的大纲或章节时产生频繁重绘卡顿，提供行云流水的打字体验。
 
 ---
 
@@ -35,9 +40,28 @@
 ### 1. 🤖 深度整合 InkOS 多智能体写作引擎
 内置本地多智能体小说辅助开发引擎 `InkOS`。前端通过极简的 **REST API 桥接层** 调度 `runInkos` 系统 Node 进程包装器，支持在后台快速、异步执行 `init`、`audit`、`plan`、`compose` 等多智能体分析任务。
 
-### 2. ⚡ 一键工作区自动初始化 (Auto-Init Banner)
-* **智能特征扫描**：当您在左侧打开一个全新的空目录时，系统会自动扫描是否包含 `.inkos/` 或 `story/` 等特征结构。
-* **一键开启宇宙**：如检测到工作区未初始化，会在文件树上方滑出精致柔和的 **"开启创作宇宙" 引导横幅**，只需一键点击，系统立即在后台自动构建小说大纲、角色设定及章节目录，并瞬间刷新目录树。
+### 2. 📚 15 类中英文小说题材 (Bilingual Genres Support)
+系统预置了 15 类题材，分为**中文网文题材**与**英文原生题材**，不仅提供写作大纲指引，更是智能体进行“数值核对”、“战力分析”与“时代研究”的引擎开关：
+
+| 题材 ID | 题材名称 | 默认语言 | 章节类型 (chapterTypes) | 数值系统 (numericalSystem) | 战力等级 (powerScaling) | 时代背景研究 (eraResearch) |
+|---|---|---|---|:---:|:---:|:---:|
+| `xuanhuan` | **玄幻奇幻** (Xuanhuan) | `zh` | 战斗章, 布局章, 过渡章, 回收章 | ✅ | ✅ | ❌ |
+| `xianxia` | **仙侠修真** (Xianxia) | `zh` | 战斗章, 悟道章, 布局章, 过渡章, 回收章 | ✅ | ✅ | ❌ |
+| `urban` | **都市异能** (Urban) | `zh` | 商战章, 社交章, 布局章, 过渡章, 回收章 | ❌ | ❌ | ✅ |
+| `horror` | **悬疑恐怖** (Horror) | `zh` | 氛围章, 事件章, 揭示章, 过渡章, 回收章 | ❌ | ❌ | ❌ |
+| `other` | **其它通用** (Other) | `zh` | 推进章, 布局章, 过渡章, 回收章 | ❌ | ❌ | ❌ |
+| `litrpg` | **数据无限流/系统流** (LitRPG) | `en` | Progression, Setup, Transition, Payoff, Combat | ✅ | ✅ | ❌ |
+| `progression` | **升级流奇幻** (Progression Fantasy) | `en` | Training, Breakthrough, Setup, Transition, Payoff | ❌ | ✅ | ❌ |
+| `cozy` | **温馨奇幻** (Cozy Fantasy) | `en` | Slice-of-Life, Community, Setup, Transition, Payoff | ❌ | ❌ | ❌ |
+| `cultivation` | **英文修真** (English Cultivation) | `en` | Training, Breakthrough, Combat, Setup, Transition, Payoff | ❌ | ✅ | ❌ |
+| `dungeon-core` | **地下城核心流** (Dungeon Core) | `en` | Strategy, Adventurer POV, Setup, Transition, Payoff | ✅ | ❌ | ❌ |
+| `isekai` | **异世界穿梭** (Isekai / Portal Fantasy) | `en` | Exploration, Adaptation, Setup, Transition, Payoff, Combat | ❌ | ✅ | ❌ |
+| `romantasy` | **浪漫奇幻** (Romantasy) | `en` | Romance, Action, Setup, Transition, Payoff | ❌ | ❌ | ❌ |
+| `sci-fi` | **科学幻想** (Science Fiction) | `en` | Exploration, Combat, Setup, Transition, Payoff | ❌ | ❌ | ✅ |
+| `system-apocalypse` | **系统废土流** (System Apocalypse) | `en` | Survival, Combat, Setup, Transition, Payoff | ✅ | ✅ | ❌ |
+| `tower-climber` | **爬塔闯关流** (Tower Climbing) | `en` | Floor Challenge, Progression, Setup, Transition, Payoff | ❌ | ✅ | ❌ |
+
+此外，系统支持 **同人创作 (`fanfic`)** 专属初始化流程，支持 `canon` (正典延续)、`au` (平行宇宙)、`ooc` (角色偏离)、`cp` (角色配对) 四种独立模式，可自动解析原著素材文本。
 
 ### 3. 🔍 章节级“人设防崩审计”与“意图规划”工具带 (File Footer Toolbelt)
 * **实时人设防崩审计**：在编辑章节草稿时，编辑器底部提供 **`🔍 人设防崩审计`** 键。点击后立即运行 `inkos audit` 扫描当前草稿，深度检测逻辑矛盾或人设走形（例如：死亡角色复活、主角性格突变、剧情前后冲突）。
@@ -45,14 +69,14 @@
 * **毛玻璃右滑抽屉式报告 panel**：审计报告采用流畅的 CSS Transition 从右侧滑出，配有高雅的 `backdrop-blur: 4px` 毛玻璃遮罩，以衬线排版优雅呈现多智能体审计反馈。
 
 ### 4. 🛡️ 真理系统“设定上下文防线” (Truth System Context Injector)
-* **动态背景设定提取**：小说创作最忌剧情注水和人设漂移。在会话右侧与 AI Gems 写作姬交流时，系统会在后台**静默、深度扫描**当前工作区中 `角色设定/` 和 `世界观设定/` 文件夹下的所有人物卡片与世界背景 Markdown 文件。
+* **动态背景设定提取**：在会话右侧与 AI Gems 写作姬交流时，系统会在后台**静默、深度扫描**当前工作区中 `角色设定/` 和 `世界观设定/` 文件夹下的所有人物卡片与世界背景 Markdown 文件。
 * **智能上下文注入**：将所有的底层设定自动编译，作为最高优先级 Context（Truth Settings）无缝混入每次 AI 对话 turn 中。确保写作姬随时对主角的武器、性格、阵营和背景了如指掌，从源头彻底斩断“人设走样”与“剧情冲突”。
 
 ### 5. 👥 专属四大预设 Gems 写作姬
 * **🧭 大纲策划师**：辅助宏观骨架搭建，把控章节起承转合与戏剧冲突。
-* **👤 角色塑造师**：填充人物性格，打磨对话口吻，让配角同样出彩。
-* **✍️ 细节扩写师**：划词扩写，把动作、环境描写打磨得极具画面美感。
-* **🔍 纠错校对师**：自动过滤章节中的错别字与逻辑语病。
+* **👤 角色塑造师**：包装人物设定，打磨对话口吻，让配角同样立体。
+* **✍️ 细节扩写师**：划词扩写，把动作、情绪、环境描写打磨得极具画面美感。
+* **🔍 纠错校对师**：自动过滤章节中的错别字、病句与逻辑语病。
 
 ---
 
@@ -98,7 +122,7 @@ npm install -g pnpm
 ```
 
 ### 2. 编译本地 InkOS 子模块
-`ink-xY` 将 `InkOS`  monorepo 仓库作为核心写作算力子包，存放于根目录下的 `inkos/` 中。启动前需要完成子包的本地构建：
+`ink-xY` 将 `InkOS` monorepo 仓库作为核心写作算力子包，存放于根目录下的 `inkos/` 中。启动前需要完成子包的本地构建：
 
 ```bash
 # 进入 inkos 文件夹并安装依赖
@@ -127,7 +151,7 @@ npm run dev
 node_modules/.bin/tsc --noEmit
 
 # 运行代码规范检测
-node node_modules/next/dist/bin/next lint
+node_modules/.bin/eslint .
 ```
 
 > [!WARNING]
