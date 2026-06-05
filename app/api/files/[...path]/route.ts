@@ -443,3 +443,33 @@ export async function POST(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  try {
+    const { path: segments } = await params;
+    const filePath = filePathFromSegments(segments);
+
+    const allowedRoots = await getAllowedRoots();
+    if (!isPathAllowed(filePath, allowedRoots)) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return NextResponse.json({ success: true });
+    }
+
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      fs.rmSync(filePath, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(filePath);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+}
+

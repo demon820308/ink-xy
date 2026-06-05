@@ -1609,24 +1609,98 @@ function formatUsage(usage: {
 
 
 function CodeBlock({ code, lang, isStreaming }: { code: string; lang: string; isStreaming?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  const handleCopy = () => {
+    copyText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
-    <pre
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
+        position: "relative",
         margin: "8px 0",
-        padding: "12px 16px",
-        fontSize: "13px",
-        lineHeight: "1.6",
         borderRadius: "6px",
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border)",
-        fontFamily: "var(--font-mono)",
-        color: "var(--text)",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-all",
+        overflow: "hidden",
       }}
     >
-      {code}
-    </pre>
+      <pre
+        style={{
+          margin: 0,
+          padding: "12px 16px",
+          paddingRight: "64px",
+          fontSize: "13px",
+          lineHeight: "1.6",
+          background: "var(--bg-panel)",
+          border: "1px solid var(--border)",
+          borderRadius: "6px",
+          fontFamily: "var(--font-mono)",
+          color: "var(--text)",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-all",
+        }}
+      >
+        {code}
+      </pre>
+
+      <button
+        onClick={handleCopy}
+        title="复制这块代码"
+        style={{
+          position: "absolute",
+          top: "8px",
+          right: "8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "4px",
+          padding: "4px 8px",
+          fontSize: "11px",
+          color: copied ? "var(--accent)" : "var(--text-dim)",
+          background: "rgba(255, 255, 255, 0.05)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          border: "1px solid var(--border)",
+          borderRadius: "4px",
+          cursor: "pointer",
+          opacity: hovered || copied ? 1 : 0,
+          transition: "opacity 0.2s, background 0.15s, color 0.15s",
+          zIndex: 10,
+          pointerEvents: hovered || copied ? "auto" : "none",
+        }}
+        onMouseEnter={(e) => {
+          if (!copied) e.currentTarget.style.color = "var(--text)";
+          e.currentTarget.style.background = "rgba(255, 255, 255, 0.12)";
+        }}
+        onMouseLeave={(e) => {
+          if (!copied) e.currentTarget.style.color = "var(--text-dim)";
+          e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+        }}
+      >
+        {copied ? (
+          <>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>已复制</span>
+          </>
+        ) : (
+          <>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+            <span>{lang || "Copy"}</span>
+          </>
+        )}
+      </button>
+    </div>
   );
 }
 

@@ -13,8 +13,10 @@ import { SettingsModal } from "./SettingsModal";
 import { HelpModal } from "./HelpModal";
 import { useTheme } from "@/hooks/useTheme";
 import { ChapterDashboard } from "./ChapterDashboard";
+import { CharacterRelationDashboard } from "./CharacterRelationDashboard";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
+import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 
 export function AppShell() {
 
@@ -272,6 +274,16 @@ export function AppShell() {
     setRightPanelOpen(true);
   }, []);
 
+  const handleOpenCharactersGraph = useCallback((bookId: string) => {
+    const tabId = `characters:${bookId}`;
+    setFileTabs((prev) => {
+      if (prev.find((t) => t.id === tabId)) return prev;
+      return [...prev, { id: tabId, label: `👥 ${bookId} 角色人设`, filePath: `characters:${bookId}` }];
+    });
+    setActiveFileTabId(tabId);
+    setRightPanelOpen(true);
+  }, []);
+
   useEffect(() => {
     const handleRefresh = () => {
       setExplorerRefreshKey((k) => k + 1);
@@ -384,6 +396,41 @@ export function AppShell() {
     setIsInkosWorkspace(isInkos);
     setHasBooks(books);
   }, []);
+
+  const checkFileExists = async (filePath: string) => {
+    try {
+      const res = await fetch(`/api/files/${encodeFilePathForApi(filePath)}?type=read`);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleOpenOutline = useCallback(async () => {
+    if (!activeCwd || !activeBookId) return;
+    const pathsToCheck = [
+      joinFilePath(activeCwd, `books/${activeBookId}/story/outline/volume_map.md`),
+      joinFilePath(activeCwd, `books/${activeBookId}/story/volume_outline.md`),
+      joinFilePath(activeCwd, `books/${activeBookId}/story/author_intent.md`),
+    ];
+
+    for (const p of pathsToCheck) {
+      const exists = await checkFileExists(p);
+      if (exists) {
+        let filename = "volume_map.md";
+        if (p.endsWith("volume_outline.md")) filename = "volume_outline.md";
+        else if (p.endsWith("author_intent.md")) filename = "author_intent.md";
+        handleOpenFile(p, filename);
+        return;
+      }
+    }
+    alert("未找到大纲文件（建议先通过大纲策划师生成大纲，或确认书籍 story 目录已初始化）。");
+  }, [activeCwd, activeBookId, handleOpenFile]);
+
+  const handleOpenCharacters = useCallback(async () => {
+    if (!activeCwd || !activeBookId) return;
+    handleOpenCharactersGraph(activeBookId);
+  }, [activeCwd, activeBookId, handleOpenCharactersGraph]);
 
   const sidebarContent = (
     <>
@@ -551,6 +598,62 @@ export function AppShell() {
                 >
                   <span style={{ fontSize: 12 }}>📊</span>
                   <span>章节管控看板</span>
+                </button>
+              )}
+
+              {/* 1.6. Book Outline Quick-view (故事大纲快捷查看) */}
+              {hasBooks && activeBookId && (
+                <button
+                  onClick={handleOpenOutline}
+                  title="查看故事大纲 (View Novel Outline)"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    height: "100%",
+                    padding: "0 12px",
+                    background: "none",
+                    border: "none",
+                    borderRight: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    transition: "color 0.12s, background 0.12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
+                >
+                  <span style={{ fontSize: 12 }}>🗺️</span>
+                  <span>故事大纲</span>
+                </button>
+              )}
+
+              {/* 1.7. Character Profiles Quick-view (角色人设快捷查看) */}
+              {hasBooks && activeBookId && (
+                <button
+                  onClick={handleOpenCharacters}
+                  title="查看角色人设 (View Character Profiles)"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    height: "100%",
+                    padding: "0 12px",
+                    background: "none",
+                    border: "none",
+                    borderRight: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    transition: "color 0.12s, background 0.12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
+                >
+                  <span style={{ fontSize: 12 }}>👥</span>
+                  <span>角色人设</span>
                 </button>
               )}
 
@@ -771,6 +874,12 @@ export function AppShell() {
             activeFileTab.filePath.startsWith("dashboard:") ? (
               <ChapterDashboard
                 bookId={activeFileTab.filePath.substring("dashboard:".length)}
+                cwd={activeCwd!}
+                onOpenFile={handleOpenFile}
+              />
+            ) : activeFileTab.filePath.startsWith("characters:") ? (
+              <CharacterRelationDashboard
+                bookId={activeFileTab.filePath.substring("characters:".length)}
                 cwd={activeCwd!}
                 onOpenFile={handleOpenFile}
               />
