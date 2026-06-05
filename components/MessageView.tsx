@@ -120,6 +120,65 @@ function parseAttachments(text: string): { cleanText: string; attachments: Parse
   return { cleanText, attachments };
 }
 
+const isFilePath = (str: string) => {
+  const clean = str.trim();
+  if (clean.includes("\n") || clean.length > 256) return false;
+  const hasExtension = /\.(md|json|txt|js|ts|tsx|py|css|html|sh|bat)$/i.test(clean);
+  const hasPathSep = clean.includes("/") || clean.includes("\\");
+  return hasExtension && (hasPathSep || clean.startsWith(".") || clean.startsWith("books") || clean.startsWith("story") || clean.startsWith("outline") || clean.startsWith("roles"));
+};
+
+function FileMentionBadge({ path, cwd }: { path: string; cwd?: string | null }) {
+  const [hovered, setHovered] = useState(false);
+  const clean = path.trim();
+  const fileName = clean.split(/[/\\]/).pop() || clean;
+
+  const handleFileClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    let fullPath = clean;
+    if (cwd && !/^[a-zA-Z]:/i.test(fullPath) && !fullPath.startsWith("/")) {
+      const cleanCwd = cwd.replace(/[\\/]+$/, "");
+      fullPath = `${cleanCwd}/${clean}`;
+    }
+    window.dispatchEvent(new CustomEvent("open-file", {
+      detail: {
+        filePath: fullPath,
+        fileName: fileName
+      }
+    }));
+  };
+
+  return (
+    <span
+      onClick={handleFileClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      title={`点击打开文件: ${clean}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        background: hovered ? "rgba(99, 102, 241, 0.12)" : "rgba(99, 102, 241, 0.05)",
+        border: hovered ? "1px solid var(--accent)" : "1px solid rgba(99, 102, 241, 0.18)",
+        borderRadius: 6,
+        padding: "2px 6px",
+        fontSize: "0.9em",
+        color: "var(--accent)",
+        fontFamily: "var(--font-serif)",
+        fontWeight: 500,
+        cursor: "pointer",
+        userSelect: "none",
+        transition: "all 0.15s ease",
+        margin: "0 2px",
+        transform: hovered ? "translateY(-0.5px)" : "translateY(0)",
+      }}
+    >
+      <span style={{ fontSize: "1.1em", display: "flex", alignItems: "center" }}>📄</span>
+      <span style={{ textDecoration: hovered ? "underline" : "none" }}>{fileName}</span>
+    </span>
+  );
+}
+
 function AttachmentChip({ file, cwd }: { file: ParsedAttachment; cwd?: string | null }) {
   const isAudio = /\.(wav|mp3|ogg|m4a|webm|aac)$/i.test(file.name);
   const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(file.name);
@@ -447,6 +506,40 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
     });
   };
 
+  const renderFormattedText = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(`[^`\n]+`)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith("`") && part.endsWith("`")) {
+        const rawCode = part.slice(1, -1);
+        if (isFilePath(rawCode)) {
+          return (
+            <FileMentionBadge
+              key={index}
+              path={rawCode}
+              cwd={cwd}
+            />
+          );
+        }
+        return (
+          <code
+            key={index}
+            style={{
+              background: "var(--bg-selected)",
+              padding: "1px 4px",
+              borderRadius: 3,
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.9em",
+            }}
+          >
+            {rawCode}
+          </code>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div
       style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
@@ -495,7 +588,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
               })}
             </div>
           )}
-          {cleanText}
+          {renderFormattedText(cleanText)}
           <AttachmentChips attachments={attachments} cwd={cwd} />
         </div>
 
@@ -897,7 +990,7 @@ function AssistantMessageView({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {blocks.map((block, i) => (
-          <BlockView key={i} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(i) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} onZoomImage={onZoomImage} />
+          <BlockView key={i} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(i) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} onZoomImage={onZoomImage} cwd={cwd} />
         ))}
         {message.role === "assistant" && (message as AssistantMessage).errorMessage && (
           <div style={{
@@ -1239,9 +1332,9 @@ function AssistantMessageView({
   );
 }
 
-function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations, onZoomImage }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number>; onZoomImage?: (src: string) => void }) {
+function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations, onZoomImage, cwd }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number>; onZoomImage?: (src: string) => void; cwd?: string | null }) {
   if (block.type === "text") {
-    return <TextBlock block={block as TextContent} onZoomImage={onZoomImage} isStreaming={isStreaming} />;
+    return <TextBlock block={block as TextContent} onZoomImage={onZoomImage} isStreaming={isStreaming} cwd={cwd} />;
   }
   // Hide thinking and tool execution boxes for Zen writing mode
   if (block.type === "thinking") {
@@ -1253,7 +1346,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
   return null;
 }
 
-function TextBlock({ block, onZoomImage, isStreaming }: { block: TextContent; onZoomImage?: (src: string) => void; isStreaming?: boolean }) {
+function TextBlock({ block, onZoomImage, isStreaming, cwd }: { block: TextContent; onZoomImage?: (src: string) => void; isStreaming?: boolean; cwd?: string | null }) {
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -1278,6 +1371,9 @@ function TextBlock({ block, onZoomImage, isStreaming }: { block: TextContent; on
             const isBlock = className?.includes("language-") || raw.includes("\n");
             if (isBlock) {
               return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} isStreaming={isStreaming} />;
+            }
+            if (isFilePath(raw)) {
+              return <FileMentionBadge path={raw} cwd={cwd} />;
             }
             return (
               <code

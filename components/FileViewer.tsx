@@ -56,6 +56,16 @@ function getBookIdFromPath(filePath: string, cwd?: string): string | null {
   return null;
 }
 
+function getFileDisplayPath(filePath: string, cwd?: string): string {
+  const relative = getRelativeFilePath(filePath, cwd);
+  const normalized = relative.replace(/\\/g, "/");
+  const match = normalized.match(/^books\/[^/]+\/chapters\/(.+)$/);
+  if (match) {
+    return match[1];
+  }
+  return relative;
+}
+
 type DiffLine =
   | { type: "unchanged"; text: string; lineNo: number }
   | { type: "removed"; text: string; lineNo: number }
@@ -360,7 +370,7 @@ function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
         }}
       >
         <span style={{ fontFamily: "var(--font-mono)" }} title={filePath}>
-          {getRelativeFilePath(filePath, cwd)}
+          {getFileDisplayPath(filePath, cwd)}
         </span>
         <span style={{ marginLeft: "auto" }}>{ext || "image"}</span>
         {naturalSize && <span>{naturalSize.w} × {naturalSize.h}</span>}
@@ -499,7 +509,7 @@ function AudioViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
         }}
       >
         <span style={{ fontFamily: "var(--font-mono)" }} title={filePath}>
-          {getRelativeFilePath(filePath, cwd)}
+          {getFileDisplayPath(filePath, cwd)}
         </span>
         <span style={{ marginLeft: "auto" }}>{ext || "audio"}</span>
         {duration != null && <span>{formatDuration(duration)}</span>}
@@ -1178,7 +1188,7 @@ function PptxViewer({ filePath, cwd }: Props) {
         }}
       >
         <span style={{ fontFamily: "var(--font-mono)" }} title={filePath}>
-          {getRelativeFilePath(filePath, cwd)}
+          {getFileDisplayPath(filePath, cwd)}
         </span>
         <span style={{ marginLeft: "auto" }}>{ext.toUpperCase()}</span>
         {formatSizeStr && <span>{formatSizeStr}</span>}
@@ -3711,7 +3721,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
         }}
       >
         <span style={{ fontFamily: "var(--font-mono)" }} title={filePath}>
-          {getRelativeFilePath(filePath, cwd)}
+          {getFileDisplayPath(filePath, cwd)}
         </span>
 
         {/* Chapter review status & controls */}

@@ -76,42 +76,6 @@ export function readGems(): GemProfile[] {
   try {
     const data = readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(data) as GemProfile[];
-    
-    // Auto-merge and update default gems
-    let updated = false;
-    for (const dg of DEFAULT_GEMS) {
-      const idx = parsed.findIndex(pg => pg.id === dg.id);
-      if (idx === -1) {
-        parsed.push(dg);
-        updated = true;
-      } else {
-        if (parsed[idx].systemPrompt !== dg.systemPrompt || parsed[idx].name !== dg.name) {
-          parsed[idx].name = dg.name;
-          parsed[idx].systemPrompt = dg.systemPrompt;
-          parsed[idx].description = dg.description;
-          parsed[idx].modified = new Date().toISOString();
-          updated = true;
-        }
-      }
-    }
-
-    // Remove obsolete default gems (like default-co-writer)
-    const obsoleteIds = ["default-co-writer"];
-    const initialCount = parsed.length;
-    const cleaned = parsed.filter(g => !obsoleteIds.includes(g.id));
-    if (cleaned.length < initialCount) {
-      parsed.length = 0;
-      parsed.push(...cleaned);
-      updated = true;
-    }
-    
-    if (updated) {
-      try {
-        writeGems(parsed);
-      } catch (e) {
-        console.error("Failed to merge missing default gems:", e);
-      }
-    }
     return parsed;
   } catch (error) {
     console.error("Failed to read gem_xy.json:", error);

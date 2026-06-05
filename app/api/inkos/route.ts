@@ -1030,12 +1030,38 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          let resolvedError: string | undefined = undefined;
+          if (hasTimedOut) {
+            resolvedError = "任务运行超时（超过 1800 秒），已自动终止。";
+          } else if (code !== 0) {
+            if (stdoutAccumulator.trim()) {
+              try {
+                const lines = stdoutAccumulator.split("\n").map(l => l.trim()).filter(Boolean);
+                const lastLine = lines[lines.length - 1];
+                if (lastLine && (lastLine.startsWith("{") || lastLine.startsWith("["))) {
+                  const parsed = JSON.parse(lastLine);
+                  if (parsed && parsed.error) {
+                    resolvedError = parsed.error;
+                  } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[parsed.length - 1]?.error) {
+                    resolvedError = parsed[parsed.length - 1].error;
+                  }
+                }
+              } catch (e) {}
+            }
+            if (!resolvedError) {
+              const cleanStderr = stderrAccumulator
+                .split("\n")
+                .filter(line => !line.trim().startsWith("(node:") && !line.trim().includes("DeprecationWarning") && !line.trim().includes("ExperimentalWarning"))
+                .join("\n")
+                .trim();
+              resolvedError = cleanStderr || `任务执行失败，退出码: ${code}`;
+            }
+          }
+
           send({
             type: "result",
             success: code === 0 && !hasTimedOut,
-            error: hasTimedOut
-              ? "任务运行超时（超过 1800 秒），已自动终止。"
-              : (code !== 0 ? (stderrAccumulator.trim() || `任务执行失败，退出码: ${code}`) : undefined),
+            error: resolvedError,
             stdout: stdoutAccumulator,
             stderr: stderrAccumulator,
             code,

@@ -47,6 +47,9 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
   const [rejectReason, setRejectReason] = useState("");
   const [isRejecting, setIsRejecting] = useState(false);
 
+  // Re-plan intent dialog
+  const [planConfirmNum, setPlanConfirmNum] = useState<number | null>(null);
+
   // Auto-scroll references for terminal logs
   const logContainerRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -944,11 +947,17 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           fontWeight: 600,
                         }}
                       >
-                        👁️ 查看意图蓝图
+                        👁️ 查看第 {nextChapter.number} 章意图蓝图
                       </button>
                     )}
                     <button
-                      onClick={() => executeCommand(nextChapter.number, "plan", "plan")}
+                      onClick={() => {
+                        if (nextChapter.hasPlan) {
+                          setPlanConfirmNum(nextChapter.number);
+                        } else {
+                          executeCommand(nextChapter.number, "plan", "plan");
+                        }
+                      }}
                       disabled={!!runningActions[nextChapter.number]}
                       style={{
                         padding: "6px 14px",
@@ -963,7 +972,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                         gap: 6
                       }}
                     >
-                      {runningActions[nextChapter.number] === "plan" ? "⏳ 规划中..." : "🗺️ 规划下一章意图"}
+                      {runningActions[nextChapter.number] === "plan" ? "⏳ 规划中..." : `🗺️ 规划第 ${nextChapter.number} 章意图`}
                     </button>
                   </div>
                 </div>
@@ -1065,6 +1074,86 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                 }}
               >
                 {isRejecting ? "正在回滚..." : "🚨 确定驳回并删除后续"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Re-plan Confirmation Modal */}
+      {planConfirmNum !== null && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          background: "rgba(10, 8, 8, 0.4)",
+          backdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <div style={{
+            width: "440px",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35)",
+            padding: "20px 24px",
+          }}>
+            <h3 style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 700, color: "#eab308", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>⚠️</span> 确定重新规划章节意图吗？
+            </h3>
+            
+            <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 20 }}>
+              检测到您已为 <strong style={{ color: "var(--accent)" }}>第 {planConfirmNum} 章</strong> 生成了意图蓝图。
+              <div style={{
+                marginTop: 10,
+                padding: "10px 14px",
+                background: "rgba(234, 179, 8, 0.04)",
+                border: "1px solid rgba(234, 179, 8, 0.15)",
+                borderRadius: 6,
+                color: "var(--text-muted)",
+                fontSize: 12
+              }}>
+                若在此期间您未对大纲或前文设定进行重大调整，无需重复规划。
+                <br /><br />
+                <span style={{ color: "#f59e0b", fontWeight: 600 }}>警告</span>：重新生成将会<strong>覆盖您可能已手动修改的蓝图内容</strong>，并消耗大模型 Token 额度。
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setPlanConfirmNum(null)}
+                style={{
+                  padding: "6px 14px",
+                  background: "none",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  const chNum = planConfirmNum;
+                  setPlanConfirmNum(null);
+                  executeCommand(chNum, "plan", "plan");
+                }}
+                style={{
+                  padding: "6px 16px",
+                  background: "var(--accent)",
+                  border: "none",
+                  borderRadius: 6,
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                确定重新规划
               </button>
             </div>
           </div>

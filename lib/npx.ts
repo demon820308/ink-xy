@@ -334,6 +334,7 @@ export async function runInkos(args: string[], opts: RunNpxOptions = {}): Promis
       ...process.env,
       ...modelsEnv,
       INKOS_NO_STDIN: "true",
+      NODE_NO_WARNINGS: "1",
       ...opts.env,
     },
   });
@@ -352,6 +353,7 @@ export function spawnInkos(args: string[], opts: RunNpxOptions = {}) {
       ...process.env,
       ...modelsEnv,
       INKOS_NO_STDIN: "true",
+      NODE_NO_WARNINGS: "1",
       ...opts.env,
     },
     stdio: ["ignore", "pipe", "pipe"],

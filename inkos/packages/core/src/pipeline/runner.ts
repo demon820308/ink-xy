@@ -1892,7 +1892,7 @@ export class PipelineRunner {
       throw new Error(`Chapter ${targetChapter} is not state-degraded.`);
     }
     if (targetChapter !== latestChapter) {
-      throw new Error(`Only the latest state-degraded chapter can be repaired safely (latest is ${latestChapter}).`);
+      throw new Error(`只能安全修补最新的状态退化章节（当前最新章节是第 ${latestChapter} 章）。Only the latest state-degraded chapter can be repaired safely (latest is ${latestChapter}).`);
     }
 
     this.logStage(stageLanguage, { zh: "修复章节状态结算", en: "repairing chapter state settlement" });
@@ -2010,7 +2010,7 @@ export class PipelineRunner {
     const targetMeta = index[targetIndex]!;
     const latestChapter = Math.max(...index.map((chapter) => chapter.number));
     if (targetChapter !== latestChapter) {
-      throw new Error(`Only the latest persisted chapter can be synced safely (latest is ${latestChapter}).`);
+      throw new Error(`只能安全同步最新的已持久化章节（当前最新章节是第 ${latestChapter} 章）。Only the latest persisted chapter can be synced safely (latest is ${latestChapter}).`);
     }
 
     this.logStage(stageLanguage, { zh: "根据已编辑正文同步真相文件与索引", en: "syncing truth files and indexes from edited chapter body" });

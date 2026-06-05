@@ -50,3 +50,14 @@ We have initiated the development web server for your visual verification.
    - Write or open a draft chapter under `章节草稿/` in the Zen Editor.
    - Click **"🔍 人设防崩审计"** in the footer.
    - Verify that the elegant slide-over drawer opens, displays the execution status, and displays the structured consistency report rendered beautifully in serif typography!
+
+---
+
+## ⚡ Visual Enhancement: File Viewer Chapter Header Simplify
+
+We have successfully resolved the user request to simplify chapter file paths in the FileViewer header:
+- **Simplified File path**: For files residing in the chapter directories under books (e.g., `books/我是你爸爸-还是人儿子/chapters/0001_爸，我掉进你的时间里了.md`), the file viewer header now displays only the filename (`0001_爸，我掉进你的时间里了.md`) instead of the verbose relative path.
+- **Implemented Helper**: Added a robust path normalization check `getFileDisplayPath` inside [FileViewer.tsx](file:///e:/ink-xY/components/FileViewer.tsx#L59) which handles image viewers, audio viewers, document viewers, and text/code viewers.
+
+- **Dynamic Blueprint Buttons**: Changed the static button label `👁️ 查看意图蓝图` to dynamically display the next chapter number, e.g., `👁️ 查看第 2 章意图蓝图` (and similarly updated the creation button label to `🗺️ 规划第 2 章意图`) in [ChapterDashboard.tsx](file:///e:/ink-xY/components/ChapterDashboard.tsx#L947) to provide a clearer user flow.
+- **Safety Re-planning Guard**: Created a premium React Custom Confirmation Modal in [ChapterDashboard.tsx](file:///e:/ink-xY/components/ChapterDashboard.tsx#L984) that overlays the screen with a gentle backdrop blur (`backdropFilter: 'blur(6px)'`) whenever a user clicks "规划第 X 章意图" when a blueprint already exists. It displays a warning concerning token consumption and potential loss of manual modifications, aligning perfectly with the workspace visual guidelines.

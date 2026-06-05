@@ -239,8 +239,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [hasShorts, setHasShorts] = useState(false);
   const [showImportDraft, setShowImportDraft] = useState(true);
   const [showAutoGenerateShort, setShowAutoGenerateShort] = useState(true);
+  const [disableDefaultAgentEditDelete, setDisableDefaultAgentEditDelete] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isCreatingBook, setIsCreatingBook] = useState(false);
+  const [bookCreateLogs, setBookCreateLogs] = useState<string[]>([]);
+  const [bookCreateProgressText, setBookCreateProgressText] = useState("");
+  const [createSuccessInfo, setCreateSuccessInfo] = useState<{ bookId: string; title: string } | null>(null);
   const [bookError, setBookError] = useState<string | null>(null);
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false);
   const [isDeletingBook, setIsDeletingBook] = useState(false);
@@ -369,15 +373,26 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     if (autoShortVal !== null) {
       setShowAutoGenerateShort(autoShortVal === "true");
     }
+    const disableDefaultAgentVal = localStorage.getItem("ink-disable-default-agent-edit-delete");
+    if (disableDefaultAgentVal !== null) {
+      setDisableDefaultAgentEditDelete(disableDefaultAgentVal === "true");
+    }
 
     const handleSettings = (e: Event) => {
-      const customEvent = e as CustomEvent<{ showImportDraft?: boolean; showAutoGenerateShort?: boolean }>;
+      const customEvent = e as CustomEvent<{
+        showImportDraft?: boolean;
+        showAutoGenerateShort?: boolean;
+        disableDefaultAgentEditDelete?: boolean;
+      }>;
       if (customEvent.detail) {
         if (typeof customEvent.detail.showImportDraft === "boolean") {
           setShowImportDraft(customEvent.detail.showImportDraft);
         }
         if (typeof customEvent.detail.showAutoGenerateShort === "boolean") {
           setShowAutoGenerateShort(customEvent.detail.showAutoGenerateShort);
+        }
+        if (typeof customEvent.detail.disableDefaultAgentEditDelete === "boolean") {
+          setDisableDefaultAgentEditDelete(customEvent.detail.disableDefaultAgentEditDelete);
         }
       }
     };
@@ -399,6 +414,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const importConsoleRef = useRef<HTMLDivElement>(null);
   const styleConsoleRef = useRef<HTMLDivElement>(null);
   const consolidateConsoleRef = useRef<HTMLDivElement>(null);
+  const bookCreateConsoleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (consoleRef.current) {
@@ -423,6 +439,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       consolidateConsoleRef.current.scrollTop = consolidateConsoleRef.current.scrollHeight;
     }
   }, [consolidationLogs]);
+
+  useEffect(() => {
+    if (bookCreateConsoleRef.current) {
+      bookCreateConsoleRef.current.scrollTop = bookCreateConsoleRef.current.scrollHeight;
+    }
+  }, [bookCreateLogs]);
 
   // Book creation form state
   const [bookTitle, setBookTitle] = useState("");
@@ -1751,6 +1773,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
     setIsCreatingBook(true);
     setBookError(null);
+    setBookCreateLogs([]);
+    setBookCreateProgressText("正在为您分析题材并生成初始大纲，请稍候...");
 
     try {
       const isFanficGenre = bookGenre === "fanfic";
@@ -1793,7 +1817,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let finalResult: { success: boolean; error?: string } | null = null;
+      let finalResult: { success: boolean; error?: string; stdout?: string; stderr?: string } | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1805,7 +1829,35 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           if (!line.trim()) continue;
           try {
             const chunk = JSON.parse(line);
-            if (chunk.type === "result") {
+            if (chunk.type === "stdout" || chunk.type === "stderr") {
+              const text = chunk.data || "";
+              setBookCreateLogs((prev) => [...prev, text]);
+
+              // Update progress status text by parsing stdout/stderr
+              if (text.includes("生成基础设定") || text.includes("generating foundation")) {
+                setBookCreateProgressText("正在为您构思并起草世界观/角色人设设定...");
+              } else if (text.includes("保存书籍配置") || text.includes("saving book config")) {
+                setBookCreateProgressText("正在落盘书籍配置参数...");
+              } else if (text.includes("写入基础设定文件") || text.includes("writing foundation files")) {
+                setBookCreateProgressText("正在保存大纲结构与角色卡片...");
+              } else if (text.includes("初始化控制文档") || text.includes("initializing control documents")) {
+                setBookCreateProgressText("正在构建写作控制台数据...");
+              } else if (text.includes("创建初始快照") || text.includes("creating initial snapshot")) {
+                setBookCreateProgressText("正在为当前创作宇宙创建创世快照...");
+              } else if (text.includes("导入同人正典") || text.includes("importing fanfic canon")) {
+                setBookCreateProgressText("正在解析并分析导入的同人原作素材...");
+              } else if (text.includes("生成同人基础设定") || text.includes("generating fanfic foundation")) {
+                setBookCreateProgressText("正在起草同人专属世界观设定...");
+              } else if (text.includes("提取原作风格指纹") || text.includes("extracting source style fingerprint")) {
+                setBookCreateProgressText("正在分析并提取原作风格与文风指纹...");
+              } else if (text.includes("reviewing foundation") || text.includes("审核基础设定")) {
+                const roundMatch = text.match(/(?:round|第)\s*(\d+)/i);
+                const roundNum = roundMatch ? roundMatch[1] : "1";
+                setBookCreateProgressText(`AI 协同审核员正在审查设定质量与一致性（第 ${roundNum} 轮）...`);
+              } else if (text.includes("streaming") || text.includes("生成中")) {
+                setBookCreateProgressText("AI 架构师思维涌动，正在为您撰写大纲与设定档案...");
+              }
+            } else if (chunk.type === "result") {
               finalResult = chunk;
             }
           } catch (err) {}
@@ -1823,19 +1875,49 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         throw new Error(finalResult?.error || "创建书籍失败，大模型生成异常，请检查配置和 Key");
       }
 
-      await checkWorkspaceStatus(activeCwd);
+      // Try parsing createdBookId from stdout log
+      const stdout = finalResult?.stdout || "";
+      let createdBookId: string | undefined;
+      const matchZh = stdout.match(/已创建书籍：([a-zA-Z0-9_-]+)/);
+      const matchEn = stdout.match(/Book created:\s*([a-zA-Z0-9_-]+)/);
+      if (matchZh) {
+        createdBookId = matchZh[1];
+      } else if (matchEn) {
+        createdBookId = matchEn[1];
+      }
+
+      // Fallback: if JSON format output
+      if (!createdBookId && stdout.includes("{")) {
+        try {
+          const parsed = JSON.parse(stdout);
+          if (parsed.bookId) {
+            createdBookId = parsed.bookId;
+          }
+        } catch (e) {}
+      }
+
+      // Reload workspace with the new book selected
+      await checkWorkspaceStatus(activeCwd, createdBookId);
       setExplorerKey((k) => k + 1);
-      
-      setBookTitle("");
-      setBookBrief("");
-      setFanficSource("");
-      setIsBookModalOpen(false);
+
+      setCreateSuccessInfo({
+        bookId: createdBookId || "unknown",
+        title: bookTitle.trim()
+      });
     } catch (err: any) {
       console.error(err);
       setBookError(err.message || "创建书籍失败，请确认侧边栏左下角 Models 中 API Key 填写正确且模型支持当前题材生成。");
     } finally {
       setIsCreatingBook(false);
     }
+  };
+
+  const handleCloseSuccessModal = () => {
+    setBookTitle("");
+    setBookBrief("");
+    setFanficSource("");
+    setCreateSuccessInfo(null);
+    setIsBookModalOpen(false);
   };
 
   const handleDeleteBook = async () => {
@@ -3698,7 +3780,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                       </div>
                       
                       {/* Actions */}
-                      {!isDefaultGem && (
+                      {(!isDefaultGem || !disableDefaultAgentEditDelete) && (
                         <div
                           className="gem-actions"
                           style={{
@@ -4013,8 +4095,74 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               <span>创建新小说书籍 (Create Book)</span>
             </h3>
             
-            {isCreatingBook ? (
-              <div style={{ padding: "30px 10px", textAlign: "center" }}>
+            {createSuccessInfo ? (
+              <div style={{ padding: "10px 10px", textAlign: "center" }}>
+                <div style={{
+                  fontSize: "36px",
+                  marginBottom: "12px"
+                }}>
+                  🎉
+                </div>
+                <h4 style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "var(--text)",
+                  margin: "0 0 10px",
+                }}>
+                  书籍创建成功！
+                </h4>
+                <p style={{
+                  fontSize: "12px",
+                  color: "var(--text-muted)",
+                  lineHeight: 1.6,
+                  margin: "0 0 20px",
+                  padding: "0 10px"
+                }}>
+                  新书 <strong style={{ color: "var(--accent)" }}>《{createSuccessInfo.title}》</strong> 已成功初始化完毕，并已自动切换为当前活跃书籍。<br/>
+                  现在您可以前往侧边栏开始管理该书的大纲、角色卡片与世界观法则。
+                </p>
+                <div style={{
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  fontSize: "11px",
+                  color: "var(--text-muted)",
+                  lineHeight: 1.5,
+                  textAlign: "left",
+                  marginBottom: "20px"
+                }}>
+                  <strong>已初始化的设定包括：</strong>
+                  <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
+                    <li>分卷与分章大纲基本脉络</li>
+                    <li>主要核心人物设定卡片</li>
+                    <li>世界观底层规则要素</li>
+                  </ul>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
+                  <button
+                    type="button"
+                    onClick={handleCloseSuccessModal}
+                    style={{
+                      padding: "6px 24px",
+                      background: "var(--accent)",
+                      border: "none",
+                      borderRadius: "6px",
+                      color: "white",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-hover)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
+                  >
+                    确定
+                  </button>
+                </div>
+              </div>
+            ) : isCreatingBook ? (
+              <div style={{ padding: "20px 10px", textAlign: "center" }}>
                 <div style={{
                   width: "36px",
                   height: "36px",
@@ -4027,8 +4175,57 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 8, fontSize: "13px" }}>
                   正在生成创作宇宙基础设定...
                 </div>
-                <div style={{ color: "var(--text-muted)", fontSize: "11px", lineHeight: 1.6, maxWidth: "300px", margin: "0 auto" }}>
-                  AI 架构师正在分析题材大纲，并自动构建卷大纲、角色设定卡片与世界观法则，请稍候约 30 秒。
+                <div style={{ color: "var(--text-muted)", fontSize: "11px", lineHeight: 1.6, maxWidth: "400px", margin: "0 auto 12px" }}>
+                  AI 架构师正在分析题材大纲，并自动构建卷大纲、角色设定卡片与世界观法则，请耐心等待。
+                </div>
+
+                {/* Current step progress display */}
+                {bookCreateProgressText && (
+                  <div style={{
+                    fontSize: "12px",
+                    fontWeight: 500,
+                    color: "var(--accent)",
+                    margin: "12px auto",
+                    padding: "6px 12px",
+                    background: "var(--bg-subtle)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    maxWidth: "400px",
+                    display: "inline-block"
+                  }}>
+                    🎯 {bookCreateProgressText}
+                  </div>
+                )}
+
+                {/* Terminal Live Output Console */}
+                <div 
+                  ref={bookCreateConsoleRef}
+                  style={{
+                    background: "#121214",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    padding: "12px",
+                    height: "180px",
+                    overflowY: "auto",
+                    textAlign: "left",
+                    fontFamily: "var(--font-mono), monospace",
+                    fontSize: "11px",
+                    lineHeight: "1.5",
+                    color: "#e4e4e7",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-all",
+                    marginTop: "16px",
+                  }}
+                >
+                  {bookCreateLogs.length === 0 ? (
+                    <span style={{ color: "var(--text-dim)" }}>正在启动 AI 协同规划引擎...</span>
+                  ) : (
+                    bookCreateLogs.map((log, index) => (
+                      <div key={index} style={{ marginBottom: 2 }}>
+                        {log}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             ) : (
