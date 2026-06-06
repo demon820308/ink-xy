@@ -4118,8 +4118,8 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
               flexShrink: 0,
             }}>
               <div style={{ flexShrink: 0, whiteSpace: "nowrap", marginRight: 16 }}>
-                字数: <span style={{ fontWeight: 600, color: "var(--text)", marginRight: 16 }}>{editContent.length} 字</span>
-                行数: <span style={{ fontWeight: 600, color: "var(--text)" }}>{editContent.split("\n").length} 行</span>
+                字数: <span style={{ fontWeight: 600, color: "var(--text)", marginRight: 16 }}>{editContent.length}</span>
+                行数: <span style={{ fontWeight: 600, color: "var(--text)" }}>{editContent.split("\n").length}</span>
               </div>
               
               {/* InkOS Command Toolbar */}
