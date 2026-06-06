@@ -4512,7 +4512,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
                     }}
                   >
                     <span>{isRunning ? "⏳" : "📋"}</span>
-                    <span>{isRunning ? "查看运行进度" : "查看报告"}</span>
+                    {isRunning && <span>查看运行进度</span>}
                   </button>
                 )}
                 {saveStatus === "saving" && (
