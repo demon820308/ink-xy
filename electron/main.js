@@ -66,8 +66,8 @@ function checkServerReady(callback) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1344,
+    height: 756,
     title: "ink-xY Novel Studio",
     icon: path.join(__dirname, "../public/icon.png"),
     webPreferences: {
