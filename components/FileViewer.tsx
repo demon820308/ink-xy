@@ -2036,6 +2036,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
 
   const [chapterStatus, setChapterStatus] = useState<string | null>(null);
   const [chapterHasPlan, setChapterHasPlan] = useState<boolean>(false);
+  const [nextChapterHasPlan, setNextChapterHasPlan] = useState<boolean>(false);
   const [chapterHasSnapshot, setChapterHasSnapshot] = useState<boolean>(false);
   const [auditIssues, setAuditIssues] = useState<string[]>([]);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -2220,10 +2221,31 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     if (!bookIdVal || !chapterNumber) {
       setChapterStatus(null);
       setChapterHasPlan(false);
+      setNextChapterHasPlan(false);
       setChapterHasSnapshot(false);
       setAuditIssues([]);
       return;
     }
+
+    // Check if next chapter (chapterNumber + 1) has a plan
+    const nextPadded = String(chapterNumber + 1).padStart(4, "0");
+    const nextPlanPath = `${cwd}/books/${bookIdVal}/story/runtime/chapter-${nextPadded}.plan.md`;
+    const nextIntentPath = `${cwd}/books/${bookIdVal}/story/runtime/chapter-${nextPadded}.intent.md`;
+    let nextHasPlan = false;
+    try {
+      const planRes = await fetch(`/api/files/${encodeFilePathForApi(nextPlanPath)}?type=read`);
+      if (planRes.ok) {
+        nextHasPlan = true;
+      } else {
+        const intentRes = await fetch(`/api/files/${encodeFilePathForApi(nextIntentPath)}?type=read`);
+        if (intentRes.ok) {
+          nextHasPlan = true;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check next chapter plan:", err);
+    }
+    setNextChapterHasPlan(nextHasPlan);
 
     try {
       const res = await fetch("/api/inkos", {
@@ -2832,7 +2854,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
         message: `当前章节 (第 ${chapterNumber} 章) 尚未通过安全保障审核。在开始续写下一章之前，需要满足以下前置条件：`,
         type: "warning",
         checklist: [
-          { text: "完成『规划蓝图』 (在编辑器底部或章节看板中运行)", completed: chapterHasPlan },
+          { text: "完成『规划蓝图』 (在编辑器底部或章节看板中运行)", completed: nextChapterHasPlan },
           { text: "通过『防崩审计』 (运行人设与设定一致性审计)", completed: chapterStatus === "approved" || chapterStatus === "ready-for-review" },
           { text: "运行『同步设定』 (将最新正文同步至故事数据库)", completed: chapterHasSnapshot },
           { text: "将本章状态设为『已过审』", completed: chapterStatus === "approved" }
@@ -3107,7 +3129,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
         message: `当前章节 (第 ${chapterNumber} 章) 尚未通过安全保障审核。在开始起草下一章之前，需要满足以下前置条件：`,
         type: "warning",
         checklist: [
-          { text: "完成『规划蓝图』 (在编辑器底部或章节看板中运行)", completed: chapterHasPlan },
+          { text: "完成『规划蓝图』 (在编辑器底部或章节看板中运行)", completed: nextChapterHasPlan },
           { text: "通过『防崩审计』 (运行人设与设定一致性审计)", completed: chapterStatus === "approved" || chapterStatus === "ready-for-review" },
           { text: "运行『同步设定』 (将最新正文同步至故事数据库)", completed: chapterHasSnapshot },
           { text: "将本章状态设为『已过审』", completed: chapterStatus === "approved" }
