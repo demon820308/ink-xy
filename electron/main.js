@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, screen } = require("electron");
 const { fork, execSync } = require("child_process");
 const path = require("path");
 const http = require("http");
@@ -65,9 +65,14 @@ function checkServerReady(callback) {
 }
 
 function createWindow() {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+  const windowWidth = Math.round(width * 0.8) || 1344;
+  const windowHeight = Math.round(height * 0.8) || 756;
+
   mainWindow = new BrowserWindow({
-    width: 1344,
-    height: 756,
+    width: windowWidth,
+    height: windowHeight,
     title: "ink-xY Novel Studio",
     icon: path.join(__dirname, "../public/icon.png"),
     webPreferences: {

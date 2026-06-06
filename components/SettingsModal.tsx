@@ -12,7 +12,7 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
   const [showImportDraft, setShowImportDraft] = useState(true);
   const [showAutoGenerateShort, setShowAutoGenerateShort] = useState(true);
   const [showCreateBookCard, setShowCreateBookCard] = useState(true);
-  const [disableDefaultAgentEditDelete, setDisableDefaultAgentEditDelete] = useState(false);
+  const [disableDefaultAgentEditDelete, setDisableDefaultAgentEditDelete] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
 

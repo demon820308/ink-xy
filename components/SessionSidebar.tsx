@@ -247,7 +247,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [showImportDraft, setShowImportDraft] = useState(true);
   const [showAutoGenerateShort, setShowAutoGenerateShort] = useState(true);
   const [showCreateBookCard, setShowCreateBookCard] = useState(true);
-  const [disableDefaultAgentEditDelete, setDisableDefaultAgentEditDelete] = useState(false);
+  const [disableDefaultAgentEditDelete, setDisableDefaultAgentEditDelete] = useState(true);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isCreatingBook, setIsCreatingBook] = useState(false);
   const [bookCreateLogs, setBookCreateLogs] = useState<string[]>([]);
