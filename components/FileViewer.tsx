@@ -2883,7 +2883,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
           setConfirmDialog({
             title: "确认覆盖并重构章节",
             warning: "注意：此操作不可逆！",
-            message: `${conflictData.message}\n\n确认要重写该章节并永久删除后续所有章节吗？`,
+            message: `${conflictData.message}\n\n💡 提示：重构并成功生成新章节后，您必须先完成「规划蓝图」，才可以继续撰写下一章。\n\n确认要重写该章节并永久删除后续所有章节吗？`,
             onConfirm: () => {
               handleWriteNext(true);
             }
@@ -3186,7 +3186,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
           setConfirmDialog({
             title: "确认覆盖并起草章节",
             warning: "注意：此操作不可逆！",
-            message: `${conflictData.message}\n\n确认要起草该章节并永久删除后续所有章节吗？`,
+            message: `${conflictData.message}\n\n💡 提示：重构并成功生成新章节后，您必须先完成「规划蓝图」，才可以继续撰写下一章。\n\n确认要起草该章节并永久删除后续所有章节吗？`,
             onConfirm: () => {
               handleDraft(true);
             }
