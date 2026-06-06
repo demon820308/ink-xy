@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { encodeFilePathForApi } from "@/lib/file-paths";
+import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 
 // Helper to check if a markdown table or file has only headers/titles without actual rows
 function isMarkdownTableEmpty(content: string): boolean {
@@ -190,6 +190,39 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       window.removeEventListener("refresh-explorer", handleRefresh);
     };
   }, [fetchDashboardData]);
+
+  const checkFileExists = async (filePath: string) => {
+    try {
+      const res = await fetch(`/api/files/${encodeFilePathForApi(filePath)}?type=read`);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleOpenOutline = useCallback(async () => {
+    const pathsToCheck = [
+      joinFilePath(cwd, `books/${bookId}/story/outline/volume_map.md`),
+      joinFilePath(cwd, `books/${bookId}/story/volume_outline.md`),
+      joinFilePath(cwd, `books/${bookId}/story/author_intent.md`),
+    ];
+
+    for (const p of pathsToCheck) {
+      const exists = await checkFileExists(p);
+      if (exists) {
+        let filename = "volume_map.md";
+        if (p.endsWith("volume_outline.md")) filename = "volume_outline.md";
+        else if (p.endsWith("author_intent.md")) filename = "author_intent.md";
+        onOpenFile(p, filename);
+        return;
+      }
+    }
+    alert("未找到大纲文件（建议先通过大纲策划师生成大纲，或确认书籍 story 目录已初始化）。");
+  }, [cwd, bookId, onOpenFile]);
+
+  const handleOpenCharacters = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("open-characters-graph", { detail: { bookId } }));
+  }, [bookId]);
 
   // Auto scroll console logs to bottom
   const appendLog = useCallback((chNum: number, text: string) => {
@@ -532,6 +565,64 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* 故事大纲 */}
+          <button
+            onClick={handleOpenOutline}
+            style={{
+              padding: "6px 12px",
+              background: "rgba(99, 102, 241, 0.08)",
+              border: "1px solid rgba(99, 102, 241, 0.3)",
+              borderRadius: 6,
+              color: "#818cf8",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(99, 102, 241, 0.15)";
+              e.currentTarget.style.borderColor = "#818cf8";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(99, 102, 241, 0.08)";
+              e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.3)";
+            }}
+          >
+            <span>🗺️</span> 故事大纲
+          </button>
+
+          {/* 角色人设 */}
+          <button
+            onClick={handleOpenCharacters}
+            style={{
+              padding: "6px 12px",
+              background: "rgba(139, 92, 246, 0.08)",
+              border: "1px solid rgba(139, 92, 246, 0.3)",
+              borderRadius: 6,
+              color: "#a78bfa",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(139, 92, 246, 0.15)";
+              e.currentTarget.style.borderColor = "#a78bfa";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(139, 92, 246, 0.08)";
+              e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.3)";
+            }}
+          >
+            <span>👥</span> 角色人设
+          </button>
+
           <input
             type="text"
             placeholder="搜索章节或标题..."
