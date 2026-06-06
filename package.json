@@ -1,6 +1,6 @@
 {
   "name": "@zwbigi/ink-xy",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "author": "demon820308",
   "description": "ink-xY Novel Studio - Professional Intelligent Collaborative Novel Editor",
   "main": "electron/main.js",
@@ -68,6 +68,9 @@
     "directories": {
       "output": "dist"
     },
+    "asarUnpack": [
+      "inkos/**/*"
+    ],
     "win": {
       "target": "nsis",
       "icon": "public/icon.png"

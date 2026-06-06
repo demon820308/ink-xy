@@ -4119,7 +4119,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
               style={{
                 flex: 1,
                 width: "100%",
-                padding: "32px 48px",
+                padding: "32px 48px 80px",
                 background: "var(--bg)",
                 color: "var(--text)",
                 fontFamily: "var(--font-serif)",
@@ -4147,14 +4147,24 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
               fontFamily: "var(--font-serif)",
               flexShrink: 0,
             }}>
-              <div>
+              <div style={{ flexShrink: 0, whiteSpace: "nowrap", marginRight: 16 }}>
                 字数: <span style={{ fontWeight: 600, color: "var(--text)", marginRight: 16 }}>{editContent.length} 字</span>
                 行数: <span style={{ fontWeight: 600, color: "var(--text)" }}>{editContent.split("\n").length} 行</span>
               </div>
               
               {/* InkOS Command Toolbar */}
               {cwd && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div 
+                  className="no-scrollbar"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    overflowX: "auto",
+                    whiteSpace: "nowrap",
+                    flexShrink: 1,
+                  }}
+                >
                   {activeStyleName && (
                     <span 
                       title={`当前已启用 ${activeStyleName} 写作风格指南`}

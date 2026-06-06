@@ -285,8 +285,9 @@ function resolveModelsEnv(): Record<string, string> {
 /**
  * Recursively search upwards starting from a directory to find the local InkOS CLI index.js.
  */
-function findInkosCliPath(): string {
+function findInkosCliPath(workspaceDir?: string): string {
   const candidates = [
+    workspaceDir,
     process.env.INK_XY_APP_DIR,
     __dirname,
     process.cwd(),
@@ -299,6 +300,14 @@ function findInkosCliPath(): string {
       const candidate = join(dir, "inkos", "packages", "cli", "dist", "index.js");
       try {
         if (existsSync(candidate)) {
+          // If the path contains 'app.asar' (but not 'app.asar.unpacked'), redirect to 'app.asar.unpacked'
+          // since the external system Node process cannot execute files packed inside ASAR.
+          if (candidate.includes("app.asar") && !candidate.includes("app.asar.unpacked")) {
+            const unpackedCandidate = candidate.replace("app.asar", "app.asar.unpacked");
+            if (existsSync(unpackedCandidate)) {
+              return unpackedCandidate;
+            }
+          }
           return candidate;
         }
       } catch {
@@ -313,7 +322,14 @@ function findInkosCliPath(): string {
   }
 
   // Fallback to static resolution if searching fails
-  return join(process.cwd(), "inkos", "packages", "cli", "dist", "index.js");
+  const fallback = join(process.cwd(), "inkos", "packages", "cli", "dist", "index.js");
+  if (fallback.includes("app.asar") && !fallback.includes("app.asar.unpacked")) {
+    const unpackedFallback = fallback.replace("app.asar", "app.asar.unpacked");
+    if (existsSync(unpackedFallback)) {
+      return unpackedFallback;
+    }
+  }
+  return fallback;
 }
 
 /**
@@ -323,7 +339,7 @@ function findInkosCliPath(): string {
 export async function runInkos(args: string[], opts: RunNpxOptions = {}): Promise<RunNpxResult> {
   const resolved = resolveNpx();
   const nodeBin = resolved ? resolved.nodePath : "node";
-  const cliPath = findInkosCliPath();
+  const cliPath = findInkosCliPath(opts.cwd);
 
   const modelsEnv = resolveModelsEnv();
   console.log(`[runInkos] invoking local InkOS CLI: "${nodeBin} ${cliPath} ${args.join(" ")}"`);
@@ -343,7 +359,7 @@ export async function runInkos(args: string[], opts: RunNpxOptions = {}): Promis
 export function spawnInkos(args: string[], opts: RunNpxOptions = {}) {
   const resolved = resolveNpx();
   const nodeBin = resolved ? resolved.nodePath : "node";
-  const cliPath = findInkosCliPath();
+  const cliPath = findInkosCliPath(opts.cwd);
 
   const modelsEnv = resolveModelsEnv();
   console.log(`[spawnInkos] spawning local InkOS CLI: "${nodeBin} ${cliPath} ${args.join(" ")}"`);
