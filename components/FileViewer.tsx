@@ -4124,17 +4124,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
               
               {/* InkOS Command Toolbar */}
               {cwd && (
-                <div 
-                  className="no-scrollbar"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    overflowX: "auto",
-                    whiteSpace: "nowrap",
-                    flexShrink: 1,
-                  }}
-                >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
                   <button
                     onClick={() => requestRunAction("audit", handleRunAudit)}

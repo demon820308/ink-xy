@@ -630,17 +630,7 @@ export function AppShell() {
 
           {/* Writer Toolbar integrated in-between toggle buttons */}
           {isInkosWorkspace && (
-            <div 
-              className="no-scrollbar"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                flexShrink: 1,
-                height: "100%",
-                overflowX: "auto",
-                whiteSpace: "nowrap",
-              }}
-            >
+            <div style={{ display: "flex", alignItems: "center", flexShrink: 0, height: "100%" }}>
               {/* 1. Style Switcher (切换风格) */}
               <div style={{
                 display: "flex",
