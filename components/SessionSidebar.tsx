@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { SessionInfo } from "@/lib/types";
+import packageJson from "../package.json";
 import { FileExplorer } from "./FileExplorer";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 import ReactMarkdown from "react-markdown";
@@ -176,7 +177,7 @@ function StudioTitle() {
   const [scrambling, setScrambling] = useState(false);
   const revertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const target = showVersion ? `v${process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0"}` : "ink-xY Studio";
+  const target = showVersion ? `v${packageJson.version}` : "ink-xY Studio";
   const display = useScramble(target, scrambling);
 
   const triggerScramble = useCallback((toVersion: boolean) => {
