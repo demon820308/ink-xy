@@ -2035,6 +2035,8 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
   const consoleRef = useRef<HTMLDivElement>(null);
 
   const [chapterStatus, setChapterStatus] = useState<string | null>(null);
+  const [chapterHasPlan, setChapterHasPlan] = useState<boolean>(false);
+  const [chapterHasSnapshot, setChapterHasSnapshot] = useState<boolean>(false);
   const [auditIssues, setAuditIssues] = useState<string[]>([]);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [reviewLogs, setReviewLogs] = useState<string[]>([]);
@@ -2047,6 +2049,12 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     message: string;
     warning?: string;
     onConfirm: () => void;
+  } | null>(null);
+  const [alertDialog, setAlertDialog] = useState<{
+    title: string;
+    message: string;
+    type?: "warning" | "error" | "info" | "success";
+    checklist?: { text: string; completed: boolean }[];
   } | null>(null);
   const [writeMode, setWriteMode] = useState<"normal" | "draft">("normal");
   const [isWriteDropdownOpen, setIsWriteDropdownOpen] = useState(false);
@@ -2211,9 +2219,40 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     const bookIdVal = getBookIdFromPath(filePath, cwd);
     if (!bookIdVal || !chapterNumber) {
       setChapterStatus(null);
+      setChapterHasPlan(false);
+      setChapterHasSnapshot(false);
       setAuditIssues([]);
       return;
     }
+
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "dashboard",
+          cwd,
+          args: { bookId: bookIdVal }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.chapters)) {
+          const ch = data.chapters.find((c: any) => c.number === chapterNumber);
+          if (ch) {
+            setChapterStatus(ch.status || null);
+            setChapterHasPlan(!!ch.hasPlan);
+            setChapterHasSnapshot(!!ch.hasSnapshot);
+            setAuditIssues(ch.auditIssues || []);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load active chapter status from dashboard API:", e);
+    }
+
+    // Fallback: Read index.json directly
     const indexPath = `${cwd}/books/${bookIdVal}/chapters/index.json`;
     const encoded = encodeFilePathForApi(indexPath);
     try {
@@ -2225,15 +2264,19 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
           const ch = parsed.find((c: { number: number; status?: string; auditIssues?: string[] }) => c.number === chapterNumber);
           if (ch) {
             setChapterStatus(ch.status || null);
+            setChapterHasPlan(false);
+            setChapterHasSnapshot(false);
             setAuditIssues(ch.auditIssues || []);
             return;
           }
         }
       }
     } catch (e) {
-      console.error("Failed to load active chapter status:", e);
+      console.error("Failed to load active chapter status from index.json:", e);
     }
     setChapterStatus(null);
+    setChapterHasPlan(false);
+    setChapterHasSnapshot(false);
     setAuditIssues([]);
   }, [cwd, filePath, chapterNumber]);
 
@@ -2784,7 +2827,17 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     if (!bookId) return;
 
     if (chapterNumber !== null && chapterStatus !== "approved") {
-      alert(`当前章节 (第 ${chapterNumber} 章) 尚未完成『规划蓝图』、『防崩审计』及『同步设定』，且状态非『已过审』。请先在编辑器底部或章节看板中完成这些前置安全保障步骤，并将其设为『已过审』后，才可以开始续写下一章。`);
+      setAlertDialog({
+        title: "章节未满足续写条件",
+        message: `当前章节 (第 ${chapterNumber} 章) 尚未通过安全保障审核。在开始续写下一章之前，需要满足以下前置条件：`,
+        type: "warning",
+        checklist: [
+          { text: "完成『规划蓝图』 (在编辑器底部或章节看板中运行)", completed: chapterHasPlan },
+          { text: "通过『防崩审计』 (运行人设与设定一致性审计)", completed: chapterStatus === "approved" || chapterStatus === "ready-for-review" },
+          { text: "运行『同步设定』 (将最新正文同步至故事数据库)", completed: chapterHasSnapshot },
+          { text: "将本章状态设为『已过审』", completed: chapterStatus === "approved" }
+        ]
+      });
       return;
     }
 
@@ -3049,7 +3102,17 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     if (!bookId) return;
 
     if (chapterNumber !== null && chapterStatus !== "approved") {
-      alert(`当前章节 (第 ${chapterNumber} 章) 尚未完成『规划蓝图』、『防崩审计』及『同步设定』，且状态非『已过审』。请先在编辑器底部或章节看板中完成这些前置安全保障步骤，并将其设为『已过审』后，才可以开始起草下一章。`);
+      setAlertDialog({
+        title: "章节未满足起草条件",
+        message: `当前章节 (第 ${chapterNumber} 章) 尚未通过安全保障审核。在开始起草下一章之前，需要满足以下前置条件：`,
+        type: "warning",
+        checklist: [
+          { text: "完成『规划蓝图』 (在编辑器底部或章节看板中运行)", completed: chapterHasPlan },
+          { text: "通过『防崩审计』 (运行人设与设定一致性审计)", completed: chapterStatus === "approved" || chapterStatus === "ready-for-review" },
+          { text: "运行『同步设定』 (将最新正文同步至故事数据库)", completed: chapterHasSnapshot },
+          { text: "将本章状态设为『已过审』", completed: chapterStatus === "approved" }
+        ]
+      });
       return;
     }
 
@@ -5755,6 +5818,148 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
                 onMouseLeave={(e) => { e.currentTarget.style.background = "#ef4444"; }}
               >
                 确认操作
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Alert Dialog */}
+      {alertDialog && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          background: "rgba(15, 10, 10, 0.45)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          animation: "fadeIn 0.2s ease-out"
+        }}>
+          <div style={{
+            width: "min(480px, 90%)",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)"
+          }}>
+            {/* Header */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "16px 20px",
+              background: "rgba(234, 88, 12, 0.08)",
+              borderBottom: "1px solid rgba(234, 88, 12, 0.15)",
+              color: "var(--accent)",
+              fontWeight: 600,
+              fontSize: 14
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>{alertDialog.title}</span>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <p style={{
+                fontSize: 13,
+                color: "var(--text)",
+                margin: 0,
+                lineHeight: "1.5"
+              }}>
+                {alertDialog.message}
+              </p>
+
+              {alertDialog.checklist && alertDialog.checklist.length > 0 && (
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  padding: "12px 14px"
+                }}>
+                  {alertDialog.checklist.map((item, idx) => (
+                    <div key={idx} style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                      fontSize: 12,
+                      color: item.completed ? "var(--text-muted)" : "var(--text)",
+                      opacity: item.completed ? 0.75 : 1,
+                      lineHeight: "1.4"
+                    }}>
+                      {item.completed ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2, animation: "pulse 2s infinite" }}>
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                      )}
+                      <span style={{ fontWeight: item.completed ? 400 : 500 }}>
+                        {item.text}
+                        {item.completed && (
+                          <span style={{ 
+                            fontSize: 9, 
+                            color: "#10b981", 
+                            background: "rgba(16, 185, 129, 0.08)", 
+                            border: "1px solid rgba(16, 185, 129, 0.15)",
+                            padding: "1px 5px", 
+                            borderRadius: 4, 
+                            marginLeft: 6,
+                            fontWeight: 600,
+                            display: "inline-block",
+                            verticalAlign: "middle"
+                          }}>
+                            已就绪
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              padding: "12px 20px",
+              background: "var(--bg-panel)",
+              borderTop: "1px solid var(--border)"
+            }}>
+              <button
+                onClick={() => setAlertDialog(null)}
+                style={{
+                  padding: "6px 18px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "none",
+                  background: "var(--accent)",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-hover)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
+              >
+                我知道了
               </button>
             </div>
           </div>
