@@ -69,7 +69,8 @@
       "output": "dist"
     },
     "asarUnpack": [
-      "inkos/**/*"
+      "inkos/packages/cli/dist/**/*",
+      "inkos/packages/core/genres/**/*"
     ],
     "win": {
       "target": "nsis",
@@ -112,10 +113,8 @@
       "!.next/cache/**/*",
       "bin/**/*",
       "public/**/*",
-      "inkos/**/*",
       "inkos/packages/cli/dist/**/*",
-      "!inkos/**/node_modules/.cache/**/*",
-      "!inkos/node_modules/.cache/**/*"
+      "inkos/packages/core/genres/**/*"
     ]
   }
 }
