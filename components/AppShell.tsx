@@ -257,6 +257,11 @@ export function AppShell() {
     });
   }, [fileTabs]);
 
+  const handleSelectTab = useCallback((tabId: string) => {
+    setActiveFileTabId(tabId);
+    setRightPanelOpen(false);
+  }, []);
+
   const handleOpenFile = useCallback((filePath: string, fileName: string) => {
     const tabId = `file:${filePath}`;
     setFileTabs((prev) => {
@@ -264,7 +269,7 @@ export function AppShell() {
       return [...prev, { id: tabId, label: fileName, filePath }];
     });
     setActiveFileTabId(tabId);
-    setRightPanelOpen(true);
+    setRightPanelOpen(false);
   }, []);
 
   const handleOpenDashboard = useCallback((bookId: string) => {
@@ -274,7 +279,7 @@ export function AppShell() {
       return [...prev, { id: tabId, label: `📊 ${bookId} 看板`, filePath: `dashboard:${bookId}` }];
     });
     setActiveFileTabId(tabId);
-    setRightPanelOpen(true);
+    setRightPanelOpen(false);
   }, []);
 
   const handleOpenCharactersGraph = useCallback((bookId: string) => {
@@ -284,7 +289,7 @@ export function AppShell() {
       return [...prev, { id: tabId, label: `👥 ${bookId} 角色人设`, filePath: `characters:${bookId}` }];
     });
     setActiveFileTabId(tabId);
-    setRightPanelOpen(true);
+    setRightPanelOpen(false);
   }, []);
 
   useEffect(() => {
@@ -1185,7 +1190,7 @@ export function AppShell() {
             <TabBar
               tabs={fileTabs}
               activeTabId={activeFileTabId ?? ""}
-              onSelectTab={setActiveFileTabId}
+              onSelectTab={handleSelectTab}
               onCloseTab={handleCloseFileTab}
             />
           </div>
