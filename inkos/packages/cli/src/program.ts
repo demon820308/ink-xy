@@ -32,7 +32,12 @@ import { createTuiCommand } from "./commands/tui.js";
 import { launchTui } from "./tui/app.js";
 
 const require = createRequire(import.meta.url);
-const { version } = require("../package.json") as { version: string };
+let version = "1.4.1";
+try {
+  version = (require("../package.json") as { version: string }).version;
+} catch {
+  // package.json may not be copied in packaged environments
+}
 
 export interface ProgramHooks {
   readonly launchTui?: (projectRoot: string) => Promise<void> | void;
