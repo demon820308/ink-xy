@@ -11,6 +11,7 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
   const [showExecutionConfirm, setShowExecutionConfirm] = useState(true);
   const [showImportDraft, setShowImportDraft] = useState(true);
   const [showAutoGenerateShort, setShowAutoGenerateShort] = useState(true);
+  const [showCreateBookCard, setShowCreateBookCard] = useState(true);
   const [disableDefaultAgentEditDelete, setDisableDefaultAgentEditDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
@@ -28,6 +29,10 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
     if (autoShortVal !== null) {
       setShowAutoGenerateShort(autoShortVal === "true");
     }
+    const createBookVal = localStorage.getItem("ink-show-create-book-card");
+    if (createBookVal !== null) {
+      setShowCreateBookCard(createBookVal === "true");
+    }
     const disableDefaultAgentVal = localStorage.getItem("ink-disable-default-agent-edit-delete");
     if (disableDefaultAgentVal !== null) {
       setDisableDefaultAgentEditDelete(disableDefaultAgentVal === "true");
@@ -39,11 +44,12 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
     localStorage.setItem("ink-show-execution-confirm", String(showExecutionConfirm));
     localStorage.setItem("ink-show-import-draft", String(showImportDraft));
     localStorage.setItem("ink-show-auto-generate-short", String(showAutoGenerateShort));
+    localStorage.setItem("ink-show-create-book-card", String(showCreateBookCard));
     localStorage.setItem("ink-disable-default-agent-edit-delete", String(disableDefaultAgentEditDelete));
     // Trigger custom event to notify other components (e.g. SessionSidebar) of settings changes
     window.dispatchEvent(
       new CustomEvent("ink-settings-changed", {
-        detail: { showExecutionConfirm, showImportDraft, showAutoGenerateShort, disableDefaultAgentEditDelete },
+        detail: { showExecutionConfirm, showImportDraft, showAutoGenerateShort, showCreateBookCard, disableDefaultAgentEditDelete },
       })
     );
     setTimeout(() => {
@@ -222,6 +228,64 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
                     height: 16,
                     width: 16,
                     left: showImportDraft ? 20 : 2,
+                    bottom: 2,
+                    backgroundColor: "#fff",
+                    borderRadius: "50%",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  }}
+                />
+              </span>
+            </label>
+          </div>
+
+          <div style={{ height: "1px", background: "var(--border)", opacity: 0.6 }} />
+
+          {/* Show Create Book Card Toggle */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                显示“创建新小说书籍”卡片
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.4 }}>
+                在侧边栏顶部显示新书籍创建配置面板。若项目内已建立书籍，可关闭此卡片以释放侧边栏空间。
+              </span>
+            </div>
+            {/* Toggle Switch */}
+            <label
+              style={{
+                position: "relative",
+                display: "inline-block",
+                width: 40,
+                height: 22,
+                flexShrink: 0,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showCreateBookCard}
+                onChange={(e) => setShowCreateBookCard(e.target.checked)}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  cursor: "pointer",
+                  inset: 0,
+                  backgroundColor: showCreateBookCard ? "var(--accent)" : "var(--bg-hover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 22,
+                  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.05)",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    height: 16,
+                    width: 16,
+                    left: showCreateBookCard ? 20 : 2,
                     bottom: 2,
                     backgroundColor: "#fff",
                     borderRadius: "50%",

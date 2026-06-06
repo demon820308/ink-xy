@@ -320,6 +320,51 @@ export function CharacterRelationDashboard({ bookId, cwd, onOpenFile }: Props) {
     if (sortedNodes.length > 0) {
       setSelectedNodeId(sortedNodes[0].id);
     }
+
+    // Synchronize character_matrix.md if nodes are loaded from roles directory
+    const isFromRolesDir = sortedNodes.some(n => n.filePath.includes("roles/"));
+    if (isFromRolesDir) {
+      const matrixPath = joinFilePath(cwd, `books/${bookId}/story/character_matrix.md`);
+      const majorLines = sortedNodes
+        .filter((c) => c.tier === "major")
+        .map((c) => `- roles/主要角色/${c.name}.md`);
+      const minorLines = sortedNodes
+        .filter((c) => c.tier === "minor")
+        .map((c) => `- roles/次要角色/${c.name}.md`);
+
+      const markdownContent = `# 角色矩阵（兼容指针——已废弃）
+
+> 本文件仅为外部读取保留。权威来源已迁移至 roles/ 文件夹（一人一卡）。
+
+## 主要角色
+
+${majorLines.join("\n") || "（无）"}
+
+## 次要角色
+
+${minorLines.join("\n") || "（无）"}
+`;
+
+      try {
+        const encoded = encodeFilePathForApi(matrixPath);
+        const checkRes = await fetch(`/api/files/${encoded}?type=read`);
+        let currentContent = "";
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          currentContent = checkData.content || "";
+        }
+
+        if (currentContent.trim() !== markdownContent.trim()) {
+          await fetch(`/api/files/${encoded}`, {
+            method: "POST",
+            body: new TextEncoder().encode(markdownContent)
+          });
+          window.dispatchEvent(new Event("refresh-explorer"));
+        }
+      } catch (err) {
+        console.error("Failed to sync character_matrix.md:", err);
+      }
+    }
     
     setLoading(false);
   }, [bookId, cwd, parseCharacterMarkdown, parseSingleFileCharacters]);

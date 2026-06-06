@@ -10,6 +10,10 @@ if (!process.env.PI_CODING_AGENT_DIR) {
   process.env.PI_CODING_AGENT_DIR = inkDir;
 }
 
+if (!process.env.INKOS_LLM_MAX_TOKENS) {
+  process.env.INKOS_LLM_MAX_TOKENS = "16384";
+}
+
 function copyDirSync(src: string, dest: string) {
   if (!existsSync(src)) return;
   if (!existsSync(dest)) {

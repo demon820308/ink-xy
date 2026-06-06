@@ -35,6 +35,9 @@ export function AppShell() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [showExecutionConfirm, setShowExecutionConfirm] = useState(true);
+  const [maxChapterNumber, setMaxChapterNumber] = useState<number | null>(null);
+  const [latestChapterPath, setLatestChapterPath] = useState<string | null>(null);
+  const [latestChapterName, setLatestChapterName] = useState<string | null>(null);
   const [styleConfirm, setStyleConfirm] = useState<{
     targetStyle: string;
     onConfirm: () => void;
@@ -353,10 +356,61 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
+  // Global writing action states
+  const [globalWriteMode, setGlobalWriteMode] = useState<"normal" | "draft">("normal");
+  const [isGlobalWriteDropdownOpen, setIsGlobalWriteDropdownOpen] = useState(false);
+  const [globalWriteLoading, setGlobalWriteLoading] = useState(false);
+
+  useEffect(() => {
+    const handleWriteStart = () => setGlobalWriteLoading(true);
+    const handleWriteEnd = () => setGlobalWriteLoading(false);
+
+    window.addEventListener("write-start", handleWriteStart);
+    window.addEventListener("write-end", handleWriteEnd);
+    return () => {
+      window.removeEventListener("write-start", handleWriteStart);
+      window.removeEventListener("write-end", handleWriteEnd);
+    };
+  }, []);
+
+  const handleGlobalWriteClick = useCallback((mode: "normal" | "draft") => {
+    // Check if the current tab is an active chapter
+    const isActiveChapter = activeFileTab?.filePath && 
+      !activeFileTab.filePath.startsWith("dashboard:") && 
+      !activeFileTab.filePath.startsWith("characters:") &&
+      activeFileTab.filePath.includes("/chapters/");
+
+    if (isActiveChapter) {
+      window.dispatchEvent(new CustomEvent("trigger-global-write", { detail: { mode } }));
+    } else {
+      // Find if any open tab is a chapter file
+      const openChapterTab = fileTabs.find(tab => 
+        tab.filePath && 
+        !tab.filePath.startsWith("dashboard:") && 
+        !tab.filePath.startsWith("characters:") &&
+        tab.filePath.includes("/chapters/")
+      );
+
+      if (openChapterTab) {
+        setActiveFileTabId(openChapterTab.id);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("trigger-global-write", { detail: { mode } }));
+        }, 150);
+      } else if (latestChapterPath && latestChapterName) {
+        // Automatically open the latest chapter and trigger write
+        handleOpenFile(latestChapterPath, latestChapterName);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("trigger-global-write", { detail: { mode } }));
+        }, 300);
+      }
+    }
+  }, [activeFileTab, fileTabs, latestChapterPath, latestChapterName, handleOpenFile]);
+
   const [availableStyles, setAvailableStyles] = useState<string[]>([]);
   const [activeStyleName, setActiveStyleName] = useState<string | null>(null);
   const [isInkosWorkspace, setIsInkosWorkspace] = useState(false);
   const [hasBooks, setHasBooks] = useState(false);
+  const [hasChapters, setHasChapters] = useState(false);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [isStyleSwitching, setIsStyleSwitching] = useState(false);
 
@@ -392,10 +446,62 @@ export function AppShell() {
     });
   }, [activeStyleName, showExecutionConfirm, triggerStyleSwitch]);
 
-  const handleWorkspaceStatusChange = useCallback((isInkos: boolean, books: boolean) => {
+  const handleWorkspaceStatusChange = useCallback((
+    isInkos: boolean,
+    books: boolean,
+    chapters: boolean,
+    maxCh?: number,
+    latestPath?: string | null,
+    latestName?: string | null
+  ) => {
     setIsInkosWorkspace(isInkos);
     setHasBooks(books);
+    setHasChapters(chapters);
+    if (typeof maxCh === "number") {
+      setMaxChapterNumber(maxCh);
+    } else {
+      setMaxChapterNumber(null);
+    }
+    setLatestChapterPath(latestPath ?? null);
+    setLatestChapterName(latestName ?? null);
   }, []);
+
+  const getNextChapterNumber = useCallback(() => {
+    const isActiveChapter = activeFileTab?.filePath && 
+      !activeFileTab.filePath.startsWith("dashboard:") && 
+      !activeFileTab.filePath.startsWith("characters:") &&
+      activeFileTab.filePath.includes("/chapters/");
+      
+    let targetPath = "";
+    if (isActiveChapter && activeFileTab) {
+      targetPath = activeFileTab.filePath;
+    } else {
+      const openChapterTab = fileTabs.find(tab => 
+        tab.filePath && 
+        !tab.filePath.startsWith("dashboard:") && 
+        !tab.filePath.startsWith("characters:") &&
+        tab.filePath.includes("/chapters/")
+      );
+      if (openChapterTab) {
+        targetPath = openChapterTab.filePath;
+      }
+    }
+
+    if (!targetPath) {
+      if (typeof maxChapterNumber === "number" && maxChapterNumber > 0) {
+        return maxChapterNumber + 1;
+      }
+      return null;
+    }
+
+    const fileName = targetPath.split("/").pop() || "";
+    const match = fileName.match(/^(\d+)/);
+    if (match) {
+      const currentNum = parseInt(match[1], 10);
+      return currentNum + 1;
+    }
+    return null;
+  }, [activeFileTab, fileTabs, maxChapterNumber]);
 
   const checkFileExists = async (filePath: string) => {
     try {
@@ -570,6 +676,213 @@ export function AppShell() {
                   </select>
                 </div>
               </div>
+
+              {/* Global Writing Action Pill */}
+              {hasChapters && (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 10px",
+                  borderRight: "1px solid var(--border)",
+                  height: "100%",
+                }}>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    {/* Left Action Button */}
+                    <button
+                      onClick={() => !globalWriteLoading && handleGlobalWriteClick(globalWriteMode)}
+                      disabled={globalWriteLoading}
+                      title={globalWriteMode === "normal" ? "智能续写 (Smart Continue)" : "极速草稿 (Quick Draft)"}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        height: 24,
+                        background: "var(--accent)",
+                        border: "1px solid var(--accent)",
+                        borderTopLeftRadius: "6px",
+                        borderBottomLeftRadius: "6px",
+                        borderRight: "none",
+                        padding: "0 10px",
+                        color: "#ffffff",
+                        cursor: globalWriteLoading ? "not-allowed" : "pointer",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        fontFamily: "var(--font-serif)",
+                        transition: "all 0.2s ease",
+                        outline: "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!globalWriteLoading) {
+                          e.currentTarget.style.background = "var(--accent-hover)";
+                          e.currentTarget.style.borderColor = "var(--accent-hover)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!globalWriteLoading) {
+                          e.currentTarget.style.background = "var(--accent)";
+                          e.currentTarget.style.borderColor = "var(--accent)";
+                        }
+                      }}
+                    >
+                      {(() => {
+                        const nextCh = getNextChapterNumber();
+                        const suffix = nextCh !== null ? `第${nextCh}章` : "";
+                        if (globalWriteLoading) {
+                          return (
+                            <>
+                              <span style={{
+                                marginRight: 4,
+                                display: "inline-block",
+                                animation: "spin 1s linear infinite",
+                              }}>⏳</span>
+                              <span>{globalWriteMode === "normal" ? `正在续写${suffix}...` : `正在起草${suffix}...`}</span>
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            <span style={{ marginRight: 4 }}>{globalWriteMode === "normal" ? "✍️" : "⚡"}</span>
+                            <span>{globalWriteMode === "normal" ? `智能续写${suffix}` : `极速草稿${suffix}`}</span>
+                          </>
+                        );
+                      })()}
+                    </button>
+
+                    {/* Dropdown Toggle */}
+                    <button
+                      onClick={() => setIsGlobalWriteDropdownOpen(!isGlobalWriteDropdownOpen)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 18,
+                        height: 24,
+                        background: "var(--accent)",
+                        border: "1px solid var(--accent)",
+                        borderLeft: "1px solid rgba(255, 255, 255, 0.25)",
+                        borderTopRightRadius: "6px",
+                        borderBottomRightRadius: "6px",
+                        padding: 0,
+                        color: "#ffffff",
+                        cursor: "pointer",
+                        fontSize: "8px",
+                        transition: "all 0.2s ease",
+                        outline: "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--accent-hover)";
+                        e.currentTarget.style.borderColor = "var(--accent-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "var(--accent)";
+                        e.currentTarget.style.borderColor = "var(--accent)";
+                      }}
+                    >
+                      ▼
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {isGlobalWriteDropdownOpen && (
+                      <>
+                        {/* Invisible backdrop to capture outside clicks */}
+                        <div
+                          onClick={() => setIsGlobalWriteDropdownOpen(false)}
+                          style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 999,
+                          }}
+                        />
+                        <div style={{
+                          position: "absolute",
+                          top: "28px",
+                          right: 0,
+                          background: "var(--bg-panel)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                          padding: "4px",
+                          zIndex: 1000,
+                          minWidth: "140px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "2px",
+                        }}>
+                          {(() => {
+                            const nextCh = getNextChapterNumber();
+                            return (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setGlobalWriteMode("normal");
+                                    setIsGlobalWriteDropdownOpen(false);
+                                  }}
+                                  style={{
+                                    background: globalWriteMode === "normal" ? "var(--bg-hover)" : "none",
+                                    border: "none",
+                                    borderRadius: "4px",
+                                    padding: "6px 8px",
+                                    color: globalWriteMode === "normal" ? "var(--accent)" : "var(--text)",
+                                    textAlign: "left",
+                                    fontSize: "11px",
+                                    cursor: "pointer",
+                                    fontWeight: globalWriteMode === "normal" ? 600 : 400,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    width: "100%",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (globalWriteMode !== "normal") e.currentTarget.style.background = "var(--bg-hover)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (globalWriteMode !== "normal") e.currentTarget.style.background = "none";
+                                  }}
+                                >
+                                  <span>✍️</span>
+                                  <span>智能续写 {nextCh !== null ? `第${nextCh}章` : "(标准)"}</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setGlobalWriteMode("draft");
+                                    setIsGlobalWriteDropdownOpen(false);
+                                  }}
+                                  style={{
+                                    background: globalWriteMode === "draft" ? "var(--bg-hover)" : "none",
+                                    border: "none",
+                                    borderRadius: "4px",
+                                    padding: "6px 8px",
+                                    color: globalWriteMode === "draft" ? "var(--accent)" : "var(--text)",
+                                    textAlign: "left",
+                                    fontSize: "11px",
+                                    cursor: "pointer",
+                                    fontWeight: globalWriteMode === "draft" ? 600 : 400,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    width: "100%",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (globalWriteMode !== "draft") e.currentTarget.style.background = "var(--bg-hover)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (globalWriteMode !== "draft") e.currentTarget.style.background = "none";
+                                  }}
+                                >
+                                  <span>⚡</span>
+                                  <span>极速草稿 {nextCh !== null ? `第${nextCh}章` : "(快跑)"}</span>
+                                </button>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* 1.5. Chapter Control Dashboard (章节管控看板) */}
               {hasBooks && activeBookId && (

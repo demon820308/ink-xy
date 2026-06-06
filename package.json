@@ -1,6 +1,6 @@
 {
   "name": "@zwbigi/ink-xy",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "author": "demon820308",
   "description": "ink-xY Novel Studio - Professional Intelligent Collaborative Novel Editor",
   "main": "electron/main.js",
@@ -29,7 +29,7 @@
     "lint": "eslint .",
     "release": "npm version patch --no-git-tag-version && cd inkos && pnpm install && pnpm build && cd .. && npm run build && npm publish --registry https://registry.npmjs.org --access public",
     "electron:dev": "concurrently \"next dev -p 3030 --webpack\" \"wait-on http://localhost:3030 && electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "cd inkos && pnpm build && cd .. && npm run build && electron-builder"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.75.5",
@@ -110,6 +110,7 @@
       "bin/**/*",
       "public/**/*",
       "inkos/**/*",
+      "inkos/packages/cli/dist/**/*",
       "!inkos/**/node_modules/.cache/**/*",
       "!inkos/node_modules/.cache/**/*"
     ]

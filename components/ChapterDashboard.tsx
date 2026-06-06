@@ -1,6 +1,27 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { encodeFilePathForApi } from "@/lib/file-paths";
+
+// Helper to check if a markdown table or file has only headers/titles without actual rows
+function isMarkdownTableEmpty(content: string): boolean {
+  if (!content) return true;
+  const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
+  
+  // Filter out headings and divider lines
+  const tableRows = lines.filter(line => {
+    // Ignore markdown titles/headings
+    if (line.startsWith("#")) return false;
+    // Ignore divider lines like |---| or :---:
+    if (/^[|:\-\s]+$/.test(line.replace(/\|/g, ""))) return false;
+    return true;
+  });
+  
+  // The first remaining row is the table header row. Any data rows must be at index 1 or later.
+  return tableRows.length <= 1;
+}
 
 interface ChapterMeta {
   number: number;
@@ -49,6 +70,77 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
 
   // Re-plan intent dialog
   const [planConfirmNum, setPlanConfirmNum] = useState<number | null>(null);
+
+  // Snapshot/Blueprint Explorer Modal state
+  const [explorerChapterNum, setExplorerChapterNum] = useState<number | null>(null);
+  const [explorerTab, setExplorerTab] = useState<"snapshot" | "blueprint">("snapshot");
+
+  // File Preview states
+  const [selectedPreviewFile, setSelectedPreviewFile] = useState<{ name: string; path: string } | null>(null);
+  const [previewContent, setPreviewContent] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  // Auto-load default preview file when modal opens or tab changes
+  useEffect(() => {
+    if (explorerChapterNum === null) {
+      setSelectedPreviewFile(null);
+      return;
+    }
+
+    const padded = String(explorerChapterNum).padStart(4, "0");
+    if (explorerTab === "snapshot") {
+      const defaultPath = `${cwd}/books/${bookId}/story/snapshots/${explorerChapterNum}/current_state.md`;
+      setSelectedPreviewFile({ name: "current_state.md", path: defaultPath });
+    } else {
+      const defaultPath = `${cwd}/books/${bookId}/story/runtime/chapter-${padded}.intent.md`;
+      setSelectedPreviewFile({ name: `chapter-${padded}.intent.md`, path: defaultPath });
+    }
+  }, [explorerChapterNum, explorerTab, bookId, cwd]);
+
+  // Fetch preview file content
+  useEffect(() => {
+    if (!selectedPreviewFile) {
+      setPreviewContent("");
+      setPreviewError(null);
+      return;
+    }
+
+    let active = true;
+    const loadContent = async () => {
+      setPreviewLoading(true);
+      setPreviewError(null);
+      try {
+        const encoded = encodeFilePathForApi(selectedPreviewFile.path);
+        const res = await fetch(`/api/files/${encoded}?type=read`);
+        if (!res.ok) {
+          throw new Error(`文件未找到 (HTTP ${res.status})。可能是该章节尚未执行同步/生成快照。`);
+        }
+        const data = await res.json();
+        if (active) {
+          if (data && typeof data.content === "string") {
+            setPreviewContent(data.content);
+          } else {
+            throw new Error("无效的响应格式");
+          }
+        }
+      } catch (err) {
+        if (active) {
+          console.error("Failed to load preview file:", err);
+          setPreviewError(err instanceof Error ? err.message : String(err));
+        }
+      } finally {
+        if (active) {
+          setPreviewLoading(false);
+        }
+      }
+    };
+
+    loadContent();
+    return () => {
+      active = false;
+    };
+  }, [selectedPreviewFile]);
 
   // Auto-scroll references for terminal logs
   const logContainerRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -559,8 +651,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                 <div style={{ width: "100px", flexShrink: 0 }}>防崩审计</div>
                 <div style={{ width: "100px", flexShrink: 0 }}>设定同步</div>
                 <div style={{ width: "100px", flexShrink: 0 }}>意图蓝图</div>
-                <div style={{ width: "110px", flexShrink: 0 }}>审核决策</div>
-                <div style={{ width: "230px", flexShrink: 0, textAlign: "right" }}>系统动作</div>
+                <div style={{ width: "200px", flexShrink: 0 }}>审核决策</div>
               </div>
 
               {/* Table Body */}
@@ -629,14 +720,47 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                             >
                               {ch.title}
                             </span>
-                            <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 3 }}>
-                              {ch.wordCount} 字 | {new Date(ch.updatedAt).toLocaleString("zh-CN")}
+                            <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 3, display: "flex", alignItems: "center", gap: 8 }}>
+                              <span>{ch.wordCount} 字 | {new Date(ch.updatedAt).toLocaleString("zh-CN")}</span>
+                              {chapterLogs.length > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleConsole(ch.number);
+                                  }}
+                                  style={{
+                                    padding: "2px 6px",
+                                    fontSize: 9,
+                                    background: isConsoleOpen ? "var(--bg-hover)" : "none",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 4,
+                                    color: "var(--text-dim)",
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 2
+                                  }}
+                                  title="切换日志显示"
+                                >
+                                  <span>🖥️</span>
+                                  <span>{isConsoleOpen ? "收起日志" : "查看日志"}</span>
+                                </button>
+                              )}
                             </div>
                           </div>
 
                           {/* Audit Status */}
                           <div style={{ width: "100px", flexShrink: 0 }}>
                             <span
+                              onClick={() => {
+                                const hasAudited = ch.status === "approved" || ch.status === "ready-for-review" || ch.status === "audit-failed";
+                                if (hasAudited) {
+                                  setSelectedChapter(ch);
+                                  setIsDrawerOpen(true);
+                                } else {
+                                  executeCommand(ch.number, "audit", "audit");
+                                }
+                              }}
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -645,36 +769,48 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                 borderRadius: 4,
                                 fontSize: 10,
                                 fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
                                 background: 
-                                  ch.status === "approved" ? "rgba(16, 185, 129, 0.08)" :
-                                  ch.status === "ready-for-review" ? "rgba(234, 179, 8, 0.08)" :
+                                  (ch.status === "approved" || ch.status === "ready-for-review") ? "rgba(16, 185, 129, 0.08)" :
                                   ch.status === "audit-failed" ? "rgba(239, 68, 68, 0.08)" :
                                   "var(--bg)",
                                 color:
-                                  ch.status === "approved" ? "#10b981" :
-                                  ch.status === "ready-for-review" ? "#eab308" :
+                                  (ch.status === "approved" || ch.status === "ready-for-review") ? "#10b981" :
                                   ch.status === "audit-failed" ? "#ef4444" :
                                   "var(--text-muted)",
                                 border: `1px solid ${
-                                  ch.status === "approved" ? "#10b98133" :
-                                  ch.status === "ready-for-review" ? "#eab30833" :
+                                  (ch.status === "approved" || ch.status === "ready-for-review") ? "#10b98133" :
                                   ch.status === "audit-failed" ? "#ef444433" :
                                   "var(--border)"
                                 }`
                               }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+                                e.currentTarget.style.borderColor = (ch.status === "approved" || ch.status === "ready-for-review") ? "#10b98166" : ch.status === "audit-failed" ? "#ef444466" : "var(--accent)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "none";
+                                e.currentTarget.style.boxShadow = "none";
+                                e.currentTarget.style.borderColor = (ch.status === "approved" || ch.status === "ready-for-review") ? "#10b98133" : ch.status === "audit-failed" ? "#ef444433" : "var(--border)";
+                              }}
+                              title={
+                                (ch.status === "approved" || ch.status === "ready-for-review" || ch.status === "audit-failed")
+                                  ? "点击查看审计报告详情"
+                                  : "点击执行防崩一致性审计"
+                              }
                             >
                               <span style={{
                                 width: 5,
                                 height: 5,
                                 borderRadius: "50%",
                                 background: 
-                                  ch.status === "approved" ? "#10b981" :
-                                  ch.status === "ready-for-review" ? "#eab308" :
+                                  (ch.status === "approved" || ch.status === "ready-for-review") ? "#10b981" :
                                   ch.status === "audit-failed" ? "#ef4444" :
                                   "#9ca3af"
                               }} />
-                              {ch.status === "approved" ? "审计通过" :
-                               ch.status === "ready-for-review" ? "待审核" :
+                              {(ch.status === "approved" || ch.status === "ready-for-review") ? "审计通过" :
                                ch.status === "audit-failed" ? "审计未过" : "未审计"}
                             </span>
                           </div>
@@ -682,6 +818,14 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           {/* Sync Status */}
                           <div style={{ width: "100px", flexShrink: 0 }}>
                             <span
+                              onClick={() => {
+                                if (ch.hasSnapshot && ch.status !== "state-degraded") {
+                                  setExplorerChapterNum(ch.number);
+                                  setExplorerTab("snapshot");
+                                } else {
+                                  executeCommand(ch.number, "sync", "write-sync");
+                                }
+                              }}
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -690,6 +834,8 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                 borderRadius: 4,
                                 fontSize: 10,
                                 fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
                                 background: ch.status === "state-degraded"
                                   ? "rgba(239, 68, 68, 0.08)"
                                   : (ch.hasSnapshot ? "rgba(16, 185, 129, 0.08)" : "var(--bg)"),
@@ -698,6 +844,21 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                   : (ch.hasSnapshot ? "#10b981" : "var(--text-muted)"),
                                 border: `1px solid ${ch.status === "state-degraded" ? "#ef444433" : (ch.hasSnapshot ? "#10b98133" : "var(--border)")}`
                               }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+                                e.currentTarget.style.borderColor = ch.status === "state-degraded" ? "#ef444466" : ch.hasSnapshot ? "#10b98166" : "var(--accent)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "none";
+                                e.currentTarget.style.boxShadow = "none";
+                                e.currentTarget.style.borderColor = ch.status === "state-degraded" ? "#ef444433" : ch.hasSnapshot ? "#10b98133" : "var(--border)";
+                              }}
+                              title={
+                                (ch.hasSnapshot && ch.status !== "state-degraded")
+                                  ? "点击查看设定同步快照"
+                                  : "点击执行设定同步"
+                              }
                             >
                               {ch.status === "state-degraded" ? "⚠️ 设定失步" : (ch.hasSnapshot ? "🔄 已同步" : "⚪ 未同步")}
                             </span>
@@ -706,6 +867,14 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           {/* Blueprint Status */}
                           <div style={{ width: "100px", flexShrink: 0 }}>
                             <span
+                              onClick={() => {
+                                if (ch.hasPlan) {
+                                  setExplorerChapterNum(ch.number);
+                                  setExplorerTab("blueprint");
+                                } else {
+                                  executeCommand(ch.number, "plan", "plan");
+                                }
+                              }}
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -714,135 +883,122 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                 borderRadius: 4,
                                 fontSize: 10,
                                 fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
                                 background: ch.hasPlan ? "rgba(168, 85, 247, 0.08)" : "var(--bg)",
                                 color: ch.hasPlan ? "#a855f7" : "var(--text-muted)",
                                 border: `1px solid ${ch.hasPlan ? "#a855f733" : "var(--border)"}`
                               }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+                                e.currentTarget.style.borderColor = ch.hasPlan ? "#a855f766" : "var(--accent)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "none";
+                                e.currentTarget.style.boxShadow = "none";
+                                e.currentTarget.style.borderColor = ch.hasPlan ? "#a855f733" : "var(--border)";
+                              }}
+                              title={
+                                ch.hasPlan
+                                  ? "点击查看意图蓝图"
+                                  : "点击生成意图蓝图"
+                              }
                             >
                               {ch.hasPlan ? "🗺️ 已规划" : "⚪ 未规划"}
                             </span>
                           </div>
 
                           {/* Review Actions */}
-                          <div style={{ width: "110px", flexShrink: 0 }}>
+                          <div style={{ width: "200px", flexShrink: 0 }}>
                             {ch.status !== "approved" ? (
-                              <div style={{ display: "flex", gap: 4 }}>
-                                <button
-                                  onClick={() => handleApprove(ch.number)}
-                                  disabled={isAnyRunning}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span
                                   style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
                                     padding: "2px 6px",
-                                    fontSize: 10,
-                                    background: "rgba(16, 185, 129, 0.08)",
-                                    border: "1px solid rgba(16, 185, 129, 0.3)",
                                     borderRadius: 4,
-                                    color: "#10b981",
-                                    fontWeight: 600,
-                                    cursor: isAnyRunning ? "not-allowed" : "pointer"
-                                  }}
-                                  title="批准章节"
-                                >
-                                  批准
-                                </button>
-                                <button
-                                  onClick={() => handleOpenRejectDialog(ch.number)}
-                                  disabled={isAnyRunning}
-                                  style={{
-                                    padding: "2px 6px",
                                     fontSize: 10,
-                                    background: "rgba(239, 68, 68, 0.08)",
-                                    border: "1px solid rgba(239, 68, 68, 0.3)",
-                                    borderRadius: 4,
-                                    color: "#ef4444",
                                     fontWeight: 600,
-                                    cursor: isAnyRunning ? "not-allowed" : "pointer"
+                                    background: 
+                                      ch.status === "ready-for-review" ? "rgba(234, 179, 8, 0.08)" :
+                                      ch.status === "audit-failed" ? "rgba(239, 68, 68, 0.08)" :
+                                      ch.status === "state-degraded" ? "rgba(239, 68, 68, 0.08)" :
+                                      "var(--bg)",
+                                    color:
+                                      ch.status === "ready-for-review" ? "#eab308" :
+                                      ch.status === "audit-failed" ? "#ef4444" :
+                                      ch.status === "state-degraded" ? "#ef4444" :
+                                      "var(--text-muted)",
+                                    border: `1px solid ${
+                                      ch.status === "ready-for-review" ? "#eab30833" :
+                                      ch.status === "audit-failed" ? "#ef444433" :
+                                      ch.status === "state-degraded" ? "#ef444433" :
+                                      "var(--border)"
+                                    }`
                                   }}
-                                  title="驳回回滚章节"
                                 >
-                                  驳回
-                                </button>
+                                  {ch.status === "ready-for-review" ? "待审核" :
+                                   ch.status === "audit-failed" ? "审计未过" :
+                                   ch.status === "state-degraded" ? "设定失步" : "未审计"}
+                                </span>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <button
+                                    onClick={() => handleApprove(ch.number)}
+                                    disabled={isAnyRunning}
+                                    style={{
+                                      padding: "2px 6px",
+                                      fontSize: 10,
+                                      background: "rgba(16, 185, 129, 0.08)",
+                                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                                      borderRadius: 4,
+                                      color: "#10b981",
+                                      fontWeight: 600,
+                                      cursor: isAnyRunning ? "not-allowed" : "pointer"
+                                    }}
+                                    title="批准章节"
+                                  >
+                                    批准
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenRejectDialog(ch.number)}
+                                    disabled={isAnyRunning}
+                                    style={{
+                                      padding: "2px 6px",
+                                      fontSize: 10,
+                                      background: "rgba(239, 68, 68, 0.08)",
+                                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                                      borderRadius: 4,
+                                      color: "#ef4444",
+                                      fontWeight: 600,
+                                      cursor: isAnyRunning ? "not-allowed" : "pointer"
+                                    }}
+                                    title="驳回回滚章节"
+                                  >
+                                    驳回
+                                  </button>
+                                </div>
                               </div>
                             ) : (
-                              <span style={{ fontSize: 10, color: "var(--text-dim)", fontStyle: "italic" }}>
-                                状态已锁定过审
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Quick Actions */}
-                          <div style={{ width: "230px", flexShrink: 0, display: "flex", justifyContent: "flex-end", gap: 6 }}>
-                            <button
-                              onClick={() => {
-                                setSelectedChapter(ch);
-                                setIsDrawerOpen(true);
-                              }}
-                              style={{
-                                padding: "4px 8px",
-                                fontSize: 10,
-                                background: "none",
-                                border: "1px solid var(--border)",
-                                borderRadius: 5,
-                                color: "var(--text-muted)",
-                                cursor: "pointer",
-                              }}
-                            >
-                              📋 详情
-                            </button>
-                            
-                            <button
-                              onClick={() => executeCommand(ch.number, "audit", "audit")}
-                              disabled={isAnyRunning}
-                              style={{
-                                padding: "4px 8px",
-                                fontSize: 10,
-                                background: "rgba(59, 130, 246, 0.08)",
-                                border: "1px solid rgba(59, 130, 246, 0.3)",
-                                borderRadius: 5,
-                                color: "#60a5fa",
-                                fontWeight: 600,
-                                cursor: isAnyRunning ? "not-allowed" : "pointer",
-                              }}
-                              title="运行防崩审计"
-                            >
-                              {isAuditRunning ? "⏳ 审计" : "🛡️ 审计"}
-                            </button>
-
-                            <button
-                              onClick={() => executeCommand(ch.number, "sync", "write-sync")}
-                              disabled={isAnyRunning}
-                              style={{
-                                padding: "4px 8px",
-                                fontSize: 10,
-                                background: "rgba(16, 185, 129, 0.08)",
-                                border: "1px solid rgba(16, 185, 129, 0.3)",
-                                borderRadius: 5,
-                                color: "#10b981",
-                                fontWeight: 600,
-                                cursor: isAnyRunning ? "not-allowed" : "pointer",
-                              }}
-                              title="同步故事设定"
-                            >
-                              {isSyncRunning ? "⏳ 同步" : "🔄 同步"}
-                            </button>
-
-                            {chapterLogs.length > 0 && (
-                              <button
-                                onClick={() => toggleConsole(ch.number)}
+                              <span
                                 style={{
-                                  padding: "4px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
                                   fontSize: 10,
-                                  background: isConsoleOpen ? "var(--bg-hover)" : "none",
-                                  border: "1px solid var(--border)",
-                                  borderRadius: 5,
-                                  color: "var(--text-dim)",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center"
+                                  fontWeight: 600,
+                                  background: "rgba(16, 185, 129, 0.08)",
+                                  color: "#10b981",
+                                  border: "1px solid #10b98133"
                                 }}
-                                title="切换日志显示"
                               >
-                                🖥️
-                              </button>
+                                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981" }} />
+                                已过审
+                              </span>
                             )}
                           </div>
                         </div>
@@ -1160,6 +1316,448 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
         </div>
       )}
 
+      {/* Snapshot & Blueprint Explorer Modal */}
+      {explorerChapterNum !== null && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          background: "rgba(10, 8, 8, 0.45)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <div style={{
+            width: "min(92vw, 960px)",
+            height: "75vh",
+            maxHeight: "650px",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "14px",
+            boxShadow: "0 24px 48px rgba(0, 0, 0, 0.4)",
+            padding: "20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            color: "var(--text)",
+            overflow: "hidden"
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexShrink: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>📂</span> 第 {explorerChapterNum} 章 快照与蓝图浏览器
+                </h3>
+                <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "4px 0 0 0" }}>
+                  预览与对比当前章节的历史同步设定快照，或查看写作大纲意图蓝图。
+                </p>
+              </div>
+              <button
+                onClick={() => setExplorerChapterNum(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  fontSize: 18,
+                  cursor: "pointer",
+                  padding: 4,
+                  lineHeight: 1
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Main Split Layout */}
+            <div style={{ display: "flex", flex: 1, overflow: "hidden", gap: 20, minHeight: 0, marginBottom: 12 }}>
+              
+              {/* Left Column: File List */}
+              <div style={{
+                width: "270px",
+                flexShrink: 0,
+                display: "flex",
+                flexDirection: "column",
+                borderRight: "1px solid var(--border)",
+                paddingRight: 16,
+                gap: 12,
+                overflow: "hidden"
+              }}>
+                {/* Tabs */}
+                <div style={{
+                  display: "flex",
+                  borderBottom: "1px solid var(--border)",
+                  gap: 4,
+                  flexShrink: 0
+                }}>
+                  <button
+                    onClick={() => setExplorerTab("snapshot")}
+                    style={{
+                      flex: 1,
+                      padding: "8px 0 10px 0",
+                      background: "none",
+                      border: "none",
+                      borderBottom: explorerTab === "snapshot" ? "2px solid var(--accent)" : "2px solid transparent",
+                      color: explorerTab === "snapshot" ? "var(--accent)" : "var(--text-muted)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    🔄 同步快照
+                  </button>
+                  <button
+                    onClick={() => setExplorerTab("blueprint")}
+                    style={{
+                      flex: 1,
+                      padding: "8px 0 10px 0",
+                      background: "none",
+                      border: "none",
+                      borderBottom: explorerTab === "blueprint" ? "2px solid var(--accent)" : "2px solid transparent",
+                      color: explorerTab === "blueprint" ? "var(--accent)" : "var(--text-muted)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    🗺️ 意图蓝图
+                  </button>
+                </div>
+
+                {/* File Cards Container */}
+                <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {explorerTab === "snapshot" ? (
+                    <>
+                      {[
+                        { name: "current_state.md", label: "设定真理库总览", desc: "记录底层规则、地理人文及设定现状。" },
+                        { name: "particle_ledger.md", label: "微观设定事物清单", desc: "梳理道具、特殊术语及微观物质设定。" },
+                        { name: "pending_hooks.md", label: "待解悬念与未收伏笔", desc: "整理未解悬念、待收伏笔及线索。" },
+                        { name: "chapter_summaries.md", label: "章节提要与历史剧情", desc: "已完成章节的详细梗概与剧情摘要。" },
+                        { name: "subplot_board.md", label: "支线看板与情感线索", desc: "记录支线任务进展及剧情线走向。" },
+                        { name: "emotional_arcs.md", label: "角色情感关系与弧度", desc: "展现角色间情感张力与心路历程。" },
+                        { name: "character_matrix.md", label: "角色属性矩阵与出场", desc: "维护登场角色基本信息与最新状态。" }
+                      ].map((file) => {
+                        const filePath = `${cwd}/books/${bookId}/story/snapshots/${explorerChapterNum}/${file.name}`;
+                        const isSelected = selectedPreviewFile?.name === file.name;
+                        return (
+                          <div
+                            key={file.name}
+                            onClick={() => setSelectedPreviewFile({ name: file.name, path: filePath })}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              padding: "8px 10px",
+                              borderRadius: 6,
+                              border: isSelected ? "1px solid var(--accent)" : "1px solid var(--border)",
+                              background: isSelected ? "rgba(96, 165, 250, 0.06)" : "var(--bg)",
+                              cursor: "pointer",
+                              transition: "all 0.15s"
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "var(--bg-hover)";
+                                e.currentTarget.style.transform = "translateX(2px)";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "var(--bg)";
+                                e.currentTarget.style.transform = "none";
+                              }
+                            }}
+                          >
+                            <span style={{ fontSize: 16, marginRight: 8 }}>📄</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: isSelected ? "var(--accent)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.label}</div>
+                              <div style={{ fontSize: 9, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{file.name}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <>
+                      {[
+                        {
+                          name: `chapter-${String(explorerChapterNum).padStart(4, "0")}.intent.md`,
+                          label: "写作意图蓝图",
+                          desc: "核心目的、叙事视角与期望冲突效果。"
+                        },
+                        {
+                          name: `chapter-${String(explorerChapterNum).padStart(4, "0")}.plan.md`,
+                          label: "写作执行计划",
+                          desc: "拆解段落大纲、伏笔呼应与细化字数。"
+                        }
+                      ].map((file) => {
+                        const filePath = `${cwd}/books/${bookId}/story/runtime/${file.name}`;
+                        const isSelected = selectedPreviewFile?.name === file.name;
+                        return (
+                          <div
+                            key={file.name}
+                            onClick={() => setSelectedPreviewFile({ name: file.name, path: filePath })}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              padding: "8px 10px",
+                              borderRadius: 6,
+                              border: isSelected ? "1px solid var(--accent)" : "1px solid var(--border)",
+                              background: isSelected ? "rgba(168, 85, 247, 0.06)" : "var(--bg)",
+                              cursor: "pointer",
+                              transition: "all 0.15s"
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "var(--bg-hover)";
+                                e.currentTarget.style.transform = "translateX(2px)";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "var(--bg)";
+                                e.currentTarget.style.transform = "none";
+                              }
+                            }}
+                          >
+                            <span style={{ fontSize: 16, marginRight: 8 }}>🗺️</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: isSelected ? "#a855f7" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.label}</div>
+                              <div style={{ fontSize: 9, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{file.name}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: File Preview */}
+              <div style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+              }}>
+                {selectedPreviewFile ? (
+                  <>
+                    {/* Preview Header */}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 16px",
+                      borderBottom: "1px solid var(--border)",
+                      background: "var(--bg-panel)",
+                      flexShrink: 0
+                    }}>
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--text-muted)", display: "block" }}>
+                          PREVIEWING FILE
+                        </span>
+                        <strong style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {selectedPreviewFile.name}
+                        </strong>
+                      </div>
+                      <button
+                        onClick={() => {
+                          onOpenFile(selectedPreviewFile.path, selectedPreviewFile.name);
+                          setExplorerChapterNum(null);
+                        }}
+                        style={{
+                          padding: "6px 12px",
+                          background: "var(--accent)",
+                          border: "none",
+                          borderRadius: 6,
+                          color: "#fff",
+                          fontWeight: 600,
+                          fontSize: 11,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                        title="在主编辑器 Tab 中以全屏及编辑模式打开该文件"
+                      >
+                        <span>✍️</span> 在编辑器中打开
+                      </button>
+                    </div>
+
+                    {/* Preview Content */}
+                    <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+                      {previewLoading ? (
+                        <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+                          </svg>
+                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>正在从物理磁盘载入快照内容...</span>
+                        </div>
+                      ) : previewError ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          <div style={{
+                            padding: "16px",
+                            background: "rgba(239, 68, 68, 0.04)",
+                            border: "1px solid rgba(239, 68, 68, 0.2)",
+                            borderRadius: 8,
+                            color: "#f87171",
+                            fontSize: 12,
+                            lineHeight: 1.6
+                          }}>
+                            <h4 style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 700 }}>⚠️ 快照/蓝图文件不存在</h4>
+                            <p style={{ margin: "0 0 12px 0" }}>{previewError}</p>
+                            <div style={{ color: "var(--text-muted)", fontSize: 11 }}>
+                              {explorerTab === "snapshot" ? (
+                                <>
+                                  建议前置操作：
+                                  <br />
+                                  1. 关闭此弹窗。
+                                  <br />
+                                  2. 点击当前章节的 **「未同步/设定失步」** 状态徽章以自动运行同步。
+                                  <br />
+                                  3. 同步完成后即可在此处预览快照设定。
+                                </>
+                              ) : (
+                                <>
+                                  建议前置操作：
+                                  <br />
+                                  1. 关闭此弹窗。
+                                  <br />
+                                  2. 点击当前章节的 **「未规划」** 状态徽章以自动运行大纲与意图规划。
+                                  <br />
+                                  3. 规划完成后即可在此处预览意图蓝图与写作计划。
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Contextual User Guidance for Optional/Dynamic Files */}
+                          {selectedPreviewFile.name === "particle_ledger.md" && (
+                            <div style={{
+                              padding: "12px 14px",
+                              background: "rgba(96, 165, 250, 0.05)",
+                              border: "1px solid rgba(96, 165, 250, 0.2)",
+                              borderRadius: 8,
+                              color: "var(--text-muted)",
+                              fontSize: 11,
+                              lineHeight: 1.5
+                            }}>
+                              💡 **系统提示**：`particle_ledger.md`（微观设定事物账本）为**非必选属性**。只有带有数值系统（如升级流玄幻、系统网游等题材）的书籍在初始化时才会开启并生成该文件。如果您的作品是非数值/常规题材，此文件不生成属于正常设计，无需担心功能缺失。
+                            </div>
+                          )}
+                          {selectedPreviewFile.name === "subplot_board.md" && (
+                            <div style={{
+                              padding: "12px 14px",
+                              background: "rgba(96, 165, 250, 0.05)",
+                              border: "1px solid rgba(96, 165, 250, 0.2)",
+                              borderRadius: 8,
+                              color: "var(--text-muted)",
+                              fontSize: 11,
+                              lineHeight: 1.5
+                            }}>
+                              💡 **系统提示**：`subplot_board.md`（支线进度看板）为**动态按需生成**。在小说开篇（如第 1 章）或剧情纯单主线发展时，AI 架构师不会预先初始化它。后续随着支线剧情的展开和多线故事的发展，写手引擎在后续章节中会自动按需生成并对其进行更新。
+                            </div>
+                          )}
+                          {selectedPreviewFile.name === "emotional_arcs.md" && (
+                            <div style={{
+                              padding: "12px 14px",
+                              background: "rgba(96, 165, 250, 0.05)",
+                              border: "1px solid rgba(96, 165, 250, 0.2)",
+                              borderRadius: 8,
+                              color: "var(--text-muted)",
+                              fontSize: 11,
+                              lineHeight: 1.5
+                            }}>
+                              💡 **系统提示**：`emotional_arcs.md`（角色情感关系与弧度）由系统在故事发展过程中**动态分析生成**。如果当前章节不涉及多角色复杂互动或剧烈情感波折起伏，该快照点可能会跳过生成，直到后续产生情感变化时才会生成并同步。
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          <div className="markdown-body markdown-file-preview" style={{ fontSize: 12, lineHeight: 1.6 }}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {previewContent}
+                            </ReactMarkdown>
+                          </div>
+                          {selectedPreviewFile.name === "emotional_arcs.md" && isMarkdownTableEmpty(previewContent) && (
+                            <div style={{
+                              padding: "12px 14px",
+                              background: "rgba(96, 165, 250, 0.05)",
+                              border: "1px solid rgba(96, 165, 250, 0.2)",
+                              borderRadius: 8,
+                              color: "var(--text-muted)",
+                              fontSize: 11,
+                              lineHeight: 1.5,
+                              marginTop: 8
+                            }}>
+                              💡 **系统提示**：`emotional_arcs.md`（角色情感关系与弧度）目前仅包含表头模板。这是正常的。当您在后续章节的写作中，角色经历显著的情绪变化、多角色复杂互动或剧烈情感波折起伏时，写手引擎在完成该章节的「设定同步」后，会自动在此文件中追加并更新情感弧度数据记录。
+                            </div>
+                          )}
+                          {selectedPreviewFile.name === "subplot_board.md" && isMarkdownTableEmpty(previewContent) && (
+                            <div style={{
+                              padding: "12px 14px",
+                              background: "rgba(96, 165, 250, 0.05)",
+                              border: "1px solid rgba(96, 165, 250, 0.2)",
+                              borderRadius: 8,
+                              color: "var(--text-muted)",
+                              fontSize: 11,
+                              lineHeight: 1.5,
+                              marginTop: 8
+                            }}>
+                              💡 **系统提示**：`subplot_board.md`（支线进度看板）目前仅包含表头模板。这是正常的。当后续剧情中引入了支线故事或情感线索，并在章节管控中心执行「设定同步」后，写手引擎会自动在此生成并更新具体的支线与情感板块记录。
+                            </div>
+                          )}
+                          {selectedPreviewFile.name === "particle_ledger.md" && isMarkdownTableEmpty(previewContent) && (
+                            <div style={{
+                              padding: "12px 14px",
+                              background: "rgba(96, 165, 250, 0.05)",
+                              border: "1px solid rgba(96, 165, 250, 0.2)",
+                              borderRadius: 8,
+                              color: "var(--text-muted)",
+                              fontSize: 11,
+                              lineHeight: 1.5,
+                              marginTop: 8
+                            }}>
+                              💡 **系统提示**：`particle_ledger.md`（微观设定事物账本）目前仅包含表头模板。这是正常的。当后续章节的写作中出现新物品、法宝或特殊术语，且该书属于有数值/升级流系统的题材时，系统会在「设定同步」后在此记录并追踪对应设定。
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
+                    请在左侧选择要预览的文件。
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+              <button
+                onClick={() => setExplorerChapterNum(null)}
+                style={{
+                  padding: "6px 14px",
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  color: "var(--text-muted)",
+                  fontSize: 12,
+                  cursor: "pointer"
+                }}
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slide-over Drawer for Chapter Report Details */}
       {/* Slide-over Drawer for Chapter Report Details */}
       {isDrawerOpen && selectedChapter && (
         <div style={{
@@ -1265,7 +1863,31 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
 
               {/* Audit Issues */}
               <div>
-                <h4 style={{ margin: "0 0 10px 0", fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase" }}>🛡️ 防崩一致性审计</h4>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <h4 style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase" }}>🛡️ 防崩一致性审计</h4>
+                  <button
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      executeCommand(selectedChapter.number, "audit", "audit");
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      background: "rgba(59, 130, 246, 0.08)",
+                      border: "1px solid rgba(59, 130, 246, 0.3)",
+                      borderRadius: 6,
+                      color: "#60a5fa",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                    title="重新执行防崩一致性审计"
+                  >
+                    <span>🔄</span> 重新审计
+                  </button>
+                </div>
                 {selectedChapter.auditIssues && selectedChapter.auditIssues.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {selectedChapter.auditIssues.map((issue, idx) => {

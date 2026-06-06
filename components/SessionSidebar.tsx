@@ -25,7 +25,14 @@ interface Props {
   availableStyles?: string[];
   activeStyleName?: string | null;
   onStylesChange?: (styles: string[], activeStyle: string | null) => void;
-  onWorkspaceStatusChange?: (isInkos: boolean, hasBooks: boolean) => void;
+  onWorkspaceStatusChange?: (
+    isInkos: boolean,
+    hasBooks: boolean,
+    hasChapters: boolean,
+    maxChapterNum: number,
+    latestChapterPath: string | null,
+    latestChapterName: string | null
+  ) => void;
   onActiveBookChange?: (bookId: string | null) => void;
 }
 
@@ -239,6 +246,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [hasShorts, setHasShorts] = useState(false);
   const [showImportDraft, setShowImportDraft] = useState(true);
   const [showAutoGenerateShort, setShowAutoGenerateShort] = useState(true);
+  const [showCreateBookCard, setShowCreateBookCard] = useState(true);
   const [disableDefaultAgentEditDelete, setDisableDefaultAgentEditDelete] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isCreatingBook, setIsCreatingBook] = useState(false);
@@ -251,6 +259,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [deleteBookError, setDeleteBookError] = useState<string | null>(null);
 
   const [hasChapters, setHasChapters] = useState(false);
+  const [maxChapterNum, setMaxChapterNum] = useState<number>(0);
+  const [latestChapterPath, setLatestChapterPath] = useState<string | null>(null);
+  const [latestChapterName, setLatestChapterName] = useState<string | null>(null);
   const [hasFirstChapterBlueprint, setHasFirstChapterBlueprint] = useState(false);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const activeBookIdRef = useRef<string | null>(null);
@@ -373,6 +384,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     if (autoShortVal !== null) {
       setShowAutoGenerateShort(autoShortVal === "true");
     }
+    const createBookVal = localStorage.getItem("ink-show-create-book-card");
+    if (createBookVal !== null) {
+      setShowCreateBookCard(createBookVal === "true");
+    }
     const disableDefaultAgentVal = localStorage.getItem("ink-disable-default-agent-edit-delete");
     if (disableDefaultAgentVal !== null) {
       setDisableDefaultAgentEditDelete(disableDefaultAgentVal === "true");
@@ -382,6 +397,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       const customEvent = e as CustomEvent<{
         showImportDraft?: boolean;
         showAutoGenerateShort?: boolean;
+        showCreateBookCard?: boolean;
         disableDefaultAgentEditDelete?: boolean;
       }>;
       if (customEvent.detail) {
@@ -390,6 +406,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         }
         if (typeof customEvent.detail.showAutoGenerateShort === "boolean") {
           setShowAutoGenerateShort(customEvent.detail.showAutoGenerateShort);
+        }
+        if (typeof customEvent.detail.showCreateBookCard === "boolean") {
+          setShowCreateBookCard(customEvent.detail.showCreateBookCard);
         }
         if (typeof customEvent.detail.disableDefaultAgentEditDelete === "boolean") {
           setDisableDefaultAgentEditDelete(customEvent.detail.disableDefaultAgentEditDelete);
@@ -541,6 +560,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         setHasShorts(false);
         setActiveBookId(null);
         setHasChapters(false);
+        setMaxChapterNum(0);
+        setLatestChapterPath(null);
+        setLatestChapterName(null);
         setChapterStatusMap({});
         setAvailableBooks([]);
         setConsolidationRecommend(false);
@@ -628,6 +650,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             const chaptersEncoded = encodeFilePathForApi(chaptersDir);
             const chaptersRes = await fetch(`/api/files/${chaptersEncoded}?type=list`);
             let maxChapter = 0;
+            let latestPath: string | null = null;
+            let latestName: string | null = null;
             if (chaptersRes.ok) {
               const chaptersData = await chaptersRes.json();
               const chapterEntries = chaptersData.entries || [];
@@ -641,9 +665,19 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 return m ? parseInt(m[1], 10) : 0;
               }).filter((n: number) => n > 0);
               maxChapter = fileNumbers.length > 0 ? Math.max(...fileNumbers) : 0;
+
+              const sortedMdFiles = [...mdFiles].sort((a, b) => a.name.localeCompare(b.name));
+              const latestFile = sortedMdFiles[sortedMdFiles.length - 1];
+              if (latestFile) {
+                latestPath = joinFilePath(chaptersDir, latestFile.name);
+                latestName = latestFile.name;
+              }
             } else {
               setHasChapters(false);
             }
+            setMaxChapterNum(maxChapter);
+            setLatestChapterPath(latestPath);
+            setLatestChapterName(latestName);
 
             // Check if Chapter 1 plan exists
             let hasPlan = false;
@@ -790,6 +824,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           } else {
             setActiveBookId(null);
             setHasChapters(false);
+            setMaxChapterNum(0);
+            setLatestChapterPath(null);
+            setLatestChapterName(null);
             setChapterStatusMap({});
             setConsolidationRecommend(false);
             setRecommendVolumeName("");
@@ -800,6 +837,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           setHasBooks(false);
           setActiveBookId(null);
           setHasChapters(false);
+          setMaxChapterNum(0);
+          setLatestChapterPath(null);
+          setLatestChapterName(null);
           setChapterStatusMap({});
           setAvailableBooks([]);
           setConsolidationRecommend(false);
@@ -812,6 +852,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         setHasShorts(false);
         setActiveBookId(null);
         setHasChapters(false);
+        setMaxChapterNum(0);
+        setLatestChapterPath(null);
+        setLatestChapterName(null);
         setChapterStatusMap({});
         setAvailableBooks([]);
         setConsolidationRecommend(false);
@@ -1382,8 +1425,15 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   };
 
   useEffect(() => {
-    onWorkspaceStatusChange?.(isInkosWorkspace, hasBooks);
-  }, [isInkosWorkspace, hasBooks, onWorkspaceStatusChange]);
+    onWorkspaceStatusChange?.(
+      isInkosWorkspace, 
+      hasBooks, 
+      hasChapters, 
+      maxChapterNum, 
+      latestChapterPath, 
+      latestChapterName
+    );
+  }, [isInkosWorkspace, hasBooks, hasChapters, maxChapterNum, latestChapterPath, latestChapterName, onWorkspaceStatusChange]);
 
   useEffect(() => {
     const handleTriggerStyleClone = () => {
@@ -3190,7 +3240,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   </button>
                 </div>
               )}
-              {isInkosWorkspace && (
+              {isInkosWorkspace && (!hasBooks || showCreateBookCard) && (
                 <div style={{
                   margin: "8px 10px",
                   padding: "12px",

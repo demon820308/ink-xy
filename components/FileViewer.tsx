@@ -2096,6 +2096,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
   const filename = getFileName(filePath);
   const chMatch = filename.match(/^(\d{4})_/);
   const chapterNumber = chMatch ? parseInt(chMatch[1], 10) : null;
+  const nextChapterNum = chapterNumber !== null ? chapterNumber + 1 : null;
   const formattedChNum = chMatch ? chMatch[1] : "XXXX";
 
   const getActionMeta = (actionType: string) => {
@@ -2782,8 +2783,14 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     const bookId = getBookIdFromPath(filePath, cwd);
     if (!bookId) return;
 
+    if (chapterNumber !== null && chapterStatus !== "approved") {
+      alert(`当前章节 (第 ${chapterNumber} 章) 尚未完成『规划蓝图』、『防崩审计』及『同步设定』，且状态非『已过审』。请先在编辑器底部或章节看板中完成这些前置安全保障步骤，并将其设为『已过审』后，才可以开始续写下一章。`);
+      return;
+    }
+
     const isForce = forceRewrite === true;
     setWriteLoading(true);
+    window.dispatchEvent(new Event("write-start"));
     setLogs([]);
     const modeTitle = "智能续写";
     setReportTitle(modeTitle);
@@ -2817,6 +2824,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
       if (res.status === 409) {
         const conflictData = await res.json();
         setWriteLoading(false);
+        window.dispatchEvent(new Event("write-end"));
         setIsReportOpen(false);
         if (conflictData.conflict) {
           setConfirmDialog({
@@ -3029,6 +3037,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
       }
     } finally {
       setWriteLoading(false);
+      window.dispatchEvent(new Event("write-end"));
     }
   };
 
@@ -3039,8 +3048,14 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     const bookId = getBookIdFromPath(filePath, cwd);
     if (!bookId) return;
 
+    if (chapterNumber !== null && chapterStatus !== "approved") {
+      alert(`当前章节 (第 ${chapterNumber} 章) 尚未完成『规划蓝图』、『防崩审计』及『同步设定』，且状态非『已过审』。请先在编辑器底部或章节看板中完成这些前置安全保障步骤，并将其设为『已过审』后，才可以开始起草下一章。`);
+      return;
+    }
+
     const isForce = forceRewrite === true;
     setWriteLoading(true);
+    window.dispatchEvent(new Event("write-start"));
     setLogs([]);
     const modeTitle = "极速起草";
     setReportTitle(modeTitle);
@@ -3102,6 +3117,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
       if (res.status === 409) {
         const conflictData = await res.json();
         setWriteLoading(false);
+        window.dispatchEvent(new Event("write-end"));
         setIsReportOpen(false);
         if (conflictData.conflict) {
           setConfirmDialog({
@@ -3245,8 +3261,27 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
       }
     } finally {
       setWriteLoading(false);
+      window.dispatchEvent(new Event("write-end"));
     }
   };
+
+  useEffect(() => {
+    const handleGlobalWrite = (e: Event) => {
+      const customEvent = e as CustomEvent<{ mode: "normal" | "draft" }>;
+      if (!customEvent.detail) return;
+      if (isRunning || saveStatus === "saving") return;
+
+      if (customEvent.detail.mode === "normal") {
+        requestRunAction("write-next", () => handleWriteNext(false));
+      } else if (customEvent.detail.mode === "draft") {
+        setIsDraftDialogOpen(true);
+      }
+    };
+    window.addEventListener("trigger-global-write", handleGlobalWrite as EventListener);
+    return () => {
+      window.removeEventListener("trigger-global-write", handleGlobalWrite as EventListener);
+    };
+  }, [isRunning, saveStatus, requestRunAction, handleWriteNext, setIsDraftDialogOpen]);
 
   const handleRevise = async (mode: string = "spot-fix") => {
     if (!cwd) return;
@@ -4122,7 +4157,9 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
                         }}
                       >
                         {writeLoading ? (
-                          writeMode === "normal" ? "正在续写..." : "正在起草..."
+                          writeMode === "normal" 
+                            ? `正在续写${nextChapterNum !== null ? `第${nextChapterNum}章` : ""}...` 
+                            : `正在起草${nextChapterNum !== null ? `第${nextChapterNum}章` : ""}...`
                         ) : (
                           writeMode === "normal" ? (
                             <span style={{ display: "flex", alignItems: "center" }}>
@@ -4130,7 +4167,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
                                 <path d="M12 20h9" />
                                 <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                               </svg>
-                              智能续写
+                              智能续写{nextChapterNum !== null ? `第${nextChapterNum}章` : ""}
                             </span>
                           ) : (
                             <span style={{ display: "flex", alignItems: "center" }}>
@@ -4139,7 +4176,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
                                 <path d="M12 2h9v9" />
                                 <path d="M21 2 9 14" />
                               </svg>
-                              极速草稿
+                              极速草稿{nextChapterNum !== null ? `第${nextChapterNum}章` : ""}
                             </span>
                           )
                         )}

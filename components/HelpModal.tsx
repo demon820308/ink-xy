@@ -76,6 +76,23 @@ export function HelpModal({ onClose }: HelpModalProps) {
             </div>
           ),
         },
+        {
+          title: "3. 侧边栏新书配置卡显隐控制 (Sidebar Config Toggle)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                如果您已创建好书籍并希望获得更纯净的 Zen 写作体验，可以点击右上角设置 <strong>【系统全局设置】</strong> 齿轮：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li>开启/关闭 <strong>【显示“创建新小说书籍”卡片】</strong> 开关。</li>
+                  <li>当您关闭该卡片时，侧边栏顶部的配置卡片会被隐藏，释放大量侧边栏可视空间，让目录树展示更清爽。</li>
+                  <li><em>安全自愈保护：如果您的项目目前完全没有建立任何书籍，系统会自动强行显示该卡片，避免陷入无法开始首本书籍创作的逻辑死锁。</em></li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
       ],
     },
     {
@@ -152,6 +169,24 @@ export function HelpModal({ onClose }: HelpModalProps) {
             </div>
           ),
         },
+        {
+          title: "5. 智能角色卡转换器 (Character Card Converter)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                在 <strong>【角色人设】</strong> 面板中，点击右上角的 <strong>【➕ 创建】</strong> 按钮，即可唤起角色人设卡转换器。
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <strong>💡 核心功能与用处：</strong>
+                <ul style={{ paddingLeft: 18, margin: "6px 0 0 0", lineHeight: "1.7" }}>
+                  <li><strong>粘贴文本/文件智能解析</strong>：您可以直接粘贴大段散乱的草稿设定，或者上传 TXT/MD 文件，点击 <strong style={{ color: "var(--accent)" }}>【🪄 开始 AI 自动解析与提取】</strong>，AI 将自动分析提取人物的姓名、主要/次要级别（Tier）、核心标签（Core Tags）、矛盾反差（Contrast）以及人际关系网（Relationships）。</li>
+                  <li style={{ marginTop: 6 }}><strong>自动冲突检测与去重</strong>：解析成功后，转换器会自动对比已存在的人物角色，直观标出哪些是“新角色”，哪些是“已重名角色（将自动跳过）”，保障库文件整洁。</li>
+                  <li style={{ marginTop: 6 }}><strong>一键批量生成与索引重构</strong>：确认后，系统会一键为所有独特新角色建立标准卡片（写入 <code>story/roles/</code>），并自动刷新同步 <code>character_matrix.md</code> 兼容指针，免去手动建档、贴格式的繁琐工序。</li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
       ],
     },
     {
@@ -204,23 +239,34 @@ export function HelpModal({ onClose }: HelpModalProps) {
       subtitle: "高文采续写、草稿快跑与冲突回滚机制",
       steps: [
         {
-          title: "1. 智能续写 (标准模式)",
+          title: "1. 全局与局部智能续写/草稿 (Smart Continue & Quick Draft)",
           content: (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                点击底部的橙色按钮 <strong style={{ color: "#ff903f" }}>【智能续写】</strong>。
-                AI 将根据本章蓝图和设定账本展开高水平文学写作。生成过程中会连续在后台执行防崩溃逻辑检验和修正，最终生成最符合要求的上下文章节。
+                系统提供了<strong>顶栏全局快捷按钮</strong>与<strong>编辑器底部控制按钮</strong>双重创作入口：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li><strong>动态目标章节（第N+1章）</strong>：按钮会自动检测您书籍当前的最新进度并渲染为 <code>智能续写第N+1章</code> / <code>极速草稿第N+1章</code>。在尚未创建任何首章正文时，全局按钮会自动隐藏避开干扰。</li>
+                  <li style={{ marginTop: 6 }}><strong>非章节页面自动唤醒定位</strong>：如果您在看板、设置或空白标签页点击全局写作按钮，系统会自动为您<strong>静默定位并打开最新的一章</strong>，然后触发橙色的【确认执行此操作】系统确认框，省去繁琐的手动切页步骤。</li>
+                  <li style={{ marginTop: 6 }}><strong>极速草稿 (快跑模式)</strong>：点击写作旁的小三角下拉箭头可自由切换为 <strong>【极速草稿】</strong>，支持在右侧输入“创意描述大纲”（如：“主角打碎花瓶，被师父责罚”）后快速出稿。</li>
+                </ul>
               </div>
             </div>
           ),
         },
         {
-          title: "2. 极速草稿 (快跑模式)",
+          title: "2. 写作前置安全门禁与拦截警告 (Safety Prerequisites)",
           content: (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                点击续写旁的下拉箭头，切换至 <strong>【极速草稿】</strong>，在右侧输入“创意引导描述”（例如：“主角打碎花瓶，被师父责罚”）。
-                此模式将跳过复杂的后台审计直接以最高生成速度输出大纲片段，方便快速扩充灵感，稍后再行修正。
+                为了确保您的长篇设定不崩塌，在触发智能续写与极速草稿时，系统会自动进行<strong>前置状态审计拦截</strong>：
+              </div>
+              <div style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 12, fontStyle: "italic", fontSize: 11 }}>
+                如果当前章节未执行【大纲规划】、【防崩审计】及【同步设定】等步骤，其在章节看板或索引中的状态不是“已过审” (approved)，系统会弹窗发出警告拦截，并引导您先执行这些安全保障步骤。
+              </div>
+              <div>
+                <em>前置流程的这一严格质检逻辑同样能够防止模型因前序上下文未对账、未审计一致性而产生的“设定越狱”和境界战斗力坍塌。</em>
               </div>
             </div>
           ),
@@ -614,7 +660,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
           }}
         >
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 18 }}>📚</span> InkOS 小说实战创作手册
+            <span style={{ fontSize: 18 }}>📚</span> ink-xY小说实战创作手册
           </span>
           <button
             onClick={onClose}
