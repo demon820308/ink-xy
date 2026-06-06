@@ -1,6 +1,6 @@
 {
   "name": "@zwbigi/ink-xy",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "author": "demon820308",
   "description": "ink-xY Novel Studio - Professional Intelligent Collaborative Novel Editor",
   "main": "electron/main.js",
