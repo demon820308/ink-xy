@@ -16,6 +16,46 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
 
+  interface LicenseData {
+    active: boolean;
+    key?: string;
+    expires_at?: string;
+    machine_uuid: string;
+  }
+  const [licenseData, setLicenseData] = useState<LicenseData | null>(null);
+
+  useEffect(() => {
+    fetch("/api/license")
+      .then((res) => res.json())
+      .then((data) => setLicenseData(data))
+      .catch((err) => console.error("Error fetching license in SettingsModal:", err));
+  }, []);
+
+  const getExpiryText = (expiresAt?: string) => {
+    if (!expiresAt) return "";
+    if (expiresAt.startsWith("9999-12-31")) {
+      return "永久有效";
+    }
+    try {
+      const d = new Date(expiresAt);
+      return d.toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch {
+      return expiresAt;
+    }
+  };
+
+  const handleDeactivate = () => {
+    window.dispatchEvent(new CustomEvent("deactivate-license"));
+    onClose();
+  };
+
   useEffect(() => {
     const val = localStorage.getItem("ink-show-execution-confirm");
     if (val !== null) {
@@ -124,7 +164,14 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
         </div>
 
         {/* Content */}
-        <div style={{ padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ 
+          padding: "20px 18px", 
+          display: "flex", 
+          flexDirection: "column", 
+          gap: 16,
+          maxHeight: "min(420px, 60vh)",
+          overflowY: "auto"
+        }}>
           {/* Operation Confirmation */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -411,6 +458,88 @@ export function SettingsModal({ onClose, onSave }: SettingsModalProps) {
                 />
               </span>
             </label>
+          </div>
+
+          <div style={{ height: "1px", background: "var(--border)", opacity: 0.6 }} />
+
+          {/* 软件授权 (License) */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+              🔑 软件授权与设备
+            </span>
+            <div style={{
+              background: "var(--bg-hover)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}>
+              {licenseData === null ? (
+                <span style={{ fontSize: 11, color: "var(--text-dim)" }}>正在读取授权状态...</span>
+              ) : (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                    <span style={{ color: "var(--text-muted)" }}>设备 ID</span>
+                    <span style={{ color: "var(--text)", fontFamily: "var(--font-mono)", userSelect: "all" }} title={licenseData.machine_uuid}>
+                      {licenseData.machine_uuid ? `${licenseData.machine_uuid.slice(0, 8)}...${licenseData.machine_uuid.slice(-8)}` : "未知设备"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                    <span style={{ color: "var(--text-muted)" }}>授权状态</span>
+                    <span style={{ 
+                      color: licenseData.active ? "#10b981" : "#f59e0b",
+                      fontWeight: 600
+                    }}>
+                      {licenseData.active ? "已激活 PRO 版" : "未激活 (试用中)"}
+                    </span>
+                  </div>
+                  {licenseData.active && (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                        <span style={{ color: "var(--text-muted)" }}>授权密钥</span>
+                        <span style={{ color: "var(--text)", fontFamily: "var(--font-mono)" }}>
+                          {licenseData.key ? `${licenseData.key.slice(0, 6)}****${licenseData.key.slice(-4)}` : ""}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                        <span style={{ color: "var(--text-muted)" }}>有效期至</span>
+                        <span style={{ color: "var(--text)" }}>
+                          {getExpiryText(licenseData.expires_at)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleDeactivate}
+                        style={{
+                          marginTop: 6,
+                          padding: "6px 10px",
+                          background: "rgba(239, 68, 68, 0.1)",
+                          border: "1px solid rgba(239, 68, 68, 0.2)",
+                          borderRadius: 6,
+                          color: "#f87171",
+                          cursor: "pointer",
+                          fontSize: 11,
+                          fontWeight: 500,
+                          textAlign: "center",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                          e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                          e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.2)";
+                        }}
+                      >
+                        解除当前设备绑定
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 

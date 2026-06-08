@@ -47,6 +47,111 @@ export function AppShell() {
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
 
+  // Licensing states
+  const [isLicensed, setIsLicensed] = useState<boolean | null>(null);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [activationModalPrompt, setActivationModalPrompt] = useState("");
+  const [showWarningBanner, setShowWarningBanner] = useState(false);
+  const [machineUuid, setMachineUuid] = useState("");
+  const [activationKeyInput, setActivationKeyInput] = useState("");
+  const [activating, setActivating] = useState(false);
+  const [activationError, setActivationError] = useState("");
+  const [onSuccessCallback, setOnSuccessCallback] = useState<(() => void) | null>(null);
+
+  // Check license on mount
+  useEffect(() => {
+    const checkLicense = async () => {
+      try {
+        const res = await fetch("/api/license");
+        const data = await res.json();
+        setMachineUuid(data.machine_uuid || "");
+        if (data.active) {
+          setIsLicensed(true);
+          setShowWarningBanner(false);
+          // Run background verification check
+          fetch("/api/license", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "verify" })
+          }).then(async (vRes) => {
+            if (!vRes.ok) {
+              setIsLicensed(false);
+              setShowWarningBanner(true);
+            }
+          }).catch(() => {});
+        } else {
+          setIsLicensed(false);
+          setShowWarningBanner(true);
+        }
+      } catch (err) {
+        setIsLicensed(false);
+        setShowWarningBanner(true);
+      }
+    };
+    checkLicense();
+  }, []);
+
+  // Listen for trigger activation & deactivation custom events
+  useEffect(() => {
+    const handleTriggerActivation = (e: Event) => {
+      const customEvent = e as CustomEvent<{ prompt: string; onSuccess: () => void }>;
+      if (customEvent.detail) {
+        setActivationModalPrompt(customEvent.detail.prompt || "智能续写第二章及以上章节需录入授权码。");
+        setOnSuccessCallback(() => customEvent.detail.onSuccess);
+        setShowActivationModal(true);
+      }
+    };
+
+    const handleDeactivate = async () => {
+      try {
+        const res = await fetch("/api/license", { method: "DELETE" });
+        if (res.ok) {
+          setIsLicensed(false);
+          setShowWarningBanner(true);
+        }
+      } catch (err) {
+        console.error("Failed to deactivate license:", err);
+      }
+    };
+
+    window.addEventListener("trigger-activation-modal", handleTriggerActivation as EventListener);
+    window.addEventListener("deactivate-license", handleDeactivate);
+
+    return () => {
+      window.removeEventListener("trigger-activation-modal", handleTriggerActivation as EventListener);
+      window.removeEventListener("deactivate-license", handleDeactivate);
+    };
+  }, []);
+
+  const handleActivateLicense = async () => {
+    if (!activationKeyInput) return;
+    setActivating(true);
+    setActivationError("");
+    try {
+      const res = await fetch("/api/license", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: activationKeyInput })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsLicensed(true);
+        setShowActivationModal(false);
+        setShowWarningBanner(false);
+        setActivationKeyInput("");
+        if (onSuccessCallback) {
+          onSuccessCallback();
+        }
+      } else {
+        setActivationError(data.message || "激活失败，请检查您的激活码。");
+      }
+    } catch (err) {
+      setActivationError("激活超时，请检查网络连接是否正常。");
+    } finally {
+      setActivating(false);
+    }
+  };
+
   // Branch navigator state — populated by ChatWindow via onBranchDataChange
   const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);
   const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
@@ -386,7 +491,61 @@ export function AppShell() {
     };
   }, []);
 
+  const getNextChapterNumber = useCallback(() => {
+    const isActiveChapter = activeFileTab?.filePath && 
+      !activeFileTab.filePath.startsWith("dashboard:") && 
+      !activeFileTab.filePath.startsWith("characters:") &&
+      activeFileTab.filePath.includes("/chapters/");
+      
+    let targetPath = "";
+    if (isActiveChapter && activeFileTab) {
+      targetPath = activeFileTab.filePath;
+    } else {
+      const openChapterTab = fileTabs.find(tab => 
+        tab.filePath && 
+        !tab.filePath.startsWith("dashboard:") && 
+        !tab.filePath.startsWith("characters:") &&
+        tab.filePath.includes("/chapters/")
+      );
+      if (openChapterTab) {
+        targetPath = openChapterTab.filePath;
+      }
+    }
+
+    if (!targetPath) {
+      if (typeof maxChapterNumber === "number" && maxChapterNumber > 0) {
+        return maxChapterNumber + 1;
+      }
+      return null;
+    }
+
+    const fileName = targetPath.split("/").pop() || "";
+    const match = fileName.match(/^(\d+)/);
+    if (match) {
+      const currentNum = parseInt(match[1], 10);
+      return currentNum + 1;
+    }
+    return null;
+  }, [activeFileTab, fileTabs, maxChapterNumber]);
+
   const handleGlobalWriteClick = useCallback((mode: "normal" | "draft") => {
+    // Intercept check for Chapter 2 and beyond if not licensed
+    const nextCh = getNextChapterNumber();
+    if (nextCh !== null && nextCh >= 2 && isLicensed === false) {
+      window.dispatchEvent(new CustomEvent("trigger-activation-modal", {
+        detail: {
+          prompt: "🔒 续写第二章及以上章节是专业版专属功能，请录入授权码开启您的无限创作宇宙！",
+          onSuccess: () => {
+            // Re-trigger the global write click on success
+            setTimeout(() => {
+              handleGlobalWriteClick(mode);
+            }, 100);
+          }
+        }
+      }));
+      return;
+    }
+
     // Check if the current tab is an active chapter
     const isActiveChapter = activeFileTab?.filePath && 
       !activeFileTab.filePath.startsWith("dashboard:") && 
@@ -417,7 +576,7 @@ export function AppShell() {
         }, 300);
       }
     }
-  }, [activeFileTab, fileTabs, latestChapterPath, latestChapterName, handleOpenFile]);
+  }, [activeFileTab, fileTabs, latestChapterPath, latestChapterName, handleOpenFile, isLicensed, getNextChapterNumber]);
 
   const [availableStyles, setAvailableStyles] = useState<string[]>([]);
   const [activeStyleName, setActiveStyleName] = useState<string | null>(null);
@@ -478,45 +637,6 @@ export function AppShell() {
     setLatestChapterPath(latestPath ?? null);
     setLatestChapterName(latestName ?? null);
   }, []);
-
-  const getNextChapterNumber = useCallback(() => {
-    const isActiveChapter = activeFileTab?.filePath && 
-      !activeFileTab.filePath.startsWith("dashboard:") && 
-      !activeFileTab.filePath.startsWith("characters:") &&
-      activeFileTab.filePath.includes("/chapters/");
-      
-    let targetPath = "";
-    if (isActiveChapter && activeFileTab) {
-      targetPath = activeFileTab.filePath;
-    } else {
-      const openChapterTab = fileTabs.find(tab => 
-        tab.filePath && 
-        !tab.filePath.startsWith("dashboard:") && 
-        !tab.filePath.startsWith("characters:") &&
-        tab.filePath.includes("/chapters/")
-      );
-      if (openChapterTab) {
-        targetPath = openChapterTab.filePath;
-      }
-    }
-
-    if (!targetPath) {
-      if (typeof maxChapterNumber === "number" && maxChapterNumber > 0) {
-        return maxChapterNumber + 1;
-      }
-      return null;
-    }
-
-    const fileName = targetPath.split("/").pop() || "";
-    const match = fileName.match(/^(\d+)/);
-    if (match) {
-      const currentNum = parseInt(match[1], 10);
-      return currentNum + 1;
-    }
-    return null;
-  }, [activeFileTab, fileTabs, maxChapterNumber]);
-
-
 
   const sidebarContent = (
     <>
@@ -1094,6 +1214,65 @@ export function AppShell() {
 
         </div>
 
+        {/* Trial Mode Warning Banner */}
+        {showWarningBanner && (
+          <div style={{
+            background: "linear-gradient(90deg, rgba(234, 179, 8, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)",
+            borderBottom: "1px solid var(--border)",
+            padding: "6px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: "12px",
+            color: "var(--text)",
+            gap: "12px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "14px" }}>✒️</span>
+              <span style={{ color: "var(--text-muted)" }}>
+                您当前处于免费试用模式。续写第二章及以上章节需录入授权。
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <button
+                onClick={() => {
+                  setActivationModalPrompt("录入授权码即可解锁专业版，开启无限续写与极速草稿！");
+                  setOnSuccessCallback(() => () => {});
+                  setShowActivationModal(true);
+                }}
+                style={{
+                  background: "var(--accent)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "3px 10px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }}
+              >
+                立即激活
+              </button>
+              <button
+                onClick={() => setShowWarningBanner(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-dim)",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  padding: "0 4px",
+                  lineHeight: 1
+                }}
+                title="关闭提示"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Editor Tab Bar */}
         <div style={{ display: "flex", alignItems: "center", flexShrink: 0, background: "var(--bg-panel)", borderBottom: "1px solid var(--border)", height: 36 }}>
           <div style={{ flex: 1, overflow: "hidden" }}>
@@ -1479,6 +1658,214 @@ export function AppShell() {
               }}
             >
               确定更换
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Activation Modal */}
+    {showActivationModal && (
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1500,
+        background: "rgba(10, 10, 10, 0.6)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <div style={{
+          width: "min(460px, 92%)",
+          background: "var(--bg-panel)",
+          border: "1px solid var(--border)",
+          borderRadius: "16px",
+          boxShadow: "0 24px 60px rgba(0, 0, 0, 0.4)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          fontFamily: "var(--font-serif)"
+        }}
+        onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "18px 24px",
+            background: "rgba(139, 92, 246, 0.08)",
+            borderBottom: "1px solid var(--border)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: "16px" }}>🔑</span>
+              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>输入授权激活码</span>
+            </div>
+            <button
+              onClick={() => setShowActivationModal(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-dim)",
+                cursor: "pointer",
+                fontSize: "18px",
+                padding: "0 6px"
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+            {activationModalPrompt && (
+              <div style={{
+                background: "rgba(139, 92, 246, 0.04)",
+                border: "1px solid rgba(139, 92, 246, 0.15)",
+                borderRadius: "8px",
+                padding: "12px 16px",
+                fontSize: "12px",
+                color: "var(--text-muted)",
+                lineHeight: "1.6"
+              }}>
+                {activationModalPrompt}
+              </div>
+            )}
+
+            {/* Machine ID */}
+            <div>
+              <label style={{ display: "block", fontSize: "11px", color: "var(--text-dim)", marginBottom: "6px", fontWeight: 600 }}>
+                本机设备指纹 (Computer ID)
+              </label>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                padding: "6px 12px",
+                gap: "10px"
+              }}>
+                <span style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11px",
+                  color: "var(--text-muted)",
+                  flex: 1,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }}>
+                  {machineUuid}
+                </span>
+                <button
+                  onClick={(e) => {
+                    navigator.clipboard.writeText(machineUuid);
+                    const originalText = e.currentTarget.innerText;
+                    e.currentTarget.innerText = "已复制";
+                    setTimeout(() => {
+                      e.currentTarget.innerText = originalText;
+                    }, 1500);
+                  }}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "4px",
+                    padding: "2px 8px",
+                    fontSize: "10px",
+                    color: "var(--text)",
+                    cursor: "pointer"
+                  }}
+                >
+                  复制
+                </button>
+              </div>
+            </div>
+
+            {/* Key Input */}
+            <div>
+              <label style={{ display: "block", fontSize: "11px", color: "var(--text-dim)", marginBottom: "6px", fontWeight: 600 }}>
+                录入激活码 (Activation Key)
+              </label>
+              <input
+                type="text"
+                placeholder="请输入 16 位激活码 (例如: INK-XXXX-XXXX)"
+                value={activationKeyInput}
+                onChange={(e) => setActivationKeyInput(e.target.value.trim().toUpperCase())}
+                style={{
+                  width: "100%",
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  padding: "8px 12px",
+                  fontSize: "13px",
+                  color: "var(--text)",
+                  fontFamily: "var(--font-mono)",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            {activationError && (
+              <div style={{
+                fontSize: "12px",
+                color: "#ef4444",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}>
+                <span>⚠️</span>
+                <span>{activationError}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 12,
+            padding: "16px 24px",
+            background: "var(--bg-panel)",
+            borderTop: "1px solid var(--border)"
+          }}>
+            <button
+              onClick={() => setShowActivationModal(false)}
+              disabled={activating}
+              style={{
+                padding: "7px 16px",
+                fontSize: "12px",
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontWeight: 500,
+                transition: "all 0.2s"
+              }}
+            >
+              取消
+            </button>
+            <button
+              onClick={handleActivateLicense}
+              disabled={activating || !activationKeyInput}
+              style={{
+                padding: "7px 20px",
+                fontSize: "12px",
+                borderRadius: 8,
+                border: "none",
+                background: "var(--accent)",
+                color: "white",
+                cursor: (activating || !activationKeyInput) ? "not-allowed" : "pointer",
+                fontWeight: 600,
+                boxShadow: `0 4px 12px rgba(139, 92, 246, 0.2)`,
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+            >
+              {activating ? "正在激活..." : "立即激活"}
             </button>
           </div>
         </div>

@@ -1,0 +1,13 @@
+{
+  "name": "ink-xy-licensing-server",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers licensing server for ink-xY Novel Studio",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.109.0"
+  }
+}

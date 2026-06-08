@@ -683,8 +683,9 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
           <button
             onClick={() => fetchDashboardData()}
             disabled={loading}
+            title="重新扫描"
             style={{
-              padding: "6px 14px",
+              padding: "6px 10px",
               background: "rgba(96, 165, 250, 0.08)",
               border: "1px solid rgba(96, 165, 250, 0.3)",
               borderRadius: 6,
@@ -694,10 +695,10 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              justifyContent: "center",
             }}
           >
-            <span>🔄</span> 重新扫描
+            <span>🔄</span>
           </button>
         </div>
       </div>

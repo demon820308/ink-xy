@@ -45,3 +45,7 @@ next-env.d.ts
 /dist
 .env
 node_modules/
+
+# licensing server isolation
+/licensing-server/node_modules/
+/licensing-server/.wrangler/

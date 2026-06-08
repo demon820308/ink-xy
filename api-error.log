@@ -1,0 +1,35 @@
+[Error] 2026-06-05T16:01:30.418Z
+Message: fetch failed
+Stack: TypeError: fetch failed
+    at node:internal/deps/undici/undici:16416:13
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at runNextTicks (node:internal/process/task_queues:68:3)
+    at process.processImmediate (node:internal/timers:472:9)
+    at process.callbackTrampoline (node:internal/async_hooks:130:17)
+    at async eval (webpack-internal:///(rsc)/./app/api/agent/parse-characters/route.ts:276:34)
+    at async Promise.all (index 0)
+    at async POST (webpack-internal:///(rsc)/./app/api/agent/parse-characters/route.ts:322:30)
+    at async AppRouteRouteModule.do (E:\ink-xY\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:40732)
+    at async AppRouteRouteModule.handle (E:\ink-xY\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:47861)
+    at async responseGenerator (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fagent%2Fparse-characters%2Froute&page=%2Fapi%2Fagent%2Fparse-characters%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fagent%2Fparse-characters%2Froute.ts&appDir=E%3A%5Cink-xY%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=E%3A%5Cink-xY&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:247:38)
+    at async AppRouteRouteModule.handleResponse (E:\ink-xY\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:1:227141)
+    at async handleResponse (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fagent%2Fparse-characters%2Froute&page=%2Fapi%2Fagent%2Fparse-characters%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fagent%2Fparse-characters%2Froute.ts&appDir=E%3A%5Cink-xY%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=E%3A%5Cink-xY&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:310:32)
+    at async Module.handler (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fagent%2Fparse-characters%2Froute&page=%2Fapi%2Fagent%2Fparse-characters%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fagent%2Fparse-characters%2Froute.ts&appDir=E%3A%5Cink-xY%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=E%3A%5Cink-xY&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:365:13)
+    at async DevServer.renderToResponseWithComponentsImpl (E:\ink-xY\node_modules\next\dist\server\base-server.js:1454:9)
+    at async DevServer.renderPageComponent (E:\ink-xY\node_modules\next\dist\server\base-server.js:1506:24)
+    at async DevServer.renderToResponseImpl (E:\ink-xY\node_modules\next\dist\server\base-server.js:1556:32)
+    at async DevServer.pipeImpl (E:\ink-xY\node_modules\next\dist\server\base-server.js:1043:25)
+    at async NextNodeServer.handleCatchallRenderRequest (E:\ink-xY\node_modules\next\dist\server\next-server.js:338:17)
+    at async DevServer.handleRequestImpl (E:\ink-xY\node_modules\next\dist\server\base-server.js:934:17)
+    at async E:\ink-xY\node_modules\next\dist\server\dev\next-dev-server.js:394:20
+    at async Span.traceAsyncFn (E:\ink-xY\node_modules\next\dist\trace\trace.js:164:20)
+    at async DevServer.handleRequest (E:\ink-xY\node_modules\next\dist\server\dev\next-dev-server.js:390:24)
+    at async invokeRender (E:\ink-xY\node_modules\next\dist\server\lib\router-server.js:253:21)
+    at async handleRequest (E:\ink-xY\node_modules\next\dist\server\lib\router-server.js:452:24)
+    at async requestHandlerImpl (E:\ink-xY\node_modules\next\dist\server\lib\router-server.js:501:13)
+    at async Server.requestListener (E:\ink-xY\node_modules\next\dist\server\lib\start-server.js:225:13)
+Context:
+- CWD: E:\ink-xY
+- PI_CODING_AGENT_DIR: C:\Users\demon\.ink\agent
+- getAgentDir(): C:\Users\demon\.ink\agent
+
