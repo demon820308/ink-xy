@@ -71,6 +71,9 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
   // Re-plan intent dialog
   const [planConfirmNum, setPlanConfirmNum] = useState<number | null>(null);
 
+  // Planning progress modal state (chapter number)
+  const [planningProgressNum, setPlanningProgressNum] = useState<number | null>(null);
+
   // Snapshot/Blueprint Explorer Modal state
   const [explorerChapterNum, setExplorerChapterNum] = useState<number | null>(null);
   const [explorerTab, setExplorerTab] = useState<"snapshot" | "blueprint">("snapshot");
@@ -571,12 +574,9 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <span>📊</span> 《{bookId}》 章节管控中心
           </h1>
-          <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "4px 0 0 0" }}>
-            一站式监控防崩审计、设定同步及写作蓝图，防范故事逻辑与人设漂移。
-          </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* 故事大纲 */}
+          {/* 大纲 */}
           <button
             onClick={handleOpenOutline}
             style={{
@@ -602,10 +602,10 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.3)";
             }}
           >
-            <span>🗺️</span> 故事大纲
+            <span>📖</span> 大纲
           </button>
-
-          {/* 角色人设 */}
+ 
+          {/* 角色 */}
           <button
             onClick={handleOpenCharacters}
             style={{
@@ -631,10 +631,10 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.3)";
             }}
           >
-            <span>👥</span> 角色人设
+            <span>👤</span> 角色
           </button>
-
-          {/* 剧情伏笔 */}
+ 
+          {/* 伏笔 */}
           <button
             onClick={handleOpenHooks}
             style={{
@@ -660,7 +660,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               e.currentTarget.style.borderColor = "rgba(249, 115, 22, 0.3)";
             }}
           >
-            <span>🪝</span> 剧情伏笔
+            <span>🔗</span> 伏笔
           </button>
 
 
@@ -676,30 +676,10 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               borderRadius: 6,
               fontSize: 12,
               color: "var(--text)",
-              width: 180,
+              width: 120,
               outline: "none",
             }}
           />
-          <button
-            onClick={() => fetchDashboardData()}
-            disabled={loading}
-            title="重新扫描"
-            style={{
-              padding: "6px 10px",
-              background: "rgba(96, 165, 250, 0.08)",
-              border: "1px solid rgba(96, 165, 250, 0.3)",
-              borderRadius: 6,
-              color: "#60a5fa",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <span>🔄</span>
-          </button>
         </div>
       </div>
 
@@ -727,7 +707,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       {!loading && !error && (
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
           {/* Summary Metric Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, padding: "20px 24px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, padding: "20px 24px" }}>
             <div style={{ padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>总章节数</div>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8, color: "var(--text)" }}>{totalChapters} <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>章</span></div>
@@ -738,7 +718,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 6 }}>已审核过审 {approvedChapters} 章</div>
             </div>
             <div style={{ padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>异常章节 (审计失败 / 状态漂移)</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>异常章节</div>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8, color: (auditFailedChapters + degradedChapters) > 0 ? "#ef4444" : "#10b981" }}>
                 {auditFailedChapters + degradedChapters} <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>处</span>
               </div>
@@ -747,7 +727,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             <div style={{ padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>大纲蓝图覆盖度</div>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8, color: "#a855f7" }}>{blueprintCoverage}%</div>
-              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 6 }}>已规划意图 {hasPlanChapters} / {totalChapters} 章</div>
+              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 6 }}>已规划蓝图 {hasPlanChapters} / {totalChapters} 章</div>
             </div>
           </div>
 
@@ -780,11 +760,46 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                 }}
               >
                 <div style={{ width: "60px", flexShrink: 0 }}>章节</div>
-                <div style={{ flex: 1, minWidth: 150 }}>章节名称</div>
-                <div style={{ width: "100px", flexShrink: 0 }}>防崩审计</div>
-                <div style={{ width: "100px", flexShrink: 0 }}>设定同步</div>
-                <div style={{ width: "100px", flexShrink: 0 }}>意图蓝图</div>
-                <div style={{ width: "200px", flexShrink: 0 }}>审核决策</div>
+                <div style={{ flex: 1, minWidth: 120 }}>章节名称</div>
+                <div style={{ width: "90px", flexShrink: 0 }}>防崩审计</div>
+                <div style={{ width: "90px", flexShrink: 0 }}>设定同步</div>
+                <div style={{ width: "90px", flexShrink: 0 }}>写作蓝图</div>
+                <div style={{ width: "170px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>审核决策</span>
+                  <button
+                    onClick={() => fetchDashboardData()}
+                    disabled={loading}
+                    title="重新扫描"
+                    style={{
+                      padding: "4px 8px",
+                      background: "rgba(96, 165, 250, 0.08)",
+                      border: "1px solid rgba(96, 165, 250, 0.3)",
+                      borderRadius: 6,
+                      color: "#60a5fa",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.15s ease",
+                      marginRight: 4,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(96, 165, 250, 0.15)";
+                      e.currentTarget.style.borderColor = "#60a5fa";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(96, 165, 250, 0.08)";
+                      e.currentTarget.style.borderColor = "rgba(96, 165, 250, 0.3)";
+                    }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: loading ? "spin 1s linear infinite" : "none" }}>
+                      <path d="M23 4v6h-6" />
+                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Table Body */}
@@ -832,7 +847,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           </div>
 
                           {/* Title */}
-                          <div style={{ flex: 1, minWidth: 150, paddingRight: 10 }}>
+                          <div style={{ flex: 1, minWidth: 120, paddingRight: 10 }}>
                             <span
                               onClick={() => handleOpenChapterFile(ch.number, ch.title)}
                               style={{
@@ -883,7 +898,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           </div>
 
                           {/* Audit Status */}
-                          <div style={{ width: "100px", flexShrink: 0 }}>
+                          <div style={{ width: "90px", flexShrink: 0 }}>
                             <span
                               onClick={() => {
                                 const hasAudited = ch.status === "approved" || ch.status === "ready-for-review" || ch.status === "audit-failed";
@@ -949,7 +964,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           </div>
 
                           {/* Sync Status */}
-                          <div style={{ width: "100px", flexShrink: 0 }}>
+                          <div style={{ width: "90px", flexShrink: 0 }}>
                             <span
                               onClick={() => {
                                 if (ch.hasSnapshot && ch.status !== "state-degraded") {
@@ -993,12 +1008,12 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                   : "点击执行设定同步"
                               }
                             >
-                              {ch.status === "state-degraded" ? "⚠️ 设定失步" : (ch.hasSnapshot ? "🔄 已同步" : "⚪ 未同步")}
+                              {ch.status === "state-degraded" ? "⚠️ 设定失步" : (ch.hasSnapshot ? "已同步" : "⚪ 未同步")}
                             </span>
                           </div>
 
                           {/* Blueprint Status */}
-                          <div style={{ width: "100px", flexShrink: 0 }}>
+                          <div style={{ width: "90px", flexShrink: 0 }}>
                             <span
                               onClick={() => {
                                 if (ch.hasPlan) {
@@ -1034,16 +1049,16 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               }}
                               title={
                                 ch.hasPlan
-                                  ? "点击查看意图蓝图"
-                                  : "点击生成意图蓝图"
+                                  ? "点击查看写作蓝图"
+                                  : "点击生成写作蓝图"
                               }
                             >
-                              {ch.hasPlan ? "🗺️ 已规划" : "⚪ 未规划"}
+                              {ch.hasPlan ? "🟢 已规划" : "⚪ 未规划"}
                             </span>
                           </div>
 
                           {/* Review Actions */}
-                          <div style={{ width: "200px", flexShrink: 0 }}>
+                          <div style={{ width: "170px", flexShrink: 0 }}>
                             {ch.status !== "approved" ? (
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 <span
@@ -1208,13 +1223,13 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 16 }}>🗺️</span>
+                    <span style={{ fontSize: 16 }}>📖</span>
                     <div>
                       <strong style={{ color: "var(--text)" }}>下一章节写作规划：第 {nextChapter.number} 章</strong>
                       <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 10 }}>
                         {nextChapter.hasPlan 
-                          ? "🟢 意图蓝图已就绪。续写时将自动装载。" 
-                          : "⚪ 当前无规划蓝图，系统将自动使用通用大纲生成。建议前置规划以微调目标。"}
+                          ? "🟢 写作蓝图已就绪。" 
+                          : "🔴 当前无规划蓝图"}
                       </span>
                     </div>
                   </div>
@@ -1236,18 +1251,21 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           fontWeight: 600,
                         }}
                       >
-                        👁️ 查看第 {nextChapter.number} 章意图蓝图
+                        👁️ 查看第 {nextChapter.number} 章蓝图
                       </button>
                     )}
                     <button
                       onClick={() => {
-                        if (nextChapter.hasPlan) {
+                        if (runningActions[nextChapter.number] === "plan") {
+                          setPlanningProgressNum(nextChapter.number);
+                        } else if (nextChapter.hasPlan) {
                           setPlanConfirmNum(nextChapter.number);
                         } else {
                           executeCommand(nextChapter.number, "plan", "plan");
+                          setPlanningProgressNum(nextChapter.number);
                         }
                       }}
-                      disabled={!!runningActions[nextChapter.number]}
+                      disabled={!!runningActions[nextChapter.number] && runningActions[nextChapter.number] !== "plan"}
                       style={{
                         padding: "6px 14px",
                         background: "rgba(168, 85, 247, 0.08)",
@@ -1261,7 +1279,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                         gap: 6
                       }}
                     >
-                      {runningActions[nextChapter.number] === "plan" ? "⏳ 规划中..." : `🗺️ 规划第 ${nextChapter.number} 章意图`}
+                      {runningActions[nextChapter.number] === "plan" ? "⏳ 规划中..." : `规划第 ${nextChapter.number} 章蓝图`}
                     </button>
                   </div>
                 </div>
@@ -1390,11 +1408,11 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             padding: "20px 24px",
           }}>
             <h3 style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 700, color: "#eab308", display: "flex", alignItems: "center", gap: 8 }}>
-              <span>⚠️</span> 确定重新规划章节意图吗？
+              <span>⚠️</span> 确定重新规划章节蓝图吗？
             </h3>
             
             <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 20 }}>
-              检测到您已为 <strong style={{ color: "var(--accent)" }}>第 {planConfirmNum} 章</strong> 生成了意图蓝图。
+              检测到您已为 <strong style={{ color: "var(--accent)" }}>第 {planConfirmNum} 章</strong> 生成了写作蓝图。
               <div style={{
                 marginTop: 10,
                 padding: "10px 14px",
@@ -1430,6 +1448,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                   const chNum = planConfirmNum;
                   setPlanConfirmNum(null);
                   executeCommand(chNum, "plan", "plan");
+                  setPlanningProgressNum(chNum);
                 }}
                 style={{
                   padding: "6px 16px",
@@ -1444,6 +1463,169 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               >
                 确定重新规划
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Planning Progress Modal */}
+      {planningProgressNum !== null && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          background: "rgba(10, 8, 8, 0.45)",
+          backdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <div style={{
+            width: "560px",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35)",
+            padding: "20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 16
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}>
+                <span>📖</span> 第 {planningProgressNum} 章大纲蓝图规划进度
+              </h3>
+              <button
+                onClick={() => setPlanningProgressNum(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  fontSize: 18,
+                  cursor: "pointer",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Status indicator */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 12px",
+              background: "var(--bg-hover)",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              fontSize: 12
+            }}>
+              {runningActions[planningProgressNum] === "plan" ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+                  </svg>
+                  <span style={{ color: "var(--text)" }}>正在由 InkOS 智能体分析设定并规划本章写作蓝图...</span>
+                </>
+              ) : (
+                (() => {
+                  const hasPlanFile = chapters.find(c => c.number === planningProgressNum)?.hasPlan || (nextChapter?.number === planningProgressNum && nextChapter.hasPlan);
+                  const logStr = (logs[planningProgressNum] || []).join("");
+                  if (logStr.includes("执行失败") || logStr.includes("Error") || logStr.includes("❌")) {
+                    return (
+                      <span style={{ color: "#ef4444" }}>❌ 规划执行失败，请检查下方日志错误</span>
+                    );
+                  } else if (hasPlanFile || logStr.includes("执行完成") || logStr.includes("🎉")) {
+                    return (
+                      <span style={{ color: "#10b981" }}>✅ 规划已成功完成！大纲蓝图就绪。</span>
+                    );
+                  } else {
+                    return (
+                      <span style={{ color: "var(--text-muted)" }}>规划任务处于就绪或未开始状态。</span>
+                    );
+                  }
+                })()
+              )}
+            </div>
+
+            {/* Terminal logs */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>运行日志 (Terminal Output):</label>
+              <div
+                ref={(el) => {
+                  if (el) logContainerRefs.current[planningProgressNum] = el;
+                }}
+                style={{
+                  height: "260px",
+                  overflowY: "auto",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11px",
+                  color: "#f3f4f6",
+                  whiteSpace: "pre-wrap",
+                  padding: "10px",
+                  background: "#09090b",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: 6,
+                  lineHeight: 1.5,
+                }}
+              >
+                {(logs[planningProgressNum] || []).length === 0 ? (
+                  <span style={{ color: "var(--text-dim)" }}>正在启动 InkOS 引擎子进程...</span>
+                ) : (
+                  (logs[planningProgressNum] || []).join("")
+                )}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+              <button
+                onClick={() => setPlanningProgressNum(null)}
+                style={{
+                  padding: "6px 14px",
+                  background: "none",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                {runningActions[planningProgressNum] === "plan" ? "后台运行" : "关闭"}
+              </button>
+              
+              {(() => {
+                const hasPlanFile = chapters.find(c => c.number === planningProgressNum)?.hasPlan || (nextChapter?.number === planningProgressNum && nextChapter.hasPlan);
+                if (hasPlanFile) {
+                  return (
+                    <button
+                      onClick={() => {
+                        const padded = String(planningProgressNum).padStart(4, "0");
+                        const planPath = `${cwd}/books/${bookId}/story/runtime/chapter-${padded}.intent.md`;
+                        onOpenFile(planPath, `chapter-${padded}.intent.md`);
+                        setPlanningProgressNum(null);
+                      }}
+                      style={{
+                        padding: "6px 16px",
+                        background: "var(--accent)",
+                        border: "none",
+                        borderRadius: 6,
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      👁️ 查看生成蓝图
+                    </button>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </div>
@@ -1482,7 +1664,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                   <span>📂</span> 第 {explorerChapterNum} 章 快照与蓝图浏览器
                 </h3>
                 <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "4px 0 0 0" }}>
-                  预览与对比当前章节的历史同步设定快照，或查看写作大纲意图蓝图。
+                  预览与对比当前章节的历史同步设定快照，或查看写作大纲与蓝图。
                 </p>
               </div>
               <button
@@ -1537,7 +1719,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                       transition: "all 0.2s"
                     }}
                   >
-                    🔄 同步快照
+                    🔁 同步快照
                   </button>
                   <button
                     onClick={() => setExplorerTab("blueprint")}
@@ -1554,7 +1736,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                       transition: "all 0.2s"
                     }}
                   >
-                    🗺️ 意图蓝图
+                    写作蓝图
                   </button>
                 </div>
 
@@ -1614,7 +1796,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                       {[
                         {
                           name: `chapter-${String(explorerChapterNum).padStart(4, "0")}.intent.md`,
-                          label: "写作意图蓝图",
+                          label: "写作蓝图",
                           desc: "核心目的、叙事视角与期望冲突效果。"
                         },
                         {
@@ -1652,7 +1834,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               }
                             }}
                           >
-                            <span style={{ fontSize: 16, marginRight: 8 }}>🗺️</span>
+                            <span style={{ fontSize: 16, marginRight: 8 }}>📖</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: isSelected ? "#a855f7" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.label}</div>
                               <div style={{ fontSize: 9, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{file.name}</div>
@@ -1758,9 +1940,9 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                   <br />
                                   1. 关闭此弹窗。
                                   <br />
-                                  2. 点击当前章节的 **「未规划」** 状态徽章以自动运行大纲与意图规划。
+                                  2. 点击当前章节的 **「未规划」** 状态徽章以自动运行大纲与蓝图规划。
                                   <br />
-                                  3. 规划完成后即可在此处预览意图蓝图与写作计划。
+                                  3. 规划完成后即可在此处预览写作蓝图与写作计划。
                                 </>
                               )}
                             </div>
@@ -2018,7 +2200,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                     }}
                     title="重新执行防崩一致性审计"
                   >
-                    <span>🔄</span> 重新审计
+                    <span>🔁</span> 重新审计
                   </button>
                 </div>
                 {selectedChapter.auditIssues && selectedChapter.auditIssues.length > 0 ? (

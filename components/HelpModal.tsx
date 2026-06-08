@@ -113,7 +113,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
               </div>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
                 <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li><strong>大纲策划师 (🗺️)</strong>：共同脑暴、梳理剧情冲突与主线节奏，策划结果将在本地工作区生成 <code>架构.md</code>。</li>
+                  <li><strong>大纲策划师 (📖)</strong>：共同脑暴、梳理剧情冲突与主线节奏，策划结果将在本地工作区生成 <code>架构.md</code>。</li>
                   <li><strong>人设雕琢师 (🔮)</strong>：设定角色姓名、背景性格、专属对话口吻等，结果生成为 <code>人设.md</code>。</li>
                 </ul>
               </div>
@@ -191,7 +191,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
     },
     {
       id: "plan",
-      icon: "🗺️",
+      icon: "📖",
       title: "第三步：蓝图细化",
       subtitle: "智能大纲细纲编译与意图强制控制",
       steps: [
@@ -294,7 +294,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
     },
     {
       id: "sync",
-      icon: "🔄",
+      icon: "🔁",
       title: "第五步：对账同步",
       subtitle: "更新真相账本以对抗AI长期遗忘",
       steps: [

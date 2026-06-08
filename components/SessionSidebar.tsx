@@ -276,6 +276,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [writeReportTitle, setWriteReportTitle] = useState("");
   const [writeReportContent, setWriteReportContent] = useState("");
   const [isWriteReportOpen, setIsWriteReportOpen] = useState(false);
+  const [lastWriteResult, setLastWriteResult] = useState<any | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [registeredCwd, setRegisteredCwd] = useState<string | null>(null);
@@ -1797,6 +1798,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
       setWriteReportTitle("首章创作与审计报告");
       setWriteReportContent(reportMarkdown);
+      setLastWriteResult(result);
       setIsWriteReportOpen(true);
 
       window.dispatchEvent(new CustomEvent("refresh-explorer"));
@@ -3394,7 +3396,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                           transition: "opacity 0.15s",
                         }}
                       >
-                        🗺️ 规划首章蓝图
+                        规划首章蓝图
                       </button>
                     ) : (
                       <button
@@ -3683,7 +3685,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                       >
-                        🔄 刷新设定
+                        🔁 刷新设定
                       </button>
                     </div>
                   )}
@@ -4683,8 +4685,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             background: "var(--bg-panel)",
             border: "1px solid var(--border)",
             borderRadius: "12px",
-            width: "min(500px, 90vw)",
-            maxHeight: "80vh",
+            width: "min(680px, 92vw)",
+            maxHeight: "85vh",
             display: "flex",
             flexDirection: "column",
             boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
@@ -4704,7 +4706,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 {writeReportTitle}
               </span>
               <button
-                onClick={() => setIsWriteReportOpen(false)}
+                onClick={() => {
+                  setIsWriteReportOpen(false);
+                  setLastWriteResult(null);
+                }}
                 style={{
                   padding: "4px 12px",
                   fontSize: 11,
@@ -4721,13 +4726,127 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             </div>
             <div style={{
               flex: 1,
-              padding: "18px",
+              padding: "20px 24px",
               overflowY: "auto",
-              lineHeight: "1.8",
               fontSize: "12px",
               color: "var(--text)",
-            }} className="markdown-body">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{writeReportContent}</ReactMarkdown>
+            }}>
+              {lastWriteResult ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Stats Grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{
+                      padding: "10px 14px",
+                      background: "rgba(139,92,246,0.08)",
+                      border: "1px solid rgba(139,92,246,0.15)",
+                      borderRadius: 8,
+                      display: "flex", flexDirection: "column", gap: 2,
+                    }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600 }}>生成字数</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#a78bfa" }}>{lastWriteResult.wordCount} 字</div>
+                    </div>
+                    <div style={{
+                      padding: "10px 14px",
+                      background: "rgba(52,211,153,0.08)",
+                      border: "1px solid rgba(52,211,153,0.15)",
+                      borderRadius: 8,
+                      display: "flex", flexDirection: "column", gap: 2,
+                    }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600 }}>章节状态</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#34d399" }}>{lastWriteResult.status || "complete"}</div>
+                    </div>
+                  </div>
+
+                  {/* Audit Result */}
+                  {lastWriteResult.auditResult && (() => {
+                    const isPassed = lastWriteResult.auditResult.passed ?? false;
+                    const issues = lastWriteResult.auditResult.issues ?? [];
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          🔍 离线审稿与设定审计结果
+                        </div>
+                        <div style={{
+                          padding: "10px 14px",
+                          borderRadius: 8,
+                          background: isPassed ? "rgba(74,222,128,0.06)" : "rgba(251,191,36,0.06)",
+                          border: `1px solid ${isPassed ? "rgba(74,222,128,0.15)" : "rgba(251,191,36,0.15)"}`,
+                          borderLeft: `3px solid ${isPassed ? "#4ade80" : "#fbbf24"}`,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: isPassed ? "#4ade80" : "#fbbf24",
+                        }}>
+                          {isPassed ? "✅ 审计通过 — 无明显逻辑矛盾或角色人设崩塌风险" : "⚠️ 审计未完全通过 — 检测到一些逻辑或人设风险："}
+                        </div>
+
+                        {issues.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "350px", overflowY: "auto", paddingRight: 4 }}>
+                            {issues.map((issue: any, i: number) => {
+                              const sev = String(issue.severity || "info").toLowerCase();
+                              const cfg =
+                                sev === "error" || sev === "critical"
+                                  ? { color: "#f87171", bg: "rgba(248,113,113,0.06)", border: "#f87171", emoji: "❌", label: "严重" }
+                                  : sev === "warning"
+                                  ? { color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "#fbbf24", emoji: "⚠️", label: "警告" }
+                                  : { color: "#60a5fa", bg: "rgba(96,165,250,0.06)", border: "#60a5fa", emoji: "ℹ️", label: "提示" };
+                              return (
+                                <div key={i} style={{
+                                  padding: "12px 14px", background: cfg.bg,
+                                  border: `1px solid ${cfg.border}22`,
+                                  borderLeft: `3px solid ${cfg.border}`,
+                                  borderRadius: 8, display: "flex", flexDirection: "column", gap: 6,
+                                }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ fontSize: 13 }}>{cfg.emoji}</span>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{cfg.label}</span>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--bg-hover)", padding: "1px 8px", borderRadius: 4 }}>
+                                      {issue.category || "未分类"}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text)", marginTop: 2 }}>
+                                    {issue.description}
+                                  </div>
+                                  <div style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text-muted)", fontStyle: "italic", marginTop: 1 }}>
+                                    💡 建议: {issue.suggestion}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : writeReportTitle === "首章蓝图规划完成" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "center", padding: "10px 0" }}>
+                  <div style={{ fontSize: "36px" }}>📖</div>
+                  <h4 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text)", margin: 0 }}>首章写作蓝图规划成功！</h4>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.75, margin: 0 }}>
+                    已成功规划首章大纲、正文起草焦点与意图设定栈。<br />
+                    大纲规划文件已保存在您的系统目录中。
+                  </p>
+                  <div style={{
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                    fontSize: "12px",
+                    color: "var(--text-muted)",
+                    lineHeight: 1.6,
+                    textAlign: "left",
+                  }}>
+                    <strong>规划文件路径：</strong>
+                    <div style={{ wordBreak: "break-all", fontFamily: "var(--font-mono)", fontSize: 11, marginTop: 4, color: "var(--accent)" }}>
+                      books/{activeBookId}/story/runtime/chapter-0001.plan.md
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="markdown-body" style={{ fontSize: "13px", lineHeight: "1.75" }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{writeReportContent}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -5611,7 +5730,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               color: "#a78bfa",
             }}>
               <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-                <span>🔄</span>
+                <span>🔁</span>
                 <span>刷新同人原作设定 ({activeBookId})</span>
               </h3>
               {!isRefreshingCanon && (
@@ -6372,7 +6491,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                       cursor: "pointer", marginRight: "auto"
                     }}
                   >
-                    🔄 重置新故事
+                    🔁 重置新故事
                   </button>
                 )}
 

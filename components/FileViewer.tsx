@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
@@ -1664,7 +1664,7 @@ function WriteReport({ data }: { data: WriteReportData }) {
           color: "var(--text-muted)",
           lineHeight: 1.7,
         }}>
-          💡 <strong style={{ color: "var(--text)" }}>建议</strong>：点击工具栏的 <strong>「🪄 局部定点修复」</strong> 对以上风险条目进行自动局部修缮，或手动微调相关情节后点击 <strong>「🔄 同步设定」</strong> 重新对齐故事数据库。
+          💡 <strong style={{ color: "var(--text)" }}>建议</strong>：点击工具栏的 <strong>「🪄 局部定点修复」</strong> 对以上风险条目进行自动局部修缮，或手动微调相关情节后点击 <strong>「🔁 同步设定」</strong> 重新对齐故事数据库。
         </div>
       )}
     </div>
@@ -1698,7 +1698,7 @@ function ReviseReport({ data, compact = false }: { data: ReviseReportData; compa
         <div style={{ color: "var(--text-muted)" }}>{data.skippedReason || "未发现明显的改善机会，当前文本已达到较好的一致性水平。"}</div>
         {!compact && (
           <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-dim)" }}>
-            建议手动微调相关段落后，点击 <strong>「🔄 同步设定」</strong> 重新对齐故事数据库。
+            建议手动微调相关段落后，点击 <strong>「🔁 同步设定」</strong> 重新对齐故事数据库。
           </div>
         )}
       </div>
@@ -1789,7 +1789,7 @@ function SyncReport({ data }: { data: SyncReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28 }}>🔄</div>
+        <div style={{ fontSize: 28 }}>🔁</div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>同步设定成功</div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
@@ -1803,7 +1803,7 @@ function SyncReport({ data }: { data: SyncReportData }) {
             fontSize: 12, fontWeight: 600,
             background: "rgba(52,211,153,0.12)", color: "#34d399",
             border: "1px solid rgba(52,211,153,0.3)",
-          }}>🔄 已同步</span>
+          }}>🔁 已同步</span>
         </div>
       </div>
 
@@ -1981,6 +1981,121 @@ function PlanReport({ data }: { data: PlanReportData }) {
   );
 }
 
+interface HookEntry {
+  id: string;
+  descriptor: string;
+  keywords: string[];
+}
+
+interface ChapterHooks {
+  open: HookEntry[];
+  advance: HookEntry[];
+  resolve: HookEntry[];
+  defer: HookEntry[];
+  planFilePath: string;
+}
+
+const parsePlanHooks = (content: string, filePath: string): ChapterHooks => {
+  const LEDGER_HEADING_PATTERNS = [
+    /^#{2,3}\s*本章\s*hook\s*账\s*$/im,
+    /^#{2,3}\s*Hook\s+ledger\s+for\s+this\s+chapter\s*$/im,
+  ];
+
+  const PLACEHOLDER_TOKENS = /^(无|空|none|nil|null|暂无|n\/a|na|n-a|tbd|todo|待定)$/i;
+  const SUBSECTION_WORDS = /^(open|advance|resolve|defer|new)$/i;
+
+  const extractLedgerSection = (memoBody: string): string | undefined => {
+    for (const pattern of LEDGER_HEADING_PATTERNS) {
+      const match = memoBody.match(pattern);
+      if (!match || match.index === undefined) continue;
+      const start = match.index + match[0].length;
+      const rest = memoBody.slice(start);
+      const nextHeading = rest.match(/\n#{2,3}\s/);
+      const end = nextHeading ? nextHeading.index ?? rest.length : rest.length;
+      return rest.slice(0, end);
+    }
+    return undefined;
+  };
+
+  const extractKeywords = (descriptor: string): string[] => {
+    if (!descriptor) return [];
+    const quotedMatch = descriptor.match(/[""]([^""\n]+)[""]/);
+    const source = quotedMatch ? quotedMatch[1] : descriptor.split(/[→]|->/, 1)[0];
+    const cjkRuns = source.match(/[\u4e00-\u9fff]{2,}/g) ?? [];
+    const cjkTokens: string[] = [];
+    for (const run of cjkRuns) {
+      cjkTokens.push(run);
+      if (run.length >= 3) {
+        for (let index = 0; index <= run.length - 2; index++) {
+          cjkTokens.push(run.slice(index, index + 2));
+        }
+      }
+    }
+    const ascii = (source.match(/[A-Za-z]{3,}/g) ?? []).map((w) => w.toLowerCase());
+    return [...new Set([...cjkTokens, ...ascii])];
+  };
+
+  const extractLedgerEntry = (line: string): HookEntry | undefined => {
+    const cleaned = line.replace(/^-+\s*/, "").trim();
+    if (cleaned.startsWith("[new]") || cleaned.startsWith("[NEW]")) return undefined;
+
+    const firstWord = cleaned.split(/\s+/)[0] ?? "";
+    if (PLACEHOLDER_TOKENS.test(firstWord)) return undefined;
+
+    const idMatch = cleaned.match(/^([A-Za-z\u4e00-\u9fff][A-Za-z0-9_\-\u4e00-\u9fff]{0,19})/);
+    if (!idMatch) return undefined;
+
+    const candidate = idMatch[1];
+    if (SUBSECTION_WORDS.test(candidate)) return undefined;
+    if (PLACEHOLDER_TOKENS.test(candidate)) return undefined;
+
+    const descriptor = cleaned.slice(candidate.length).trim();
+    return { id: candidate, descriptor, keywords: extractKeywords(descriptor) };
+  };
+
+  const section = extractLedgerSection(content);
+  const result: ChapterHooks = { open: [], advance: [], resolve: [], defer: [], planFilePath: filePath };
+  if (!section) return result;
+
+  type Subsection = "open" | "advance" | "resolve" | "defer";
+  let current: Subsection | null = null;
+  
+  for (const rawLine of section.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line.length === 0) continue;
+
+    const subHeadingMatch = line.match(/^(open|advance|resolve|defer)\s*[:：]?\s*$/i);
+    if (subHeadingMatch) {
+      current = subHeadingMatch[1].toLowerCase() as Subsection;
+      continue;
+    }
+
+    if (!current) continue;
+    if (!line.startsWith("-")) continue;
+
+    const entry = extractLedgerEntry(line);
+    if (entry) {
+      result[current].push(entry);
+    }
+  }
+
+  return result;
+};
+
+const isHookMatched = (entry: HookEntry, draft: string): boolean => {
+  if (entry.keywords.length > 0) {
+    const draftLower = draft.toLowerCase();
+    return entry.keywords.some((kw) => {
+      return /^[a-z]/.test(kw) ? draftLower.includes(kw) : draft.includes(kw);
+    });
+  }
+  const escapeRegex = (val: string) => val.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (/^[A-Za-z0-9_-]+$/.test(entry.id)) {
+    return new RegExp(`\\b${escapeRegex(entry.id)}\\b`).test(draft);
+  }
+  return draft.includes(entry.id);
+};
+
 export function FileViewer({ filePath, cwd, availableStyles = [], activeStyleName = null, showExecutionConfirm = true }: Props) {
 
   if (isImagePath(filePath)) {
@@ -2023,6 +2138,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
   const [syncLoading, setSyncLoading] = useState(false);
   const [detectLoading, setDetectLoading] = useState(false);
   const [hasChapters, setHasChapters] = useState(false);
+  const [totalChapters, setTotalChapters] = useState<number | undefined>(undefined);
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
   const [auditData, setAuditData] = useState<any>(null);
@@ -2059,6 +2175,13 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     type?: "warning" | "error" | "info" | "success";
     checklist?: { text: string; completed: boolean }[];
   } | null>(null);
+  const [planReminder, setPlanReminder] = useState<{
+    chapterNumber: number;
+    mode: "write-next" | "draft";
+    forceRewrite: boolean;
+  } | null>(null);
+  const [activeChapterHooks, setActiveChapterHooks] = useState<ChapterHooks | null>(null);
+  const [isHookPopoverOpen, setIsHookPopoverOpen] = useState(false);
   const [writeMode, setWriteMode] = useState<"normal" | "draft">("normal");
   const [isWriteDropdownOpen, setIsWriteDropdownOpen] = useState(false);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
@@ -2103,12 +2226,116 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     setSelectedStyleName(activeStyleName);
   }, [activeStyleName]);
 
+  useEffect(() => {
+    if (!isHookPopoverOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".hook-ledger-popover") && !target.closest(".hook-ledger-btn")) {
+        setIsHookPopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isHookPopoverOpen]);
+
+  const handleDeferHook = async (hookId: string) => {
+    if (!activeChapterHooks || !activeChapterHooks.planFilePath) return;
+    const planFilePath = activeChapterHooks.planFilePath;
+    try {
+      const res = await fetch(`/api/files/${encodeFilePathForApi(planFilePath)}?type=read`);
+      if (!res.ok) {
+        throw new Error("Failed to read plan file for deferral");
+      }
+      const fileData = await res.json();
+      const planContent = fileData.content || "";
+
+      const lines = planContent.split(/\r?\n/);
+      let hookLine = "";
+      let hookLineIdx = -1;
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (trimmed.startsWith(`- ${hookId}`) || trimmed.startsWith(`-${hookId}`)) {
+          hookLine = lines[i];
+          hookLineIdx = i;
+          break;
+        }
+      }
+
+      if (hookLineIdx !== -1) {
+        lines.splice(hookLineIdx, 1);
+        let deferIdx = -1;
+        for (let i = 0; i < lines.length; i++) {
+          if (/^defer\s*[:：]?\s*$/i.test(lines[i].trim())) {
+            deferIdx = i;
+            break;
+          }
+        }
+
+        if (deferIdx !== -1) {
+          lines.splice(deferIdx + 1, 0, hookLine);
+        } else {
+          let ledgerIdx = -1;
+          for (let i = 0; i < lines.length; i++) {
+            if (/^resolve\s*[:：]?\s*$/i.test(lines[i].trim())) {
+              ledgerIdx = i;
+              break;
+            }
+          }
+          if (ledgerIdx !== -1) {
+            let insertAt = ledgerIdx + 1;
+            while (insertAt < lines.length && (lines[insertAt].trim().startsWith("-") || lines[insertAt].trim() === "")) {
+              insertAt++;
+            }
+            lines.splice(insertAt, 0, "defer:", hookLine);
+          } else {
+            lines.push("defer:", hookLine);
+          }
+        }
+
+        const newPlanContent = lines.join("\n");
+        const writeRes = await fetch(`/api/files/${encodeFilePathForApi(planFilePath)}`, {
+          method: "POST",
+          body: newPlanContent,
+        });
+        if (!writeRes.ok) {
+          throw new Error("Failed to save plan file");
+        }
+        loadActiveChapterStatus();
+      }
+    } catch (e) {
+      console.error("Failed to defer hook:", e);
+    }
+  };
+
   const bookId = getBookIdFromPath(filePath, cwd);
   const filename = getFileName(filePath);
   const chMatch = filename.match(/^(\d{4})_/);
   const chapterNumber = chMatch ? parseInt(chMatch[1], 10) : null;
   const nextChapterNum = chapterNumber !== null ? chapterNumber + 1 : null;
   const formattedChNum = chMatch ? chMatch[1] : "XXXX";
+
+  const hookStatuses = useMemo(() => {
+    if (!activeChapterHooks) return [];
+    const list: { id: string; descriptor: string; keywords: string[]; type: "advance" | "resolve"; isMatched: boolean }[] = [];
+    
+    activeChapterHooks.advance.forEach((h) => {
+      list.push({
+        ...h,
+        type: "advance",
+        isMatched: isHookMatched(h, editContent)
+      });
+    });
+    
+    activeChapterHooks.resolve.forEach((h) => {
+      list.push({
+        ...h,
+        type: "resolve",
+        isMatched: isHookMatched(h, editContent)
+      });
+    });
+    
+    return list;
+  }, [activeChapterHooks, editContent]);
 
   const getActionMeta = (actionType: string) => {
     const actionMeta: Record<string, { title: string; desc: string; icon: string; themeColor: string; bgTheme: string }> = {
@@ -2178,14 +2405,14 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
       "sync": {
         title: "同步设定",
         desc: "将正文中的最新改变同步至故事设定库，重构 AI 记忆体系。\n\n💡 使用场景：当您手动修改了正文核心剧情（例如新增了角色、发放了新道具、解开了某处伏笔）后，请务必执行此同步。它会更新 story/current_state.md（状态卡） and story/pending_hooks.md（伏笔池），以防后续续写出现冲突。",
-        icon: "🔄",
+        icon: "🔁",
         themeColor: "#10b981",
         bgTheme: "rgba(16, 185, 129, 0.08)",
       },
       "plan": {
         title: "规划蓝图",
-        desc: `规划本章写作焦点与规则栈，为起草做准备。\n\n💡 后续编辑说明：运行成功后，会在左侧 story/runtime/ 目录下生成本章的 chapter-${formattedChNum}.intent.md 意图文件，您可以在此文件生成后双击打开，手动修改您想要的“必须保留/必须避免”要求，然后再启动续写或重写。`,
-        icon: "🗺️",
+        desc: `规划本章写作焦点与规则栈，为起草做准备。\n\n💡 后续编辑说明：运行成功后，会在左侧 story/runtime/ 目录下生成本章的 chapter-${formattedChNum}.intent.md 蓝图文件，您可以在此文件生成后双击打开，手动修改您想要的“必须保留/必须避免”要求，然后再启动续写或重写。`,
+        icon: "📖",
         themeColor: "#a855f7",
         bgTheme: "rgba(168, 85, 247, 0.08)",
       },
@@ -2248,6 +2475,38 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
       console.error("Failed to check next chapter plan:", err);
     }
     setNextChapterHasPlan(nextHasPlan);
+
+    // Fetch and parse active chapter plan/intent hooks
+    const activePadded = String(chapterNumber).padStart(4, "0");
+    const activePlanPath = `${cwd}/books/${bookIdVal}/story/runtime/chapter-${activePadded}.plan.md`;
+    const activeIntentPath = `${cwd}/books/${bookIdVal}/story/runtime/chapter-${activePadded}.intent.md`;
+    let activePlanContent = "";
+    let activePlanFile = "";
+
+    try {
+      const planRes = await fetch(`/api/files/${encodeFilePathForApi(activePlanPath)}?type=read`);
+      if (planRes.ok) {
+        const fileData = await planRes.json();
+        activePlanContent = fileData.content || "";
+        activePlanFile = activePlanPath;
+      } else {
+        const intentRes = await fetch(`/api/files/${encodeFilePathForApi(activeIntentPath)}?type=read`);
+        if (intentRes.ok) {
+          const fileData = await intentRes.json();
+          activePlanContent = fileData.content || "";
+          activePlanFile = activeIntentPath;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to read active chapter plan:", err);
+    }
+
+    if (activePlanContent && activePlanFile) {
+      const parsedHooks = parsePlanHooks(activePlanContent, activePlanFile);
+      setActiveChapterHooks(parsedHooks);
+    } else {
+      setActiveChapterHooks(null);
+    }
 
     try {
       const res = await fetch("/api/inkos", {
@@ -2587,7 +2846,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
           "",
           `---`,
           `- **诊断详情**：${finalResult.stdout || "审计完成，没有检测到任何一致性警告。"}`,
-          `- **提示**：如果您新写了正文，建议点击工具栏底部的 **「🔄 同步设定」**，将最新正文内容同步至故事数据库中。`
+          `- **提示**：如果您新写了正文，建议点击工具栏底部的 **「🔁 同步设定」**，将最新正文内容同步至故事数据库中。`
         ].join("\n"));
       }
 
@@ -2843,7 +3102,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     }
   };
 
-  const handleWriteNext = async (forceRewrite: any = false) => {
+  const handleWriteNext = async (forceRewrite: any = false, bypassPlanCheck = false) => {
     if (!cwd) return;
 
     // Safety check for license if next chapter is >= 2
@@ -2861,7 +3120,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
               prompt: "🔒 续写第二章及以上章节是专业版专属功能，请录入授权码开启您的无限创作宇宙！",
               onSuccess: () => {
                 setTimeout(() => {
-                  handleWriteNext(forceRewrite);
+                  handleWriteNext(forceRewrite, bypassPlanCheck);
                 }, 100);
               }
             }
@@ -2878,7 +3137,8 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     const bookId = getBookIdFromPath(filePath, cwd);
     if (!bookId) return;
 
-    if (chapterNumber !== null && chapterStatus !== "approved") {
+    const otherThreePassed = chapterStatus === "approved" && chapterHasSnapshot;
+    if (chapterNumber !== null && !otherThreePassed) {
       setAlertDialog({
         title: "章节未满足续写条件",
         message: `当前章节 (第 ${chapterNumber} 章) 尚未通过安全保障审核。在开始续写下一章之前，需要满足以下前置条件：`,
@@ -2889,6 +3149,15 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
           { text: "运行『同步设定』 (将最新正文同步至故事数据库)", completed: chapterHasSnapshot },
           { text: "将本章状态设为『已过审』", completed: chapterStatus === "approved" }
         ]
+      });
+      return;
+    }
+
+    if (!nextChapterHasPlan && !bypassPlanCheck) {
+      setPlanReminder({
+        chapterNumber: nextChapterNum,
+        mode: "write-next",
+        forceRewrite,
       });
       return;
     }
@@ -2937,7 +3206,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
             warning: "注意：此操作不可逆！",
             message: `${conflictData.message}\n\n确认要重写该章节并永久删除后续所有章节吗？`,
             onConfirm: () => {
-              handleWriteNext(true);
+              handleWriteNext(true, bypassPlanCheck);
             }
           });
         }
@@ -3146,7 +3415,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     }
   };
 
-  const handleDraft = async (forceRewrite: any = false) => {
+  const handleDraft = async (forceRewrite: any = false, bypassPlanCheck = false) => {
     if (!cwd) return;
 
     // Safety check for license if next chapter is >= 2
@@ -3164,7 +3433,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
               prompt: "🔒 续写第二章及以上章节是专业版专属功能，请录入授权码开启您的无限创作宇宙！",
               onSuccess: () => {
                 setTimeout(() => {
-                  handleDraft(forceRewrite);
+                  handleDraft(forceRewrite, bypassPlanCheck);
                 }, 100);
               }
             }
@@ -3181,7 +3450,8 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     const bookId = getBookIdFromPath(filePath, cwd);
     if (!bookId) return;
 
-    if (chapterNumber !== null && chapterStatus !== "approved") {
+    const otherThreePassed = chapterStatus === "approved" && chapterHasSnapshot;
+    if (chapterNumber !== null && !otherThreePassed) {
       setAlertDialog({
         title: "章节未满足起草条件",
         message: `当前章节 (第 ${chapterNumber} 章) 尚未通过安全保障审核。在开始起草下一章之前，需要满足以下前置条件：`,
@@ -3192,6 +3462,15 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
           { text: "运行『同步设定』 (将最新正文同步至故事数据库)", completed: chapterHasSnapshot },
           { text: "将本章状态设为『已过审』", completed: chapterStatus === "approved" }
         ]
+      });
+      return;
+    }
+
+    if (!nextChapterHasPlan && !bypassPlanCheck) {
+      setPlanReminder({
+        chapterNumber: nextChapterNum,
+        mode: "draft",
+        forceRewrite,
       });
       return;
     }
@@ -3268,7 +3547,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
             warning: "注意：此操作不可逆！",
             message: `${conflictData.message}\n\n确认要起草该章节并永久删除后续所有章节吗？`,
             onConfirm: () => {
-              handleDraft(true);
+              handleDraft(true, bypassPlanCheck);
             }
           });
         }
@@ -3605,7 +3884,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
 
     setSyncLoading(true);
     setLogs([]);
-    setReportTitle("🔄 同步设定");
+    setReportTitle("🔁 同步设定");
     setReportContent("正在同步您修改的正文内容至故事真相账本中，并重新构建索引...");
     setIsReportOpen(true);
 
@@ -3817,6 +4096,24 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
         setEditContent(d.content);
         if (filePath.endsWith("pending_hooks.md")) {
           setPreviewMode(true);
+          // Fetch real chapter count from the book index so the
+          // PlotHookVisualizer shows the correct "当前章节" even
+          // when the hooks table is still empty.
+          const bId = getBookIdFromPath(filePath, cwd);
+          if (bId && cwd) {
+            fetch(`/api/inkos`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "dashboard", cwd, args: { bookId: bId } }),
+            })
+              .then(r => r.json())
+              .then((res) => {
+                if (res?.success && Array.isArray(res.chapters)) {
+                  setTotalChapters(res.chapters.length > 0 ? Math.max(...res.chapters.map((c: any) => c.number as number)) : undefined);
+                }
+              })
+              .catch(() => { /* non-fatal */ });
+          }
         }
       }
     }).finally(() => setLoading(false));
@@ -3994,6 +4291,172 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
                 </button>
               </div>
             )}
+
+            {/* Hook Ledger Button & Popover */}
+            {hookStatuses.length > 0 && (
+              <>
+                <div style={{ width: 1, height: 12, background: "var(--border)", margin: "0 4px" }} />
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  <button
+                    className="hook-ledger-btn"
+                    onClick={() => setIsHookPopoverOpen(!isHookPopoverOpen)}
+                    style={{
+                      padding: "2px 8px",
+                      fontSize: 10,
+                      cursor: "pointer",
+                      background: hookStatuses.every(h => h.isMatched) ? "rgba(16, 185, 129, 0.08)" : "rgba(245, 158, 11, 0.08)",
+                      color: hookStatuses.every(h => h.isMatched) ? "#10b981" : "#f59e0b",
+                      border: `1px solid ${hookStatuses.every(h => h.isMatched) ? "rgba(16, 185, 129, 0.25)" : "rgba(245, 158, 11, 0.25)"}`,
+                      borderRadius: 5,
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      transition: "all 0.2s"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = hookStatuses.every(h => h.isMatched) ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = hookStatuses.every(h => h.isMatched) ? "rgba(16, 185, 129, 0.08)" : "rgba(245, 158, 11, 0.08)";
+                    }}
+                  >
+                    <span>🔗 伏笔</span>
+                    <span style={{
+                      fontSize: 9,
+                      background: hookStatuses.every(h => h.isMatched) ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                      padding: "1px 4px",
+                      borderRadius: 3,
+                      fontWeight: 700
+                    }}>
+                      {hookStatuses.filter(h => h.isMatched).length}/{hookStatuses.length}
+                    </span>
+                  </button>
+
+                  {/* Translucent Popover Card */}
+                  {isHookPopoverOpen && (
+                    <div 
+                      className="hook-ledger-popover"
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 6px)",
+                        left: 0,
+                        zIndex: 1000,
+                        width: "420px",
+                        background: "color-mix(in srgb, var(--bg-panel) 92%, transparent)",
+                        backdropFilter: "blur(12px)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "10px",
+                        boxShadow: "0 10px 25px rgba(0, 0, 0, 0.3)",
+                        padding: "14px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        fontFamily: "var(--font-serif)"
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>本章伏笔清单</span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>打字时自动匹配正文关键词</span>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "300px", overflowY: "auto" }}>
+                        {hookStatuses.map((h) => (
+                          <div 
+                            key={h.id} 
+                            style={{ 
+                              display: "flex", 
+                              alignItems: "flex-start", 
+                              justifyContent: "space-between",
+                              gap: 10, 
+                              padding: "8px 10px", 
+                              background: "var(--bg)", 
+                              borderRadius: "6px",
+                              border: `1px solid ${h.isMatched ? "rgba(16, 185, 129, 0.25)" : "var(--border)"}`
+                            }}
+                          >
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, textAlign: "left" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ 
+                                  fontSize: 12, 
+                                  fontWeight: 700,
+                                  color: h.isMatched ? "#10b981" : "#f59e0b",
+                                  background: h.isMatched ? "rgba(16, 185, 129, 0.08)" : "rgba(245, 158, 11, 0.08)",
+                                  padding: "2px 6px",
+                                  borderRadius: 3
+                                }}>
+                                  {h.id}
+                                </span>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                                  {h.type === "resolve" ? "收回" : "推进"}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>
+                                {h.descriptor}
+                              </span>
+                              {!h.isMatched && h.keywords.length > 0 && (
+                                <span style={{ fontSize: 11, color: "var(--accent)", fontStyle: "italic", marginTop: 2, fontWeight: 500 }}>
+                                  🔍 缺词: {h.keywords.join(", ")}
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                              {h.isMatched ? (
+                                <span style={{ 
+                                  color: "#10b981", 
+                                  fontSize: 12, 
+                                  background: "rgba(16, 185, 129, 0.1)", 
+                                  padding: "3px 8px",
+                                  borderRadius: 4,
+                                  fontWeight: 600,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 2
+                                }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  已落地
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleDeferHook(h.id)}
+                                  style={{
+                                    padding: "3px 8px",
+                                    fontSize: 12,
+                                    background: "rgba(255, 255, 255, 0.05)",
+                                    color: "var(--text-muted)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 4,
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                    transition: "all 0.15s"
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "rgba(245, 158, 11, 0.1)";
+                                    e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.25)";
+                                    e.currentTarget.style.color = "#f59e0b";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                                    e.currentTarget.style.borderColor = "var(--border)";
+                                    e.currentTarget.style.color = "var(--text-muted)";
+                                  }}
+                                >
+                                  🔁 延后
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
         {/* Spacer to push buttons to the right */}
@@ -4153,7 +4616,7 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
           </div>
         ) : isMarkdown && previewMode ? (
           filePath.endsWith("pending_hooks.md") ? (
-            <PlotHookVisualizer editContent={editContent} onChange={handleContentChange} />
+            <PlotHookVisualizer editContent={editContent} onChange={handleContentChange} totalChapters={totalChapters} />
           ) : (
             <div style={{ flex: 1, overflow: "auto" }}>
               <div
@@ -5780,6 +6243,166 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
                 onMouseLeave={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
               >
                 我知道了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Reminder Modal */}
+      {planReminder && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1150,
+          background: "rgba(15, 10, 10, 0.45)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          animation: "fadeIn 0.2s ease-out"
+        }}>
+          <div style={{
+            width: "min(520px, 92%)",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border)",
+            borderRadius: "16px",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "var(--font-serif)"
+          }}>
+            {/* Header */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "18px 24px",
+              background: "rgba(245, 158, 11, 0.08)",
+              borderBottom: "1px solid rgba(245, 158, 11, 0.15)",
+              color: "#f59e0b",
+              fontWeight: 600,
+              fontSize: 15
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>规划提醒：未检测到下一章蓝图</span>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{
+                fontSize: 13,
+                color: "var(--text)",
+                margin: 0,
+                lineHeight: "1.6"
+              }}>
+                当前虽然满足了基本的过审与同步条件，但系统检测到您尚未生成 <strong>第 {planReminder.chapterNumber} 章的规划蓝图</strong> (<code>.plan.md</code> 或 <code>.intent.md</code>)。
+              </p>
+              
+              <div style={{
+                background: "rgba(245, 158, 11, 0.04)",
+                border: "1px dashed rgba(245, 158, 11, 0.2)",
+                borderRadius: "8px",
+                padding: "12px 16px",
+                fontSize: 12,
+                color: "var(--text-muted)",
+                lineHeight: "1.5"
+              }}>
+                📌 <strong>建议</strong>：优秀的网文写作通常先规划本章细纲与写作意图，这能确保大模型续写的方向完全符合您的预期。
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 12,
+              padding: "16px 24px",
+              background: "var(--bg-panel)",
+              borderTop: "1px solid var(--border)"
+            }}>
+              <button
+                onClick={() => setPlanReminder(null)}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={(e) => { 
+                  e.currentTarget.style.color = "var(--text)";
+                  e.currentTarget.style.borderColor = "var(--text-muted)";
+                }}
+                onMouseLeave={(e) => { 
+                  e.currentTarget.style.color = "var(--text-muted)";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }}
+              >
+                取消
+              </button>
+
+              <button
+                onClick={() => {
+                  const { mode, forceRewrite } = planReminder;
+                  setPlanReminder(null);
+                  if (mode === "write-next") {
+                    handleWriteNext(forceRewrite, true);
+                  } else {
+                    handleDraft(forceRewrite, true);
+                  }
+                }}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--text)",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={(e) => { 
+                  e.currentTarget.style.background = "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => { 
+                  e.currentTarget.style.background = "var(--bg)";
+                }}
+              >
+                直接起草正文
+              </button>
+
+              <button
+                onClick={() => {
+                  setPlanReminder(null);
+                  handlePlanChapter();
+                }}
+                style={{
+                  padding: "8px 20px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "none",
+                  background: "#eab308",
+                  color: "#0f172a",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#ca8a04"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "#eab308"; }}
+              >
+                先规划并修改蓝图 (推荐)
               </button>
             </div>
           </div>

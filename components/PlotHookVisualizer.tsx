@@ -20,6 +20,8 @@ interface HookItem {
 interface PlotHookVisualizerProps {
   editContent: string;
   onChange: (newVal: string) => void;
+  /** Actual chapter count from the book's chapters/index.json, used as floor for currentChapter */
+  totalChapters?: number;
 }
 
 // Normalized status check
@@ -35,7 +37,7 @@ function getStatusType(status: string): "resolved" | "deferred" | "progressing" 
   return "open";
 }
 
-export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editContent, onChange }) => {
+export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editContent, onChange, totalChapters }) => {
   const [activeTab, setActiveTab] = useState<"timeline" | "board">("timeline");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -138,8 +140,13 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
     const byId = new Map<string, HookItem>();
     hooks.forEach(h => byId.set(h.id, h));
 
-    // Dynamic current chapter detection (highest startChapter or lastAdvanced)
-    const currentChapter = Math.max(1, ...hooks.map(h => Math.max(h.startChapter, h.lastAdvanced)));
+    // Dynamic current chapter detection: use the highest of:
+    // 1. The actual chapter count passed from the book index (most reliable)
+    // 2. The highest startChapter or lastAdvanced seen in the hooks table
+    const hooksDerivedChapter = hooks.length > 0
+      ? Math.max(...hooks.map(h => Math.max(h.startChapter, h.lastAdvanced)))
+      : 0;
+    const currentChapter = Math.max(1, totalChapters ?? 0, hooksDerivedChapter);
 
     hooks.forEach(hook => {
       const isRes = getStatusType(hook.status) === "resolved";
@@ -292,7 +299,7 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-            <span>🪝</span> 剧情伏笔脉络墙
+            <span>🔗</span> 剧情伏笔脉络墙
           </h2>
           <span style={{ fontSize: 11, padding: "3px 10px", background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.15)", borderRadius: 12, color: "var(--accent)", fontWeight: 600 }}>
             当前章节: {currentChapter}
@@ -712,7 +719,7 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
               }}
             >
               {[
-                { key: "all", label: "全部 🗺️" },
+                { key: "all", label: "全部" },
                 { key: "progressing", label: "进行中 ⚡" },
                 { key: "open", label: "未开启 ⏳" },
                 { key: "deferred", label: "已延后 ↩️" },

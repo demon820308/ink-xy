@@ -391,7 +391,7 @@ export function AppShell() {
     const tabId = `characters:${bookId}`;
     setFileTabs((prev) => {
       if (prev.find((t) => t.id === tabId)) return prev;
-      return [...prev, { id: tabId, label: `👥 ${bookId} 角色人设`, filePath: `characters:${bookId}` }];
+      return [...prev, { id: tabId, label: `👤 ${bookId} 角色`, filePath: `characters:${bookId}` }];
     });
     setActiveFileTabId(tabId);
     setRightPanelOpen(false);

@@ -136,5 +136,29 @@ We have successfully resolved the user request to simplify chapter file paths in
   - **防小点堆积 (Min-Width Bars)**：在 [PlotHookVisualizer.tsx](file:///e:/ink-xY/components/PlotHookVisualizer.tsx) 中重构了宽度渲染逻辑，当伏笔预期回收和起始章节在同一章（例如 start=3, end=3）时，不再缩水成丑陋的“小圆点”，而是保证其视觉宽度**至少横跨一整列的宽度**（最小宽度约 50px-80px 像素），并配有漂亮的图标，使其保持清晰可读的胶囊状（Pill Shape）。
   - **时间轴垂直网格网**：在泳道背景层绘制了虚线垂直分割线，清晰对齐章节头部（Ch 1, Ch 5, Ch 10），并在当前章节红线上附带了立体的 `当前章` 徽章。
 
+---
+
+## ⚡ 剧情伏笔 Phase 7 扩展列丢失修复与续写流程优化 (2026-06-08)
+
+我们针对伏笔数据丢失、续写蓝图依赖以及 Mac 平台图标兼容性进行了深度优化与修复：
+
+### 1. 剧情伏笔 Phase 7 扩展列丢失 Bug 修复
+- **原因定位**：之前在章节结算或分析（Settlement/Analysis）时，[chapter-analyzer.ts](file:///e:/ink-xY/inkos/packages/core/src/agents/chapter-analyzer.ts) 的系统提示词中硬编码了遗留的 8 列 Markdown 表格表头。当模型输出 8 列的数据回写时，合并算法 `mergeTableMarkdownByKey` 会误用新生成的 8 列行替换旧有的 13 列行，导致 Phase 7 的扩展列（`depends_on`, `pays_off_in_arc`, `core_hook`, `half_life`, `promoted` 等）被永久截断丢失。
+- **解决方案**：全面更新了 [chapter-analyzer.ts](file:///e:/ink-xY/inkos/packages/core/src/agents/chapter-analyzer.ts) 中中英文 prompt 里的 `=== UPDATED_HOOKS ===` 表格定义，使其与 [story-markdown.ts](file:///e:/ink-xY/inkos/packages/core/src/utils/story-markdown.ts) 预期的 13 列 Phase 7 结构完全对齐。回写时完整保留全部伏笔扩展链字段。
+
+### 2. 智能续写无前置蓝图流程优化与规划提醒弹窗
+- **原有限制**：旧版在前置检测中，若下一章的意图蓝图文件（`chapter-NNNN.intent.md`）尚未生成，会弹窗拦截并强制用户规划蓝图后才能继续。
+- **流程松绑与人性化引导**：修改了 [FileViewer.tsx](file:///e:/ink-xY/components/FileViewer.tsx) 的续写与起草安全门禁逻辑。只要当前章节的其他三项前置条件（防崩审计通过、同步设定运行、将本章状态设为“已过审”）均已通过，但尚未生成下一章蓝图时，点击续写或起草将**弹出高精度的规划提醒弹窗**提供快捷选择：
+  - **“先规划并修改蓝图 (推荐)”**：自动运行规划，并在侧边栏/编辑器打开生成的蓝图供作者确认修改。
+  - **“直接起草正文”**：在弹窗中选择直接开始起草正文，调用 `handleWriteNext(force, true)` 或 `handleDraft(force, true)`（底层 CLI 引擎会自动在线规划并保存蓝图，保障创作流畅度）。
+  - **“取消”**：关闭弹窗，不执行任何操作。
+- **实现逻辑**：在 [FileViewer.tsx](file:///e:/ink-xY/components/FileViewer.tsx) 中声明了 `planReminder` 状态并在 `handleWriteNext`/`handleDraft` 拦截逻辑中，支持通过传入 `bypassPlanCheck = true` 参数来绕过规划检查。
+
+### 3. Emojis 符号 Mac 端兼容性修复与“意图”更名
+- **移除 Mac 缺失字符**：移除了 macOS 等平台下无法正常渲染的 `🗺️`、`👥`、`🪝` 等生僻 Emoji，替换为 `📖` (故事大纲)、`👤` (角色人设)、`🔗` (剧情伏笔) 等主流通用图标，提供极致的原生平台观感。
+- **重构刷新按钮**：将主按钮及弹窗中原本由系统自带 Emoji 渲染的 `🔄` 统一重构为高质感的 **SVG 矢量旋转环形图标**，并在其余辅助文本处使用更兼容的 `🔁` 或纯文字展示，使界面视觉更显高端现代。
+- **意图更名为“蓝图”**：将页面、弹窗、看板上的“写作意图” / “意图蓝图”统一更名为符合文创语境的**“写作蓝图”**（如 `规划第 X 章蓝图`、`写作蓝图已就绪` 等）。
+
+
 
 

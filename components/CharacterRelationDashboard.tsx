@@ -802,7 +802,7 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>👥</span> 角色人设一览
+              <span>👤</span> 角色一览
             </h2>
             <div style={{ display: "flex", gap: 8 }}>
               <button
@@ -847,7 +847,7 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                   gap: 3
                 }}
               >
-                <span>🔄</span> 刷新
+                <span>🔁</span> 刷新
               </button>
             </div>
           </div>
@@ -1216,7 +1216,7 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
               gap: 8
             }}
           >
-            <span style={{ fontSize: 36 }}>👥</span>
+            <span style={{ fontSize: 36 }}>👤</span>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>请选择一个人物</div>
             <p style={{ fontSize: 11, color: "var(--text-dim)", margin: 0, maxWidth: 240, lineHeight: 1.6 }}>
               点击左侧列表中的人物，即可在此处查看该角色的具体设定、核心标签及矛盾维度。

@@ -289,7 +289,7 @@ Updated state card as a Markdown table reflecting the end-of-chapter state:
 
 === UPDATED_HOOKS ===
 Updated hooks pool as a Markdown table with the latest status of every known hook:
-| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | payoff_timing | notes |
+| hook_id | start_chapter | type | status | last_advanced | expected_payoff | payoff_timing | depends_on | pays_off_in_arc | core_hook | half_life | promoted | notes |
 
 === CHAPTER_SUMMARY ===
 Single Markdown table row:
@@ -396,7 +396,7 @@ ${bookRulesBody ? `## 本书规则\n\n${bookRulesBody}` : ""}
 
 === UPDATED_HOOKS ===
 更新后的伏笔池（Markdown表格），包含所有已知伏笔的最新状态：
-| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 备注 |
+| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 上游依赖 | 回收卷 | 核心 | 半衰期 | 升级 | 备注 |
 
 === CHAPTER_SUMMARY ===
 本章摘要（Markdown表格行）：
