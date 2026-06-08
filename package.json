@@ -1,6 +1,6 @@
 {
   "name": "@zwbigi/ink-xy",
-  "version": "0.1.20",
+  "version": "0.1.22",
   "author": "demon820308",
   "description": "ink-xY Novel Studio - Professional Intelligent Collaborative Novel Editor",
   "main": "electron/main.js",
@@ -65,6 +65,11 @@
   "build": {
     "appId": "com.ink.novel.xy",
     "productName": "ink-xY Novel Studio",
+    "publish": {
+      "provider": "github",
+      "owner": "demon820308",
+      "repo": "ink-xy"
+    },
     "directories": {
       "output": "dist"
     },
