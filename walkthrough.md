@@ -102,3 +102,5 @@ We have successfully resolved the user request to simplify chapter file paths in
 - [icon.png](file:///e:/ink-xY/public/icon.png) **(512x512 PNG)**：已更新为全新的高清大图。该文件作为 Electron 构建 Windows (`.exe` 安装包) 与 macOS (`.dmg` 安装包) 的图标资源，保证了应用打包后的原生高质感图标显示。
 - [favicon.ico](file:///e:/ink-xY/public/favicon.ico) **(Multi-size ICO)**：已生成包含 `16x16`, `32x32`, `48x48`, `64x64`, `128x128`, `256x256` 六种标准尺寸的高质量 ICO 文件，适配各平台文件管理器与 Web 浏览器 Favicon。
 - [generate_favicon.py](file:///e:/ink-xY/public/generate_favicon.py) **脚本修复**：排除了硬编码的 D 盘外部路径，自动获取当前脚本目录，保证开发者后续生成图标时的多平台环境兼容性。
+- **透明底与圆角重构 (Transparency & Rounded Corners Fix)**：最初生成的 AI 图像在圆角矩形外围含有纯白背景色，导致打包出的 Windows 桌面图标带有难看的白边外框。我们重新对图标进行了裁剪和数学掩膜处理，计算出绿底图标正中心位置，按 `512x512` 标准尺寸重新切片，并基于 $4\times$ 超采样 (SSAA) 绘制了数学上完美的圆角矩形透明遮罩（`margin=8`, `radius=96`），彻底消除了白边，确保在任何壁纸/系统主题下均完美呈现透明圆角原生质感。
+
