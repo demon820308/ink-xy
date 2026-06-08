@@ -86,3 +86,19 @@ We have successfully resolved the user request to simplify chapter file paths in
 ### 4. 底部状态栏数值显示与按钮精简化
 - **字数/行数排版微调**：在 [FileViewer.tsx](file:///e:/ink-xY/components/FileViewer.tsx) 中去除了“字数”和“行数”冒号后面的空格，并移除了数值后的单位字样（“字”、“行”）。同时将字数与行数之间的间距（`marginRight`）从 16px 缩窄为 8px，紧密化排版。例如：`字数:2422 行数:89`。
 - **“查看报告”按钮精简**：在 [FileViewer.tsx](file:///e:/ink-xY/components/FileViewer.tsx) 中，当系统处于非运行状态时，将原有的 `📋 查看报告` 按钮简化为仅展示 `📋` 剪贴板图标，避免冗余文本占用状态栏宽度；运行状态下仍展示 `⏳ 查看运行进度`。
+
+---
+
+## 🎨 智能小说创作工坊图标生成与重构 (2026-06-08)
+
+我们为软件设计并生成了全新的视觉图标，使其在设计语言上与系统的**禅意美学**、**非线性小说大纲/分支树**以及**智能姬协同**核心逻辑相契合：
+
+### 1. 视觉设计理念分析
+- **背景底色**：采用深邃静心绿（Zen Forest Green），体现沉浸写作、无干扰的专注状态。
+- **主体图案**：主体采用磨砂黄金与温润白瓷质感的钢笔尖（Fountain Pen Nib），笔尖中缝向上优雅地分叉、发散为带有发光金色节点的**树状网络结构（Branching Nodes）**。
+- **寓意结合**：笔尖象征传统的“墨水/写作（ink）”，发光的树状分支象征“会话分支树、非线性大纲与智能协同节点（xY）”，科技与传统美学在此交汇。
+
+### 2. 生成与打包适配
+- [icon.png](file:///e:/ink-xY/public/icon.png) **(512x512 PNG)**：已更新为全新的高清大图。该文件作为 Electron 构建 Windows (`.exe` 安装包) 与 macOS (`.dmg` 安装包) 的图标资源，保证了应用打包后的原生高质感图标显示。
+- [favicon.ico](file:///e:/ink-xY/public/favicon.ico) **(Multi-size ICO)**：已生成包含 `16x16`, `32x32`, `48x48`, `64x64`, `128x128`, `256x256` 六种标准尺寸的高质量 ICO 文件，适配各平台文件管理器与 Web 浏览器 Favicon。
+- [generate_favicon.py](file:///e:/ink-xY/public/generate_favicon.py) **脚本修复**：排除了硬编码的 D 盘外部路径，自动获取当前脚本目录，保证开发者后续生成图标时的多平台环境兼容性。

@@ -31,8 +31,10 @@ def create_favicon():
     draw.text((x, y), text, fill='white', font=font)
     
     # Save as ICO with multiple sizes
-    img.save('D:/Pi-Web/pi-web-src/public/favicon.ico', format='ICO', sizes=[(32, 32), (16, 16)])
-    print("favicon.ico created!")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(current_dir, 'favicon.ico')
+    img.save(output_path, format='ICO', sizes=[(32, 32), (16, 16)])
+    print(f"favicon.ico created at: {output_path}")
 
 if __name__ == "__main__":
     create_favicon()
