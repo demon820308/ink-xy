@@ -135,7 +135,7 @@ graph TD
 3. ⚠️ **macOS 提示“文件已损坏”或“身份不明的开发者”解决办法**：由于 standalone 桌面客户端未在 Apple 开发者账号进行官方代码签名，macOS Gatekeeper 安全体系可能会在首次打开应用时拦截，并弹出“软件已损坏，无法打开”或“无法验证开发者”等警告。
 4. **极速解锁与绕过指令**：请打开您的 Mac 终端（Terminal），直接复制并执行以下命令（以清除 macOS 的隔离 quarantine 标识属性）：
    ```bash
-   xattr -cr /Applications/Pi\ Agent\ xY\ Desktop.app
+   xattr -cr /Applications/ink-xY\ Novel\ Studio.app
    ```
    运行后，即可直接在 Launchpad 或 Applications 中双击秒开，完美运行！
 
