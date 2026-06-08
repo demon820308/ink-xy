@@ -62,8 +62,26 @@ jobs:
           $zipPath = Join-Path $cacheDir "winCodeSign-2.6.0.7z"
           $downloadUrl = "https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z"
           
-          Write-Host "Downloading winCodeSign from: $downloadUrl"
-          Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath
+          $maxRetries = 5
+          $retryCount = 0
+          $success = $false
+          while (-not $success -and $retryCount -lt $maxRetries) {
+              try {
+                  $retryCount++
+                  Write-Host "Downloading winCodeSign from: $downloadUrl (Attempt $retryCount of $maxRetries)..."
+                  Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing -TimeoutSec 60
+                  $success = $true
+              } catch {
+                  Write-Warning "Download failed: $_"
+                  if ($retryCount -lt $maxRetries) {
+                      $waitSec = $retryCount * 15
+                      Write-Host "Waiting $waitSec seconds before retrying..."
+                      Start-Sleep -Seconds $waitSec
+                  } else {
+                      throw "Failed to download winCodeSign after $maxRetries attempts."
+                  }
+              }
+          }
           
           Write-Host "Extracting winCodeSign without macOS symlinks..."
           $targetDir = Join-Path $cacheDir "winCodeSign-2.6.0"

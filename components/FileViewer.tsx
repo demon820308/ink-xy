@@ -8,6 +8,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useTheme } from "@/hooks/useTheme";
 import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/file-paths";
+import { PlotHookVisualizer } from "./PlotHookVisualizer";
+
 
 interface Props {
   filePath: string;
@@ -3757,10 +3759,12 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
     fetchContent(filePath).then((d) => {
       if (d) {
         setEditContent(d.content);
-        // Default to "沉浸创作" (edit mode) instead of forcing previewMode for markdown files
-        // if (d.language === "markdown") setPreviewMode(true);
+        if (filePath.endsWith("pending_hooks.md")) {
+          setPreviewMode(true);
+        }
       }
     }).finally(() => setLoading(false));
+
 
     // Set up SSE watch
     const encoded = encodeFilePathForApi(filePath);
@@ -4092,15 +4096,20 @@ function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyleName =
             />
           </div>
         ) : isMarkdown && previewMode ? (
-          <div style={{ flex: 1, overflow: "auto" }}>
-            <div
-              className="markdown-body markdown-file-preview"
-              style={{ padding: "32px 48px", maxWidth: 800, margin: "0 auto", fontFamily: "var(--font-serif)" }}
-            >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{editContent}</ReactMarkdown>
+          filePath.endsWith("pending_hooks.md") ? (
+            <PlotHookVisualizer editContent={editContent} onChange={handleContentChange} />
+          ) : (
+            <div style={{ flex: 1, overflow: "auto" }}>
+              <div
+                className="markdown-body markdown-file-preview"
+                style={{ padding: "32px 48px", maxWidth: 800, margin: "0 auto", fontFamily: "var(--font-serif)" }}
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{editContent}</ReactMarkdown>
+              </div>
             </div>
-          </div>
+          )
         ) : (data.language === "markdown" || data.language === "text") ? (
+
           /* Zen Writing Editor */
           <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
             <textarea

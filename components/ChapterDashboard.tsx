@@ -224,6 +224,17 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
     window.dispatchEvent(new CustomEvent("open-characters-graph", { detail: { bookId } }));
   }, [bookId]);
 
+  const handleOpenHooks = useCallback(async () => {
+    const p = joinFilePath(cwd, `books/${bookId}/story/pending_hooks.md`);
+    const exists = await checkFileExists(p);
+    if (exists) {
+      onOpenFile(p, "pending_hooks.md");
+    } else {
+      alert("未找到伏笔池文件（请确认书籍 story 目录已初始化）。");
+    }
+  }, [cwd, bookId, onOpenFile]);
+
+
   // Auto scroll console logs to bottom
   const appendLog = useCallback((chNum: number, text: string) => {
     setLogs((prev) => {
@@ -622,6 +633,36 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
           >
             <span>👥</span> 角色人设
           </button>
+
+          {/* 剧情伏笔 */}
+          <button
+            onClick={handleOpenHooks}
+            style={{
+              padding: "6px 12px",
+              background: "rgba(249, 115, 22, 0.08)",
+              border: "1px solid rgba(249, 115, 22, 0.3)",
+              borderRadius: 6,
+              color: "#f97316",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(249, 115, 22, 0.15)";
+              e.currentTarget.style.borderColor = "#f97316";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(249, 115, 22, 0.08)";
+              e.currentTarget.style.borderColor = "rgba(249, 115, 22, 0.3)";
+            }}
+          >
+            <span>🪝</span> 剧情伏笔
+          </button>
+
 
           <input
             type="text"
