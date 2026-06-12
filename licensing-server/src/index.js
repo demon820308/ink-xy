@@ -763,6 +763,15 @@ export default {
     try {
       // --- PUBLIC ENDPOINTS ---
 
+      // API Route: GET /api/status
+      if (url.pathname === "/api/status" && request.method === "GET") {
+        const bypassActive = env.BYPASS_LICENSE === "true";
+        return jsonResponse({
+          success: true,
+          require_key: !bypassActive
+        });
+      }
+
       // API Route: POST /api/activate
       if (url.pathname === "/api/activate" && request.method === "POST") {
         const { key, machine_uuid } = await request.json();

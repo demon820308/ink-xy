@@ -43,10 +43,37 @@ function getLocalLicense() {
   }
 }
 
+// Helper to check if license requirement is bypassed on remote server
+async function checkBypass(): Promise<boolean> {
+  try {
+    const response = await fetch(`${CLOUDFLARE_API_URL}/api/status`, {
+      method: "GET",
+      headers: { "Cache-Control": "no-cache" },
+      signal: AbortSignal.timeout(2000) // 2s timeout
+    });
+    if (response.ok) {
+      const data = await response.json() as any;
+      return data.require_key === false;
+    }
+  } catch (err) {
+    console.warn("Failed to check remote license status, falling back to local check:", err);
+  }
+  return false;
+}
+
 // API GET: Get local license status
 export async function GET() {
-  const local = getLocalLicense();
   const machineUuid = getMachineUuid();
+  if (await checkBypass()) {
+    return NextResponse.json({
+      active: true,
+      key: "SYSTEM-BYPASS-ACTIVE",
+      expires_at: "9999-12-31T23:59:59Z",
+      machine_uuid: machineUuid,
+      bypass: true
+    });
+  }
+  const local = getLocalLicense();
   return NextResponse.json({ ...local, machine_uuid: machineUuid });
 }
 
@@ -58,6 +85,10 @@ export async function POST(req: NextRequest) {
 
     // 1. Online Verification Action (recheck if key is still active in remote DB)
     if (action === "verify") {
+      if (await checkBypass()) {
+        return NextResponse.json({ active: true, expires_at: "9999-12-31T23:59:59Z", bypass: true });
+      }
+
       const local = getLocalLicense();
       if (!local.active || !local.key || !local.token) {
         return NextResponse.json({ active: false, message: "本地未激活" }, { status: 400 });
