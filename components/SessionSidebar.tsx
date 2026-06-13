@@ -2352,7 +2352,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       const res = await fetch("/api/gem-xy");
       if (!res.ok) throw new Error("Failed to load Gem-xY profiles");
       const data = await res.json() as GemProfile[];
-      setGems(data);
+      setGems(data.filter((g) => g.name !== "Gem-xY 文案助手"));
     } catch (e) {
       console.error(e);
     }
