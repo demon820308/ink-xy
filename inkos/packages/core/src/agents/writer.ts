@@ -1314,6 +1314,12 @@ ${overrides}\n`;
       if (profile.vocabularyDiversity) lines.push(`- 词汇多样性(TTR)：${profile.vocabularyDiversity}`);
       if (profile.topPatterns?.length > 0) lines.push(`- 高频句式：${profile.topPatterns.join("、")}`);
       if (profile.rhetoricalFeatures?.length > 0) lines.push(`- 修辞特征：${profile.rhetoricalFeatures.join("、")}`);
+      
+      // Inject visual tuning sliders parameters into system prompt
+      if (profile.proseOrnate !== undefined) lines.push(`- 辞藻华丽度 (Ornateness)：${profile.proseOrnate}% (值低趋于白描口语，值高使用大量华丽意象与精细景物描摹)`);
+      if (profile.dialogueRatio !== undefined) lines.push(`- 对话密集度 (Dialogue Ratio)：${profile.dialogueRatio}% (高值以快速对白推动叙事，低值偏向大段独白、动作和内心戏)`);
+      if (profile.clicheDensity !== undefined) lines.push(`- 修辞套话屏蔽度 (Cliché Filter)：${profile.clicheDensity}% (高值会强化拦截网文陈词滥调和疲劳词的阈值，使文笔更有质感)`);
+      
       return lines.length > 0 ? lines.join("\n") : undefined;
     } catch {
       return undefined;

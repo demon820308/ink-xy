@@ -193,7 +193,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
       id: "plan",
       icon: "📖",
       title: "第三步：蓝图细化",
-      subtitle: "智能大纲细纲编译与意图强制控制",
+      subtitle: "智能大纲细纲编译与蓝图强制控制",
       steps: [
         {
           title: "1. 一键规划蓝图",
@@ -208,24 +208,37 @@ export function HelpModal({ onClose }: HelpModalProps) {
                   <li><code>pending_hooks.md</code> 中标记为“本章该兑现”或“急需解决”的悬念和伏笔。</li>
                   <li><code>current_state.md</code> 中存活的、且在当前场景的角色列表。</li>
                 </ol>
-                从而编译生成本章的 <strong>本章大纲细纲 (Outline)</strong> 以及 <strong>本章写作意图 (Intent)</strong>。
+                从而编译生成本章的 <strong>本章大纲细纲 (Outline)</strong> 以及 <strong>本章写作蓝图 (Blueprint)</strong>。
               </div>
             </div>
           ),
         },
         {
-          title: "2. 意图调整与主线校验",
+          title: "2. 蓝图调整与主线校验",
           content: (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 规划出的细纲会在右侧报告面板展示。<strong>作为作者，您握有最高控制权：</strong>
               </div>
               <div style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 12, fontStyle: "italic", fontSize: 11 }}>
-                例如：系统规划本章是日常过渡，而你决定强行加快节奏。你可以直接在报告的意图编辑框中添加：
+                例如：系统规划本章是日常过渡，而你决定强行加快节奏。你可以直接在报告的蓝图编辑框中添加：
                 “本章插入刺客夜袭情节，主角被迫反击并暴露法宝，击退敌人后负伤撤退”。
               </div>
               <div>
                 修改保存后，接下来的“智能续写”和“极速草稿”都将把此修改作为<strong>刚性控制参数</strong>输入，绝对不会偏离你的微调方向。
+              </div>
+            </div>
+          ),
+        },
+        {
+          title: "3. 安全二次规划确认 (Safety Re-planning Guard)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                当一章的写作蓝图已经存在时，如果您在章节管控中心再次点击 <strong>【规划第 X 章蓝图】</strong>，系统会弹出半透明毛玻璃的高清确认弹窗。
+              </div>
+              <div>
+                系统会警告您已存在该章节的蓝图，继续规划将产生额外的 Token 消耗并可能覆盖您手动修改过的蓝图设定。您可以选择“确认重新规划”或“取消”，保障已有的心血不被意外覆盖。
               </div>
             </div>
           ),
@@ -262,11 +275,16 @@ export function HelpModal({ onClose }: HelpModalProps) {
               <div>
                 为了确保您的长篇设定不崩塌，在触发智能续写与极速草稿时，系统会自动进行<strong>前置状态审计拦截</strong>：
               </div>
-              <div style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 12, fontStyle: "italic", fontSize: 11 }}>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
                 如果当前章节未执行【大纲规划】、【防崩审计】及【同步设定】等步骤，其在章节看板或索引中的状态不是“已过审” (approved)，系统会弹窗发出警告拦截，并引导您先执行这些安全保障步骤。
               </div>
-              <div>
-                <em>前置流程的这一严格质检逻辑同样能够防止模型因前序上下文未对账、未审计一致性而产生的“设定越狱”和境界战斗力坍塌。</em>
+              <div style={{ marginTop: 8 }}>
+                <strong>智能规划提醒拦截与免检通道</strong>：当您触发续写或草稿时，系统会自动检测当前章节的蓝图状态：
+                <ul style={{ paddingLeft: 18, margin: "6px 0", lineHeight: "1.7" }}>
+                  <li>若该章<strong>尚未规划蓝图</strong>，系统弹出规划提醒弹窗，建议您先完成蓝图规划以获得最佳写作效果。</li>
+                  <li>您可以选择 <strong>【先去规划】</strong> 跳转到蓝图规划，或选择 <strong>【跳过，直接写】</strong> 免检通道直接开始创作。</li>
+                  <li><em>前置流程的这一严格质检逻辑同样能够防止模型因前序上下文未对账、未审计一致性而产生的“设定越狱”和境界战斗力坍塌。</em></li>
+                </ul>
               </div>
             </div>
           ),
@@ -313,7 +331,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
           ),
         },
         {
-          title: "2. 三大核心对账单详解",
+          title: "2. 三大核心对账单与可视化剧情伏笔",
           content: (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
@@ -325,10 +343,39 @@ export function HelpModal({ onClose }: HelpModalProps) {
                     对于升级流或具有严密数值系统的网络小说（如修仙的灵力、网游的经验值、财富等），同步设定会自动对账并更新数值。若正文中主角购买法宝消耗了 100 灵石，账本中灵石会自动扣除，避免“主角的灵石花不完”等贬值硬伤。
                   </li>
                   <li style={{ marginTop: 6 }}><strong>未兑现伏笔池 (<code>pending_hooks.md</code>)</strong>：
-                    自动检索本章正文。如果主角在正文中埋下了伏笔（如“在角落种下了隐形种子”），伏笔池会自动记录该 Hook；若主角击杀了埋伏已久的强敌，伏笔池会自动将该伏笔标记为“已兑现并闭环”，防止烂尾。
+                    自动检索本章正文。如果主角在正文中埋下了伏笔（如“在角落种下了隐形种子”），伏笔池会自动记录该 Hook；若主角击杀了埋伏已久的强敌，伏笔池会自动将该伏笔标记为“已兑现并闭环”，防止烂尾。同步完成后，右侧面板会展示 <strong>可视化伏笔看板 (Hook Dashboard)</strong>，以色彩标签卡片形式展示所有待兑现 (pending)、已兑现 (resolved) 和已过期 (expired) 的伏笔。
                   </li>
                 </ul>
               </div>
+            </div>
+          ),
+        },
+        {
+          title: "3. 设定事实编辑与删除支持 (Fact Editing)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                同步完成后，右侧报告面板中的各设定事实条目支持<strong>单击直接编辑</strong>：
+              </div>
+              <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                <li><strong>单击事实文本</strong>：直接进入内联编辑模式，修改后按回车或点击外部自动保存。</li>
+                <li><strong>关系条目编辑</strong>：每条人物关系右侧有铅笔图标，点击后展开编辑输入框。</li>
+                <li><strong>删除条目</strong>：鼠标悬停时会出现红色删除按钮，点击后该条目从 <code>story/</code> 真相数据库中永久移除。</li>
+              </ul>
+            </div>
+          ),
+        },
+        {
+          title: "4. 时光机预览扩展与全局视图 (Timeline Preview)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                时光机面板支持更灵活的预览范围控制：
+              </div>
+              <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                <li><strong>预览未来章节</strong>：章节滑块最大值为当前最新章 +1，允许您预览下一章同步后的预期状态快照。</li>
+                <li><strong>全局显示开关</strong>：开启 <strong>【显示全部 (Show All)】</strong> 后，时光机将展示所有章节的完整设定演变历史，而非仅显示当前章节的增量变化。</li>
+              </ul>
             </div>
           ),
         },
@@ -358,7 +405,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
               <div style={{ background: "rgba(255, 255, 255, 0.02)", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 11 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", lineHeight: "1.6" }}>
                   <div>• <strong>OOC 人设坍塌</strong>：性格突变或违反人设设定</div>
-                  <div>• <strong>Mainline 大纲跑偏</strong>：偏离主线意图</div>
+                  <div>• <strong>Mainline 大纲跑偏</strong>：偏离主线蓝图</div>
                   <div>• <strong>Timeline 时序冲突</strong>：剧情发生顺序错误</div>
                   <div>• <strong>Conflict 爽点虚化</strong>：承诺的情节点未爆开</div>
                   <div>• <strong>Hook 伏笔漏洞</strong>：挖坑未埋或未同步登记</div>
@@ -391,126 +438,86 @@ export function HelpModal({ onClose }: HelpModalProps) {
     {
       id: "revise",
       icon: "🪄",
-      title: "第七步：智能精修与检测",
-      subtitle: "智能特征检测与精细修补，掌控修改幅度",
+      title: "第七步：智能精修控制台",
+      subtitle: "四大精修模式 + AI 特征检测，双栏对比掌控修改幅度",
       steps: [
         {
-          title: "1. 检测 AI 味 (Detect AI-ness)",
+          title: "1. 开启智能精修控制台 (Revision Console)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                在章节编辑器底部工具栏，点击 <strong style={{ color: "#c084fc" }}>【开启 AI 智能精修】</strong> 按钮，编辑器下方会展开精修控制台面板。
+              </div>
+              <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                <li><code>选择精修模式</code>：提供四大精修工具，涵盖润色、纠偏、重写和祛AI腔。</li>
+                <li><code>修改意图与指引 (Prompt Guidance)</code>：您可以直接在输入框中输入具体的修改意见或创作微调方向（例如：“增加对战斗场景的感官描写，突出刀光剑影”）。</li>
+              </ul>
+            </div>
+          ),
+        },
+        {
+          title: "2. 精修日志与双栏对比预览 (Logs & Split Preview)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                点击 <strong>【开启 AI 智能精修】</strong> 按钮，系统会启动多智能体精修管线。
+              </div>
+              <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                <li><strong>实时日志终端</strong>：右侧面板将智能切换为黑色终端，实时打印 InkOS 智能体的修改与审计细节。</li>
+                <li><strong>双栏对比视图</strong>：精修完成后，界面展示双栏 Diff 对比器。左栏为原文本（红色删除线标记），右栏为精修后的文本（绿色高亮标记），两侧滚动条智能同步绑定，确保您能精细化核对每一个改动的字句。</li>
+              </ul>
+            </div>
+          ),
+        },
+        {
+          title: "3. 采纳或放弃修改 (Accept or Cancel)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                核对精修效果后，您拥有最高决定权。
+              </div>
+              <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                <li><strong>采纳修改</strong>：点击左侧下方的 <strong>【采纳精修修改 (Accept)】</strong>，新生成的文本将完美替换编辑器中的对应草稿。</li>
+                <li><strong>放弃修改</strong>：如果对精修不满意，可点击右上角或底部的 <strong>【取消 / 放弃】</strong>，系统不会对源文件做任何修改。</li>
+              </ul>
+            </div>
+          ),
+        },
+        {
+          title: "4. 四大精修模式详解 (The 4 Revision Modes)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li><strong>✨ 润色抛光 (Polish)</strong>：
+                    只改行文措辞和病句修饰，<strong>绝对不改变任何剧情事实与结论</strong>。适合成稿后的最后一轮语言精修。
+                  </li>
+                  <li style={{ marginTop: 6 }}><strong>⚠️ 定点纠偏 (Spot-Fix)</strong>：
+                    专为纠错设计，系统会自动读取上一阶段「防崩审计」检出的剧情或人设冲突列表，并针对性生成局部替换补丁，未受影响的其余 99% 的文本原封不动保留，安全度极高。
+                  </li>
+                  <li style={{ marginTop: 6 }}><strong>🛡️ 祛AI腔 (Anti-Detect)</strong>：
+                    针对网文机器味过浓的痛点，进行口语化重组与自然化重构，打破均等对称的长句段，清洗“仿佛、不禁、嘴角微微上扬”等高频 AI 疲劳词，让句式呼吸感更自然。
+                  </li>
+                  <li style={{ marginTop: 6 }}><strong>✍️ 剧情重写 (Rework)</strong>：
+                    允许推倒整章的场景顺序和矛盾冲突进行重写。但依然受到 <code>story/</code> Truth 数据库大纲的刚性制约，无法违反已发生的历史设定。
+                  </li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
+        {
+          title: "5. 检测 AI 味 (Detect AI-ness)",
           content: (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <strong>定义与核心原则</strong>：
-                只评估，**绝对不修改任何正文**。系统通过大模型或本地规则，深度解剖当前正文中的 AI 特征，并生成诊断报告。
+                只评估，<strong>绝对不修改任何正文</strong>。系统通过大模型或本地规则，深度解剖当前正文中的 AI 特征，并生成诊断报告。
               </div>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
                 <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
                   <li><strong>LLM 大模型检测</strong>：从语义层面审查文字是否空洞、叙述腔调是否模板化，指明需要去 AI 味的具体句子和冗长句段。</li>
                   <li><strong>本地规则检测 (Offline)</strong>：完全基于本地算法，计算段落句长分布是否过于均等、排比结构是否冗余、以及套话转折词的出现频次（零耗费 Token）。</li>
-                </ul>
-              </div>
-            </div>
-          ),
-        },
-        {
-          title: "2. 局部定点修复 (Spot-Fix)",
-          content: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <strong>定义与核心原则</strong>：
-                定点修复是为解决“改一个错字导致AI把全章重写一遍”而设计的。它<strong>绝对禁止改动无关段落</strong>。
-              </div>
-              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li><strong>允许范围</strong>：严格锁定在审计指出问题的那个句子或段落，以及其前后紧邻的各一句话（前后 1 行行内颗粒度）。</li>
-                  <li><strong>运作逻辑</strong>：AI 识别定位 <code>TARGET_TEXT</code> 并生成 <code>REPLACEMENT_TEXT</code> 补丁，其余 99% 的文本原封不动地返回，安全度最高。</li>
-                </ul>
-              </div>
-            </div>
-          ),
-        },
-        {
-          title: "3. 防检测润色 (Anti-Detect) — 去 AI 味黄金指南",
-          content: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <strong>定义与核心原则</strong>：
-                网络小说中如果充斥着死板的“AI味”，会极大地削弱读者的代入感。防检测润色是通过重置词汇指纹与语法句式，抹除生成痕迹。
-              </div>
-              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                <strong>引擎底层的九大改写规则</strong>：
-                <ol style={{ paddingLeft: 18, margin: "6px 0", lineHeight: "1.7", fontSize: 11 }}>
-                  <li><strong>打破等长段落</strong>：交替长短句，避免大模型惯有的均等对称句子，使句式结构不可预测。</li>
-                  <li><strong>口语化与自然表达</strong>：消灭书面套话。
-                    <br />
-                    <em>正例：✗“然而事情并没有那么简单” ➜ ✓“哪有那么便宜的事”</em>
-                  </li>
-                  <li><strong>降低“了”字密度</strong>：避免冗余的时态助词。
-                    <br />
-                    <em>正例：✗“他走了过去，拿了杯子” ➜ ✓“他走过去，端起杯子”</em>
-                  </li>
-                  <li><strong>转折词降频</strong>：删除过于死板的“虽然…但是…”、“不得不说”，换用角色内心吐槽或直接动作切换。</li>
-                  <li><strong>情绪动作外化 (Show, Don't Tell)</strong>：不写抽象结论。
-                    <br />
-                    <em>正例：✗“他感到非常愤怒” ➜ ✓“他捏减了茶杯，指节发白，滚烫的茶水顺着指缝流下来”</em>
-                  </li>
-                  <li><strong>删去叙述者强行盖棺定论</strong>：剔除“这一刻他终于懂得了力量”等大道理，只保留具体行动，让读者自行感受。</li>
-                  <li><strong>群像反应具体化</strong>：避免脸谱化。
-                    <br />
-                    <em>正例：✗“全场震惊” ➜ ✓“老陈手里的烟头掉在了裤子上，烫得他龇牙咧嘴跳起来”</em>
-                  </li>
-                  <li><strong>消除AI标志性疲劳词</strong>：强力清洗“不禁”、“仿佛”、“宛如”、“嘴角微微上扬”等大模型高频出现的敷衍性过渡词，换为独具文学色彩的具体感官描写。</li>
-                  <li><strong>段落长短悬殊化</strong>：让有的段落只有几个字，有的段落七八行，营造真实的叙事节奏感。</li>
-                </ol>
-              </div>
-            </div>
-          ),
-        },
-        {
-          title: "4. 文本润色 (Polish)",
-          content: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <strong>定义与核心原则</strong>：
-                只改行文措辞和语调，**绝对不改变任何剧情事实与结论**。
-              </div>
-              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li><strong>严禁操作</strong>：禁止增删段落、禁止更改人名/地名/法宝名称、禁止添加任何新的剧情对话。</li>
-                  <li><strong>允许操作</strong>：替换高雅词汇、优化语言节奏、调整语序、改善句段之间的衔接呼吸感。适合成稿后的最后一轮精细抛光。</li>
-                </ul>
-              </div>
-            </div>
-          ),
-        },
-        {
-          title: "5. 智能改写 (Rewrite)",
-          content: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <strong>定义与核心原则</strong>：
-                围绕有缺陷或干瘪的段落及其直接上下文进行局部细节扩写和场景重组。
-              </div>
-              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li><strong>适用场景</strong>：某场戏打斗软弱无力、表白情节毫无波澜、对话干瘪无趣。</li>
-                  <li><strong>修改方式</strong>：AI会专注于这一段场景，添加大量的神态细节、心理活动、微表情、环境动作互动，把抽象的情节点“撑开”变得立体饱满，但保留人物的核心动机和结果。</li>
-                </ul>
-              </div>
-            </div>
-          ),
-        },
-        {
-          title: "6. 剧情重写 (Rework)",
-          content: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <strong>定义与核心原则</strong>：
-                允许推倒整章的场景顺序和矛盾冲突，重新结构化正文。
-              </div>
-              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li><strong>适用场景</strong>：当前章节的叙事结构、推进节奏严重拉崩，或者因为大纲重大调整需要推倒重来。</li>
-                  <li><strong>刚性约束</strong>：虽然允许重构全部场景与对话，但依然受到 <code>story/</code> Truth 账本的高层约束，不能违反已经发生的正典事实或强行改变大设定。</li>
                 </ul>
               </div>
             </div>
@@ -534,10 +541,10 @@ export function HelpModal({ onClose }: HelpModalProps) {
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
                 <strong>实战技巧</strong>：
                 <ol style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li>点击顶部的 <strong>【文风克隆工坊】</strong> 按钮。</li>
+                  <li>点击右上角顶栏的 <strong>【风格管理】</strong> 按钮（钢笔图标），打开文风管理面板。</li>
                   <li>粘贴你本人以往纯手写、且最满意的小说段落（强烈建议在 2000-5000 字之间，最好是包含对话、场景描写和日常叙述的综合片段）。</li>
                   <li>AI会进行文风特征提取并生成 <code>style_guide.md</code> 文风指南存入 <code>story/</code>。</li>
-                  <li>在顶部左侧的文风下拉选择框中，切换为刚刚克隆出的文风名称。此后所有的智能续写和改写都将自动沿袭你的这一专属特色。</li>
+                  <li>在起草或续写弹窗中，文风偏好选择器将出现刚刚克隆的文风名称。选择该文风后，所有的智能续写和改写都将自动沿袭你的这一专属文风特色。</li>
                 </ol>
               </div>
             </div>
@@ -592,8 +599,8 @@ export function HelpModal({ onClose }: HelpModalProps) {
                 侧边栏支持 <strong>【一键全自动生成短篇】</strong>：
               </div>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                输入一段故事题材意图，并设定目标章节数（默认为 12 章）和单章字数。
-                系统将连续启动多智能体管线：自动生成故事大纲 ➜ 生成每章意图细化细纲 ➜ 连续全自动起草 12-18 章完整正文 ➜ 在后台自动生成对应的书籍精美封面。适合快速生成成套短篇小说。
+                输入一段故事题材构想，并设定目标章节数（默认为 12 章） 和单章字数。
+                系统将连续启动多智能体管线：自动生成故事大纲 ➜ 生成每章蓝图细化细纲 ➜ 连续全自动起草 12-18 章完整正文 ➜ 在后台自动生成对应的书籍精美封面。适合快速生成成套短篇小说。
               </div>
             </div>
           ),

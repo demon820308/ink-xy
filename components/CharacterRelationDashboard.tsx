@@ -52,6 +52,27 @@ export function CharacterRelationDashboard({ bookId, cwd, onOpenFile }: Props) {
   const [batchUniques, setBatchUniques] = useState<any[]>([]);
   const [isParsing, setIsParsing] = useState(false);
 
+  // Temporal Facts Ledger & Time-Machine States
+  const [currentChapterFilter, setCurrentChapterFilter] = useState<number | null>(null);
+  const [maxChapter, setMaxChapter] = useState<number>(1);
+  const [showAllFacts, setShowAllFacts] = useState<boolean>(false);
+  const [facts, setFacts] = useState<any[]>([]);
+  const [showTemporalLedger, setShowTemporalLedger] = useState(false);
+
+  // Edit fact form state
+  const [editingFact, setEditingFact] = useState<any | null>(null);
+  const [editFactObject, setEditFactObject] = useState("");
+  const [editFactValidFrom, setEditFactValidFrom] = useState(1);
+  const [editFactValidUntil, setEditFactValidUntil] = useState<number | "">( "");
+  
+  // Add fact form state
+  const [isAddFactOpen, setIsAddFactOpen] = useState(false);
+  const [newFactSubject, setNewFactSubject] = useState("");
+  const [newFactPredicate, setNewFactPredicate] = useState("");
+  const [newFactObject, setNewFactObject] = useState("");
+  const [newFactValidFrom, setNewFactValidFrom] = useState(1);
+  const [newFactValidUntil, setNewFactValidUntil] = useState<number | "">("");
+
   // Parse markdown for a single character card (v5 layout roles/*/*.md)
   const parseCharacterMarkdown = useCallback((content: string, fileName: string, tier: "major" | "minor", filePath: string): Node => {
     const name = fileName.replace(/\.md$/, "");
@@ -215,6 +236,29 @@ export function CharacterRelationDashboard({ bookId, cwd, onOpenFile }: Props) {
     setLoading(true);
     setError(null);
 
+    // Fetch dashboard data to get max chapter count
+    try {
+      const dashRes = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "dashboard",
+          cwd,
+          args: { bookId }
+        })
+      });
+      if (dashRes.ok) {
+        const dashData = await dashRes.json();
+        if (dashData.success && dashData.chapters) {
+          const maxCh = dashData.chapters.length || 1;
+          setMaxChapter(maxCh);
+          setCurrentChapterFilter((prev) => prev === null ? maxCh : prev);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load max chapter count:", e);
+    }
+
     const majorDir = joinFilePath(cwd, `books/${bookId}/story/roles/主要角色`);
     const minorDir = joinFilePath(cwd, `books/${bookId}/story/roles/次要角色`);
 
@@ -347,11 +391,13 @@ ${minorLines.join("\n") || "（无）"}
 
       try {
         const encoded = encodeFilePathForApi(matrixPath);
-        const checkRes = await fetch(`/api/files/${encoded}?type=read`);
+        const checkRes = await fetch(`/api/files/${encoded}?type=read&check=true`);
         let currentContent = "";
         if (checkRes.ok) {
           const checkData = await checkRes.json();
-          currentContent = checkData.content || "";
+          if (checkData.exists !== false) {
+            currentContent = checkData.content || "";
+          }
         }
 
         if (currentContent.trim() !== markdownContent.trim()) {
@@ -372,6 +418,143 @@ ${minorLines.join("\n") || "（无）"}
   useEffect(() => {
     loadGraphData();
   }, [loadGraphData]);
+
+  const loadFacts = useCallback(async () => {
+    if (!bookId || !cwd) return;
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "get-facts",
+          cwd,
+          args: {
+            bookId,
+            chapter: showAllFacts ? undefined : (currentChapterFilter ?? undefined)
+          }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setFacts(data.facts || []);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load facts:", err);
+    }
+  }, [bookId, cwd, currentChapterFilter, showAllFacts]);
+
+  useEffect(() => {
+    loadFacts();
+  }, [loadFacts]);
+
+  const handleUpdateFact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFact) return;
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update-fact",
+          cwd,
+          args: {
+            bookId,
+            id: editingFact.id,
+            validFromChapter: editFactValidFrom,
+            validUntilChapter: editFactValidUntil === "" ? null : Number(editFactValidUntil),
+            object: editFactObject
+          }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setEditingFact(null);
+          loadFacts();
+        } else {
+          alert("更新事实失败: " + data.error);
+        }
+      }
+    } catch (err) {
+      alert("错误: " + err);
+    }
+  };
+
+  const handleDeleteFact = async () => {
+    if (!editingFact) return;
+    if (!confirm(`确定要删除该设定事实吗？\n"${editingFact.subject} - ${editingFact.predicate} - ${editFactObject}"`)) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete-fact",
+          cwd,
+          args: {
+            bookId,
+            id: editingFact.id
+          }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setEditingFact(null);
+          loadFacts();
+        } else {
+          alert("删除事实失败: " + data.error);
+        }
+      }
+    } catch (err) {
+      alert("错误: " + err);
+    }
+  };
+
+  const handleAddFact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFactSubject || !newFactPredicate || !newFactObject) {
+      alert("请填写完整的事实要素");
+      return;
+    }
+    try {
+      const res = await fetch("/api/inkos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add-fact",
+          cwd,
+          args: {
+            bookId,
+            subject: newFactSubject,
+            predicate: newFactPredicate,
+            object: newFactObject,
+            validFromChapter: newFactValidFrom,
+            validUntilChapter: newFactValidUntil === "" ? null : Number(newFactValidUntil),
+          }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setIsAddFactOpen(false);
+          setNewFactSubject("");
+          setNewFactPredicate("");
+          setNewFactObject("");
+          setNewFactValidFrom(1);
+          setNewFactValidUntil("");
+          loadFacts();
+        } else {
+          alert("添加事实失败: " + data.error);
+        }
+      }
+    } catch (err) {
+      alert("错误: " + err);
+    }
+  };
 
   const handleClearUpload = useCallback(() => {
     setUploadedFileName(null);
@@ -1016,153 +1199,423 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
       >
         {activeNode ? (
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            {/* Lore Timeline Time-Machine Slider Bar */}
+            <div style={{
+              padding: "12px 24px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--bg-panel)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              flexShrink: 0
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>⏳</span>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>设定时光机 (Lore Timeline)</span>
+              </div>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, maxWidth: 360 }}>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--font-mono)", opacity: showAllFacts ? 0.5 : 1 }}>Ch 1</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={(maxChapter || 1) + 1}
+                  disabled={showAllFacts}
+                  value={showAllFacts ? (maxChapter + 1) : (currentChapterFilter || maxChapter || 1)}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setCurrentChapterFilter(val);
+                  }}
+                  style={{
+                    flex: 1,
+                    accentColor: "var(--accent)",
+                    cursor: showAllFacts ? "not-allowed" : "pointer",
+                    opacity: showAllFacts ? 0.5 : 1
+                  }}
+                />
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--font-mono)", opacity: showAllFacts ? 0.5 : 1 }}>Ch {maxChapter + 1}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  background: "rgba(249, 115, 22, 0.08)",
+                  border: "1px solid rgba(249, 115, 22, 0.15)",
+                  borderRadius: 12,
+                  color: "var(--accent)",
+                  fontWeight: 600,
+                  fontFamily: "var(--font-mono)"
+                }}>
+                  章节视角: {showAllFacts ? "全部章节" : `第 ${currentChapterFilter || maxChapter || 1} 章`}
+                </span>
+                <button
+                  onClick={() => setShowAllFacts(!showAllFacts)}
+                  style={{
+                    background: showAllFacts ? "var(--bg-selected)" : "none",
+                    border: "1px solid var(--border)",
+                    color: "var(--text)",
+                    fontSize: 11,
+                    padding: "3px 10px",
+                    borderRadius: 5,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontFamily: "var(--font-serif)",
+                    transition: "all 0.15s"
+                  }}
+                >
+                  {showAllFacts ? "📅 按章节过滤" : "🌐 显示全部设定"}
+                </button>
+                <button
+                  onClick={() => setShowTemporalLedger(!showTemporalLedger)}
+                  style={{
+                    background: showTemporalLedger ? "var(--bg-selected)" : "none",
+                    border: "1px solid var(--border)",
+                    color: "var(--text)",
+                    fontSize: 11,
+                    padding: "3px 10px",
+                    borderRadius: 5,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontFamily: "var(--font-serif)",
+                    transition: "all 0.15s"
+                  }}
+                >
+                  {showTemporalLedger ? "📖 返回设定卡" : "⏳ 时序设定账本"}
+                </button>
+              </div>
+            </div>
+
             {/* Scrollable details wrapper */}
             <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }}>
-              {/* Document Container */}
-              <div style={{ maxWidth: 800, margin: "0 auto" }}>
-                {/* Detail Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: 16, marginBottom: 20 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: "var(--text)", fontFamily: "var(--font-serif)" }}>
-                      {activeNode.name}
-                    </h1>
-                    <select
-                      value={activeNode.tier}
-                      onChange={(e) => handleToggleTier(activeNode, e.target.value as "major" | "minor")}
-                      disabled={submitting}
-                      title="点击修改角色等级（主要/次要）"
+              {showTemporalLedger ? (
+                /* ========================================================================= */
+                /* Temporal Facts Ledger View                                                */
+                /* ========================================================================= */
+                <div style={{ maxWidth: 800, margin: "0 auto" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 20 }}>
+                    <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>⏳</span> {activeNode.name} · {showAllFacts ? "全部" : `第 ${currentChapterFilter || maxChapter || 1} 章`} 时序设定事实
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setNewFactSubject(activeNode.name);
+                        setNewFactPredicate("relationship:");
+                        setNewFactObject("");
+                        setNewFactValidFrom(currentChapterFilter || 1);
+                        setNewFactValidUntil("");
+                        setIsAddFactOpen(true);
+                      }}
                       style={{
-                        fontSize: "10px",
-                        padding: "2px 8px",
-                        borderRadius: "4px",
+                        background: "var(--accent)",
+                        border: "none",
+                        color: "white",
+                        padding: "5px 12px",
+                        borderRadius: 5,
+                        fontSize: 11,
                         fontWeight: 600,
-                        background: activeNode.tier === "major" ? "rgba(99, 102, 241, 0.08)" : "rgba(16, 185, 129, 0.08)",
-                        color: activeNode.tier === "major" ? "#818cf8" : "#34d399",
-                        border: `1px solid ${activeNode.tier === "major" ? "#818cf833" : "#34d39933"}`,
-                        cursor: submitting ? "not-allowed" : "pointer",
-                        outline: "none",
-                        fontFamily: "var(--font-serif)",
-                        WebkitAppearance: "none",
-                        MozAppearance: "none",
-                        appearance: "none",
+                        cursor: "pointer"
                       }}
                     >
-                      <option value="major" style={{ background: "var(--bg-panel)", color: "#818cf8" }}>主要角色设定卡 ▾</option>
-                      <option value="minor" style={{ background: "var(--bg-panel)", color: "#34d399" }}>次要角色设定卡 ▾</option>
-                    </select>
+                      ➕ 新增设定事实
+                    </button>
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
-                    {activeNode.name}.md
-                  </div>
-                </div>
 
-                {/* Tag Pills */}
-                {activeNode.tags.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-                    {activeNode.tags.map((tag, i) => (
-                      <span
-                        key={i}
+                  {/* Facts List */}
+                  {(() => {
+                    const characterFacts = facts.filter(f => f.subject === activeNode.name);
+                    if (characterFacts.length === 0) {
+                      return (
+                        <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)", border: "1px dashed var(--border)", borderRadius: 8, background: "var(--bg-panel)" }}>
+                          {showAllFacts ? "该角色尚无存量设定事实。" : "当前章节该角色无存量设定事实。"}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {characterFacts.map((fact) => {
+                          const isConf = facts.some(f => f.id !== fact.id && f.subject === fact.subject && f.predicate === fact.predicate && f.object !== fact.object);
+                          return (
+                            <div
+                              key={fact.id}
+                              onClick={() => {
+                                setEditingFact(fact);
+                                setEditFactObject(fact.object);
+                                setEditFactValidFrom(fact.validFromChapter);
+                                setEditFactValidUntil(fact.validUntilChapter ?? "");
+                              }}
+                              style={{
+                                padding: "14px 16px",
+                                background: isConf ? "rgba(239, 68, 68, 0.04)" : "var(--bg-panel)",
+                                border: isConf ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid var(--border)",
+                                borderLeft: `4px solid ${isConf ? "#ef4444" : "var(--accent)"}`,
+                                borderRadius: 8,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 6,
+                                cursor: "pointer",
+                                transition: "all 0.15s"
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.borderColor = isConf ? "#ef4444" : "var(--text-dim)"}
+                              onMouseLeave={(e) => e.currentTarget.style.borderColor = isConf ? "rgba(239, 68, 68, 0.3)" : "var(--border)"}
+                              title="点击进行编辑"
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                                  {fact.predicate}
+                                </span>
+                                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                  {isConf && (
+                                    <span style={{ fontSize: 9, padding: "1px 4px", background: "rgba(239,68,68,0.1)", color: "#ef4444", borderRadius: 3, fontWeight: 700 }}>
+                                      ⚠️ 设定冲突
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: 9, padding: "1px 5px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
+                                    Ch {fact.validFromChapter} → {fact.validUntilChapter ? `Ch ${fact.validUntilChapter}` : "永久"}
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                                {fact.object}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* ========================================================================= */
+                /* Standard Markdown Card View                                               */
+                /* ========================================================================= */
+                <div style={{ maxWidth: 800, margin: "0 auto" }}>
+                  {/* Detail Header */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: 16, marginBottom: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: "var(--text)", fontFamily: "var(--font-serif)" }}>
+                        {activeNode.name}
+                      </h1>
+                      <select
+                        value={activeNode.tier}
+                        onChange={(e) => handleToggleTier(activeNode, e.target.value as "major" | "minor")}
+                        disabled={submitting}
+                        title="点击修改角色等级（主要/次要）"
                         style={{
                           fontSize: "10px",
                           padding: "2px 8px",
                           borderRadius: "4px",
-                          background: "var(--bg-panel)",
-                          color: "var(--text-muted)",
-                          border: "1px solid var(--border)",
-                          fontFamily: "var(--font-mono)"
+                          fontWeight: 600,
+                          background: activeNode.tier === "major" ? "rgba(99, 102, 241, 0.08)" : "rgba(16, 185, 129, 0.08)",
+                          color: activeNode.tier === "major" ? "#818cf8" : "#34d399",
+                          border: `1px solid ${activeNode.tier === "major" ? "#818cf833" : "#34d39933"}`,
+                          cursor: submitting ? "not-allowed" : "pointer",
+                          outline: "none",
+                          fontFamily: "var(--font-serif)",
+                          WebkitAppearance: "none",
+                          MozAppearance: "none",
+                          appearance: "none",
                         }}
                       >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Contrast Detail Callout */}
-                {activeNode.contrast && (
-                  <div
-                    style={{
-                      padding: "14px 18px",
-                      background: "rgba(245, 158, 11, 0.04)",
-                      borderLeft: "4px solid #f59e0b",
-                      borderRadius: "0 8px 8px 0",
-                      fontSize: "12px",
-                      lineHeight: 1.6,
-                      marginBottom: 24,
-                      color: "var(--text)"
-                    }}
-                  >
-                    <strong style={{ display: "block", color: "#f59e0b", marginBottom: 6, fontSize: "11px", letterSpacing: "0.03em" }}>
-                      🎭 立体反差维度设计 (Contrast Detail)
-                    </strong>
-                    {activeNode.contrast}
-                  </div>
-                )}
-
-                {/* Biography & Settings */}
-                <div style={{ marginBottom: 28 }}>
-                  <h3 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)", paddingBottom: 6, margin: "0 0 12px 0" }}>
-                    📖 经历设定与背景 (Biography)
-                  </h3>
-                  <div className="markdown-preview" style={{ fontSize: "13px", color: "var(--text)", lineHeight: 1.7 }}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {activeNode.bio}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-
-                {/* Relationships */}
-                {activeNode.relationships.length > 0 && (
-                  <div style={{ marginTop: 28, marginBottom: 40 }}>
-                    <h3 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)", paddingBottom: 6, margin: "0 0 12px 0" }}>
-                      🔗 关联人际网络 (Relationships)
-                    </h3>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
-                      {activeNode.relationships.map((rel, i: number) => {
-                        const relNode = nodes.find(n => n.name === rel.target || n.name === rel.target.replace(/^\*+|\*+$/g, "").replace(/^与|^对|^和/, "").trim());
-                        const cleanTarget = rel.target.replace(/^\*+|\*+$/g, "");
-                        return (
-                          <div
-                            key={i}
-                            onClick={() => relNode && setSelectedNodeId(relNode.id)}
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              padding: "12px 16px",
-                              background: "var(--bg-panel)",
-                              border: "1px solid var(--border)",
-                              borderRadius: 8,
-                              cursor: relNode ? "pointer" : "default",
-                              transition: "all 0.15s"
-                            }}
-                            onMouseEnter={(e) => {
-                              if (relNode) {
-                                e.currentTarget.style.borderColor = "var(--accent)";
-                                e.currentTarget.style.background = "var(--bg-hover)";
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (relNode) {
-                                e.currentTarget.style.borderColor = "var(--border)";
-                                e.currentTarget.style.background = "var(--bg-panel)";
-                              }
-                            }}
-                          >
-                            <span style={{ fontSize: "12px", fontWeight: 700, color: relNode ? "var(--text)" : "var(--text-dim)", textDecoration: relNode ? "underline" : "none" }}>
-                              {cleanTarget}
-                            </span>
-                            <span style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-                              {rel.type}
-                            </span>
-                          </div>
-                        );
-                      })}
+                        <option value="major" style={{ background: "var(--bg-panel)", color: "#818cf8" }}>主要角色设定卡 ▾</option>
+                        <option value="minor" style={{ background: "var(--bg-panel)", color: "#34d399" }}>次要角色设定卡 ▾</option>
+                      </select>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
+                      {activeNode.name}.md
                     </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Tag Pills */}
+                  {activeNode.tags.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+                      {activeNode.tags.map((tag, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: "10px",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            background: "var(--bg-panel)",
+                            color: "var(--text-muted)",
+                            border: "1px solid var(--border)",
+                            fontFamily: "var(--font-mono)"
+                          }}
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Contrast Detail Callout */}
+                  {activeNode.contrast && (
+                    <div
+                      style={{
+                        padding: "14px 18px",
+                        background: "rgba(245, 158, 11, 0.04)",
+                        borderLeft: "4px solid #f59e0b",
+                        borderRadius: "0 8px 8px 0",
+                        fontSize: "12px",
+                        lineHeight: 1.6,
+                        marginBottom: 24,
+                        color: "var(--text)"
+                      }}
+                    >
+                      <strong style={{ display: "block", color: "#f59e0b", marginBottom: 6, fontSize: "11px", letterSpacing: "0.03em" }}>
+                        🎭 立体反差维度设计 (Contrast Detail)
+                      </strong>
+                      {activeNode.contrast}
+                    </div>
+                  )}
+
+                  {/* Biography & Settings */}
+                  <div style={{ marginBottom: 28 }}>
+                    <h3 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)", paddingBottom: 6, margin: "0 0 12px 0" }}>
+                      📖 经历设定与背景 (Biography)
+                    </h3>
+                    <div className="markdown-preview" style={{ fontSize: "13px", color: "var(--text)", lineHeight: 1.7 }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {activeNode.bio}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+
+                  {/* Relationships */}
+                  {activeNode.relationships.length > 0 && (
+                    <div style={{ marginTop: 28, marginBottom: 40 }}>
+                      <h3 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)", paddingBottom: 6, margin: "0 0 12px 0" }}>
+                        🔗 关联人际网络 (Relationships)
+                      </h3>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+                        {activeNode.relationships.map((rel, i: number) => {
+                          const relNode = nodes.find(n => n.name === rel.target || n.name === rel.target.replace(/^\*+|\*+$/g, "").replace(/^与|^对|^和/, "").trim());
+                          const cleanTarget = rel.target.replace(/^\*+|\*+$/g, "");
+                          
+                          // Check contradiction for this relationship target
+                          const cleanTargetName = cleanTarget.replace(/^与|^对|^和/, "").trim();
+                          const relFacts = facts.filter(f => 
+                            f.subject === activeNode.name && 
+                            f.predicate.toLowerCase().includes("relationship") &&
+                            f.predicate.toLowerCase().includes(cleanTargetName.toLowerCase())
+                          );
+                          const isConflict = relFacts.length > 1 && (() => {
+                            const first = relFacts[0].object;
+                            return relFacts.some(f => f.object !== first);
+                          })();
+
+                          return (
+                            <div
+                              key={i}
+                              onClick={() => relNode && setSelectedNodeId(relNode.id)}
+                              onDoubleClick={() => {
+                                // Find or construct fact to edit
+                                const existingFact = relFacts[0];
+                                if (existingFact) {
+                                  setEditingFact(existingFact);
+                                  setEditFactObject(existingFact.object);
+                                  setEditFactValidFrom(existingFact.validFromChapter);
+                                  setEditFactValidUntil(existingFact.validUntilChapter ?? "");
+                                } else {
+                                  // Pre-fill Add Fact modal
+                                  setNewFactSubject(activeNode.name);
+                                  setNewFactPredicate(`relationship:${cleanTarget}`);
+                                  setNewFactObject(rel.type);
+                                  setNewFactValidFrom(currentChapterFilter || 1);
+                                  setNewFactValidUntil("");
+                                  setIsAddFactOpen(true);
+                                }
+                              }}
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "flex-start",
+                                gap: 6,
+                                padding: "12px 16px",
+                                background: isConflict ? "rgba(239, 68, 68, 0.04)" : "var(--bg-panel)",
+                                border: isConflict ? "1px solid #ef4444" : "1px solid var(--border)",
+                                borderRadius: 8,
+                                cursor: relNode ? "pointer" : "default",
+                                transition: "all 0.15s"
+                              }}
+                              onMouseEnter={(e) => {
+                                if (relNode) {
+                                  e.currentTarget.style.borderColor = isConflict ? "#ef4444" : "var(--accent)";
+                                  e.currentTarget.style.background = "var(--bg-hover)";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (relNode) {
+                                  e.currentTarget.style.borderColor = isConflict ? "#ef4444" : "var(--border)";
+                                  e.currentTarget.style.background = isConflict ? "rgba(239, 68, 68, 0.04)" : "var(--bg-panel)";
+                                }
+                              }}
+                              title="点击卡片跳转角色，双击或点击右侧编辑图标编辑范围"
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                                <span style={{ fontSize: "12px", fontWeight: 700, color: relNode ? "var(--text)" : "var(--text-dim)", textDecoration: relNode ? "underline" : "none" }}>
+                                  {cleanTarget}
+                                </span>
+                                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                  {isConflict && (
+                                    <span style={{ fontSize: 8, padding: "1px 4px", background: "rgba(239,68,68,0.1)", color: "#ef4444", borderRadius: 3, fontWeight: 700 }}>
+                                      ⚠️ 设定冲突
+                                    </span>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const existingFact = relFacts[0];
+                                      if (existingFact) {
+                                        setEditingFact(existingFact);
+                                        setEditFactObject(existingFact.object);
+                                        setEditFactValidFrom(existingFact.validFromChapter);
+                                        setEditFactValidUntil(existingFact.validUntilChapter ?? "");
+                                      } else {
+                                        setNewFactSubject(activeNode.name);
+                                        setNewFactPredicate(`relationship:${cleanTarget}`);
+                                        setNewFactObject(rel.type);
+                                        setNewFactValidFrom(currentChapterFilter || 1);
+                                        setNewFactValidUntil("");
+                                        setIsAddFactOpen(true);
+                                      }
+                                    }}
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      color: "var(--text-muted)",
+                                      cursor: "pointer",
+                                      padding: "2px 4px",
+                                      fontSize: 11,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      borderRadius: 4,
+                                      transition: "background 0.15s"
+                                    }}
+                                    onMouseEnter={(ev) => ev.currentTarget.style.background = "var(--bg-hover)"}
+                                    onMouseLeave={(ev) => ev.currentTarget.style.background = "none"}
+                                    title="点击编辑有效范围"
+                                  >
+                                    ✏️
+                                  </button>
+                                </div>
+                              </div>
+                              <span style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                                {rel.type}
+                              </span>
+                              {relFacts.length > 0 && (
+                                <div style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: 4, fontFamily: "var(--font-mono)", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  数据库事实: {relFacts.map(f => `Ch${f.validFromChapter}+: ${f.object}`).join(" | ")}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Profile Footer - Centered Edit Button */}
@@ -1610,6 +2063,216 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                 >
                   {submitting ? "创建中..." : "确认创建"}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Fact Modal */}
+      {isAddFactOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0, 0, 0, 0.45)",
+            backdropFilter: "blur(4px)"
+          }}
+          onClick={() => setIsAddFactOpen(false)}
+        >
+          <div
+            style={{
+              width: "min(420px, 90%)",
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: 24,
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                ➕ 新增设定事实 (Add Fact)
+              </h3>
+            </div>
+            <form onSubmit={handleAddFact} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>主体 (Subject)</label>
+                <input
+                  type="text"
+                  required
+                  value={newFactSubject}
+                  onChange={(e) => setNewFactSubject(e.target.value)}
+                  style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>属性/关系名 (Predicate)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="例如：relationship:角色名"
+                  value={newFactPredicate}
+                  onChange={(e) => setNewFactPredicate(e.target.value)}
+                  style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>设定值 (Object)</label>
+                <textarea
+                  required
+                  placeholder="例如：与李四义结金兰"
+                  value={newFactObject}
+                  onChange={(e) => setNewFactObject(e.target.value)}
+                  rows={3}
+                  style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none", resize: "none", fontFamily: "inherit" }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>起效章节</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={newFactValidFrom}
+                    onChange={(e) => setNewFactValidFrom(parseInt(e.target.value, 10) || 1)}
+                    style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>失效章节 (留空为永久)</label>
+                  <input
+                    type="number"
+                    placeholder="永久有效"
+                    value={newFactValidUntil}
+                    onChange={(e) => setNewFactValidUntil(e.target.value === "" ? "" : parseInt(e.target.value, 10))}
+                    style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAddFactOpen(false)}
+                  style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text-muted)", cursor: "pointer" }}
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "6px 14px", background: "var(--accent)", border: "none", borderRadius: 6, fontSize: 12, color: "#ffffff", fontWeight: 600, cursor: "pointer" }}
+                >
+                  确认添加
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Fact Modal */}
+      {editingFact && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0, 0, 0, 0.45)",
+            backdropFilter: "blur(4px)"
+          }}
+          onClick={() => setEditingFact(null)}
+        >
+          <div
+            style={{
+              width: "min(420px, 90%)",
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: 24,
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                📝 编辑设定事实 (Edit Fact)
+              </h3>
+              <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "4px 0 0 0" }}>
+                主体: {editingFact.subject} | 属性: {editingFact.predicate}
+              </p>
+            </div>
+            <form onSubmit={handleUpdateFact} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>设定值 (Object)</label>
+                <textarea
+                  required
+                  value={editFactObject}
+                  onChange={(e) => setEditFactObject(e.target.value)}
+                  rows={3}
+                  style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none", resize: "none", fontFamily: "inherit" }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>起效章节</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={editFactValidFrom}
+                    onChange={(e) => setEditFactValidFrom(parseInt(e.target.value, 10) || 1)}
+                    style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>失效章节 (留空为永久)</label>
+                  <input
+                    type="number"
+                    placeholder="永久有效"
+                    value={editFactValidUntil}
+                    onChange={(e) => setEditFactValidUntil(e.target.value === "" ? "" : parseInt(e.target.value, 10))}
+                    style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleDeleteFact}
+                  style={{ padding: "6px 14px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 6, fontSize: 12, color: "#ef4444", fontWeight: 600, cursor: "pointer" }}
+                >
+                  🗑️ 删除
+                </button>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingFact(null)}
+                    style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text-muted)", cursor: "pointer" }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="submit"
+                    style={{ padding: "6px 14px", background: "var(--accent)", border: "none", borderRadius: 6, fontSize: 12, color: "#ffffff", fontWeight: 600, cursor: "pointer" }}
+                  >
+                    确认修改
+                  </button>
+                </div>
               </div>
             </form>
           </div>

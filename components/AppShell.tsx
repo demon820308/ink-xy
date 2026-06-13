@@ -8,6 +8,10 @@ import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
+import { GenresConfig } from "./GenresConfig";
+import { StyleGuidesConfig } from "./StyleGuidesConfig";
+import { ExporterPanel } from "./ExporterPanel";
+import { PlotHookVisualizerWrapper } from "./PlotHookVisualizer";
 import { BranchNavigator } from "./BranchNavigator";
 import { SettingsModal } from "./SettingsModal";
 import { HelpModal } from "./HelpModal";
@@ -32,6 +36,10 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
+  const [genresConfigOpen, setGenresConfigOpen] = useState(false);
+  const [styleGuidesConfigOpen, setStyleGuidesConfigOpen] = useState(false);
+  const [exporterPanelOpen, setExporterPanelOpen] = useState(false);
+  const [genresRefreshKey, setGenresRefreshKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [showExecutionConfirm, setShowExecutionConfirm] = useState(true);
@@ -224,6 +232,29 @@ export function AppShell() {
       window.removeEventListener("ink-settings-changed", handleSettingsChanged);
     };
   }, []);
+
+  // Listen for trigger genres config custom event
+  useEffect(() => {
+    const handleTriggerGenres = () => {
+      setGenresConfigOpen(true);
+    };
+    window.addEventListener("trigger-genres-config", handleTriggerGenres);
+    return () => {
+      window.removeEventListener("trigger-genres-config", handleTriggerGenres);
+    };
+  }, []);
+
+  // Listen for trigger export panel custom event
+  useEffect(() => {
+    const handleTriggerExport = () => {
+      setExporterPanelOpen(true);
+    };
+    window.addEventListener("trigger-export-panel", handleTriggerExport);
+    return () => {
+      window.removeEventListener("trigger-export-panel", handleTriggerExport);
+    };
+  }, []);
+
 
   // Right panel — file tabs only
   const [fileTabs, setFileTabs] = useState<Tab[]>([]);
@@ -659,6 +690,7 @@ export function AppShell() {
         onStylesChange={handleStylesChange}
         onWorkspaceStatusChange={handleWorkspaceStatusChange}
         onActiveBookChange={setActiveBookId}
+        genresRefreshKey={genresRefreshKey}
       />
     </>
   );
@@ -1015,40 +1047,6 @@ export function AppShell() {
               )}
 
 
-              {/* 2. Style Clone Workshop (文风克隆工坊) */}
-              {hasBooks && (
-                <button
-                  onClick={() => {
-                    window.dispatchEvent(new Event("trigger-style-clone"));
-                  }}
-                  title="文风克隆工坊 (Style Clone)"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    height: "100%",
-                    padding: "0 12px",
-                    background: "none",
-                    border: "none",
-                    borderRight: "1px solid var(--border)",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    transition: "color 0.12s, background 0.12s",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 2 }}>
-                    <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" />
-                    <path d="M8 10h.01M16 10h.01" strokeWidth="3" />
-                    <path d="M12 14a3 3 0 0 0-3 3h6a3 3 0 0 0-3-3z" />
-                  </svg>
-                  <span>文风克隆工坊</span>
-                </button>
-              )}
-
               {/* 3. Market Radar (市场雷达) */}
               <button
                 onClick={() => {
@@ -1300,6 +1298,11 @@ export function AppShell() {
                 cwd={activeCwd!}
                 onOpenFile={handleOpenFile}
               />
+            ) : activeFileTab.filePath.startsWith("hooks:") ? (
+              <PlotHookVisualizerWrapper
+                bookId={activeFileTab.filePath.substring("hooks:".length)}
+                cwd={activeCwd!}
+              />
             ) : (
               <FileViewer
                 filePath={activeFileTab.filePath}
@@ -1383,6 +1386,45 @@ export function AppShell() {
         </div>
       </div>
     </div>
+
+    {/* Style Guides Config toggle — placed left of Genres Config button */}
+    <button
+      onClick={() => setStyleGuidesConfigOpen(true)}
+      title="风格管理"
+      style={{
+        position: "fixed", top: 0, right: 216, zIndex: 300,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, padding: 0,
+        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+        color: "var(--text-muted)",
+        cursor: "pointer", transition: "color 0.12s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+    </button>
+    {/* Genres Config toggle — placed left of Models Config button */}
+    <button
+      onClick={() => setGenresConfigOpen(true)}
+      title="题材管理"
+      style={{
+        position: "fixed", top: 0, right: 180, zIndex: 300,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, padding: 0,
+        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+        color: "var(--text-muted)",
+        cursor: "pointer", transition: "color 0.12s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    </button>
     {/* Models Config toggle — always visible at top-right, left of the settings toggle */}
     <button
       onClick={() => setModelsConfigOpen(true)}
@@ -1503,6 +1545,27 @@ export function AppShell() {
     {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
     {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
       <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} />
+    )}
+    {genresConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
+      <GenresConfig
+        cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!}
+        onClose={() => setGenresConfigOpen(false)}
+        onGenresChanged={() => setGenresRefreshKey((k) => k + 1)}
+      />
+    )}
+    {styleGuidesConfigOpen && activeBookId && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
+      <StyleGuidesConfig
+        cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!}
+        bookId={activeBookId}
+        onClose={() => setStyleGuidesConfigOpen(false)}
+      />
+    )}
+    {exporterPanelOpen && activeBookId && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
+      <ExporterPanel
+        cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!}
+        bookId={activeBookId}
+        onClose={() => setExporterPanelOpen(false)}
+      />
     )}
     {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}

@@ -9,17 +9,21 @@ import { BookConfigSchema } from "../models/book.js";
 function resolveBuiltinGenresDir(): string {
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    join(currentDir, "../../core/genres"), // when running bundled in packages/cli/dist/index.js
-    join(currentDir, "../../genres"),      // when running inside packages/core/dist/
-    join(currentDir, "../genres"),         // other possible structures
-    join(currentDir, "genres"),            // direct subdirectory
+    join(currentDir, "../../../../skills/genres"), // when running locally inside packages/core/dist/agents/
+    join(currentDir, "../../../skills/genres"),    // when running bundled or published
+    join(currentDir, "../../skills/genres"),       // other possible monorepo structures
+    join(currentDir, "../skills/genres"),
+    join(currentDir, "../../core/genres"),         // legacy fallback
+    join(currentDir, "../../genres"),              // legacy fallback
+    join(currentDir, "../genres"),
+    join(currentDir, "genres"),
   ];
   for (const c of candidates) {
     if (existsSync(join(c, "other.md"))) {
       return c;
     }
   }
-  return join(currentDir, "../../genres");
+  return join(currentDir, "../../../../skills/genres");
 }
 
 const BUILTIN_GENRES_DIR = resolveBuiltinGenresDir();

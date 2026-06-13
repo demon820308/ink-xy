@@ -1,6 +1,6 @@
 {
   "name": "@zwbigi/ink-xy",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "author": "demon820308",
   "description": "ink-xY Novel Studio - Professional Intelligent Collaborative Novel Editor",
   "main": "electron/main.js",
@@ -32,6 +32,7 @@
     "electron:build": "cd inkos && pnpm build && cd .. && npm run build && electron-builder"
   },
   "dependencies": {
+    "@actalk/inkos-core": "file:inkos/packages/core",
     "@earendil-works/pi-ai": "^0.75.5",
     "@earendil-works/pi-coding-agent": "^0.75.5",
     "@lobehub/icons": "^5.6.0",
@@ -74,7 +75,6 @@
       "output": "dist"
     },
     "asarUnpack": [
-      "inkos/packages/cli/dist/**/*",
       "inkos/packages/core/genres/**/*"
     ],
     "win": {
@@ -118,7 +118,6 @@
       "!.next/cache/**/*",
       "bin/**/*",
       "public/**/*",
-      "inkos/packages/cli/dist/**/*",
       "inkos/packages/core/genres/**/*"
     ]
   }

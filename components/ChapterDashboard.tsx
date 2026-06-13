@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
@@ -23,6 +23,31 @@ function isMarkdownTableEmpty(content: string): boolean {
   return tableRows.length <= 1;
 }
 
+function getMoodLevel(mood: string): number {
+  const m = mood || "";
+  if (/突破|打脸|高潮|大捷|结案|夺冠|Payoff|Breakthrough|Climax|Combat|战斗|冲突/i.test(m)) return 4;
+  if (/布局|探索|商战|推理|探案|Setup|Strategy|Exploration/i.test(m)) return 3;
+  if (/日常|日常相处|日常民俗|日常日常|Slice-of-Life|Community/i.test(m)) return 2;
+  return 1; // Transition / Repose
+}
+
+/** Catmull-Rom → cubic Bézier smooth path generator */
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+  if (pts.length === 2) return `M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y}`;
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const t = 0.3;
+    d += ` C ${p1.x + (p2.x - p0.x) * t} ${p1.y + (p2.y - p0.y) * t}, ${p2.x - (p3.x - p1.x) * t} ${p2.y - (p3.y - p1.y) * t}, ${p2.x} ${p2.y}`;
+  }
+  return d;
+}
+
 interface ChapterMeta {
   number: number;
   title: string;
@@ -37,6 +62,8 @@ interface ChapterMeta {
   hasSnapshot: boolean;
   reviewNote?: string;
   wordCountOverride?: number;
+  mood?: string;
+  chapterType?: string;
 }
 
 interface Props {
@@ -62,6 +89,27 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
   // Drawer for single chapter detail report
   const [selectedChapter, setSelectedChapter] = useState<ChapterMeta | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [hoveredChartPoint, setHoveredChartPoint] = useState<any | null>(null);
+
+  // Collapsible plot curves panel state (remembered via localStorage)
+  const [isPlotCurvesCollapsed, setIsPlotCurvesCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("plot_curves_collapsed") === "true";
+    }
+    return false;
+  });
+
+  const togglePlotCurves = () => {
+    setIsPlotCurvesCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("plot_curves_collapsed", String(next));
+      if (next) {
+        setHoveredChartPoint(null);
+      }
+      return next;
+    });
+  };
+
 
   // Reject dialog
   const [rejectChapterNum, setRejectChapterNum] = useState<number | null>(null);
@@ -196,8 +244,12 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
 
   const checkFileExists = async (filePath: string) => {
     try {
-      const res = await fetch(`/api/files/${encodeFilePathForApi(filePath)}?type=read`);
-      return res.ok;
+      const res = await fetch(`/api/files/${encodeFilePathForApi(filePath)}?type=read&check=true`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.exists !== false;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -268,8 +320,8 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
   // Run async CLI command via API stream reader
   const executeCommand = async (
     chNum: number,
-    actionType: "audit" | "sync" | "plan",
-    apiAction: "audit" | "write-sync" | "plan"
+    actionType: "audit" | "sync" | "plan" | "aigc",
+    apiAction: "audit" | "write-sync" | "plan" | "aigc-detect"
   ) => {
     if (runningActions[chNum]) return;
     
@@ -298,7 +350,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
           cwd,
           args: {
             bookId,
-            chapter: apiAction === "audit" ? relativeChapter : String(chNum),
+            chapter: apiAction === "audit" ? relativeChapter : (apiAction === "aigc-detect" ? chNum : String(chNum)),
             json: true
           }
         })
@@ -544,6 +596,18 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
   const degradedChapters = chapters.filter((c) => c.status === "state-degraded").length;
   const hasPlanChapters = chapters.filter((c) => c.hasPlan).length;
 
+  const moodPoints = useMemo(() => {
+    if (!chapters || chapters.length === 0) return [];
+    // Sort chapters by number
+    const sorted = [...chapters].sort((a, b) => a.number - b.number);
+    return sorted.map((ch, idx) => {
+      const x = (idx / (sorted.length - 1 || 1)) * 100; // percent
+      const level = getMoodLevel(ch.mood || "");
+      const y = 92 - ((level - 1) / 3) * 84; // viewBox 0–100: level 1→92 (bottom), 4→8 (top)
+      return { x, y, chNum: ch.number, title: ch.title, mood: ch.mood || "日常/平淡", wordCount: ch.wordCount };
+    });
+  }, [chapters]);
+
   const passRate = totalChapters > 0 ? Math.round((approvedChapters / totalChapters) * 100) : 100;
   const blueprintCoverage = totalChapters > 0 ? Math.round((hasPlanChapters / totalChapters) * 100) : 100;
 
@@ -707,29 +771,231 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       {!loading && !error && (
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
           {/* Summary Metric Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, padding: "20px 24px" }}>
-            <div style={{ padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, padding: "14px 24px 10px 24px" }}>
+            <div style={{ padding: "10px 14px", background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>总章节数</div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8, color: "var(--text)" }}>{totalChapters} <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>章</span></div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: "var(--text)" }}>{totalChapters} <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>章</span></div>
             </div>
-            <div style={{ padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
+            <div style={{ padding: "10px 14px", background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>离线审计过审率</div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8, color: passRate >= 80 ? "#10b981" : "#eab308" }}>{passRate}%</div>
-              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 6 }}>已审核过审 {approvedChapters} 章</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: passRate >= 80 ? "#10b981" : "#eab308" }}>{passRate}%</div>
+              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>已审核过审 {approvedChapters} 章</div>
             </div>
-            <div style={{ padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
+            <div style={{ padding: "10px 14px", background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>异常章节</div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8, color: (auditFailedChapters + degradedChapters) > 0 ? "#ef4444" : "#10b981" }}>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: (auditFailedChapters + degradedChapters) > 0 ? "#ef4444" : "#10b981" }}>
                 {auditFailedChapters + degradedChapters} <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>处</span>
               </div>
-              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 6 }}>审计不合规 {auditFailedChapters} | 设定失步 {degradedChapters}</div>
+              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>审计不合规 {auditFailedChapters} | 设定失步 {degradedChapters}</div>
             </div>
-            <div style={{ padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
+            <div style={{ padding: "10px 14px", background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>大纲蓝图覆盖度</div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8, color: "#a855f7" }}>{blueprintCoverage}%</div>
-              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 6 }}>已规划蓝图 {hasPlanChapters} / {totalChapters} 章</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: "#a855f7" }}>{blueprintCoverage}%</div>
+              <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>已规划蓝图 {hasPlanChapters} / {totalChapters} 章</div>
             </div>
           </div>
+
+          {/* Pacing & Mood Curve Panel */}
+          {chapters.length > 0 && (
+            <div style={{ margin: "0 24px 20px 24px", padding: 16, background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", flexDirection: "column" }}>
+              <div 
+                onClick={togglePlotCurves}
+                style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  padding: "4px 8px",
+                  margin: "-4px -8px",
+                  borderRadius: 6,
+                  transition: "background 0.2s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>📈</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>叙事波折与情感基调走势 (Plot Curves)</span>
+                  <svg 
+                    width="12" 
+                    height="12" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="var(--text-muted)" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    style={{ 
+                      transform: isPlotCurvesCollapsed ? "rotate(-90deg)" : "rotate(0deg)", 
+                      transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      marginLeft: 4
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+                <div style={{ 
+                  display: "flex", 
+                  gap: 12, 
+                  fontSize: 10,
+                  opacity: isPlotCurvesCollapsed ? 0.3 : 1,
+                  transition: "opacity 0.2s ease"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#a855f7" }}></span>
+                    <span style={{ color: "var(--text-muted)" }}>叙事波折度 (Tension)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10b981" }}></span>
+                    <span style={{ color: "var(--text-muted)" }}>章节字数 (Words)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                style={{ 
+                  position: "relative", 
+                  height: isPlotCurvesCollapsed ? 0 : 180, 
+                  opacity: isPlotCurvesCollapsed ? 0 : 1, 
+                  overflow: "hidden", 
+                  transition: "height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin-top 0.3s ease", 
+                  marginTop: isPlotCurvesCollapsed ? 0 : 12, 
+                  width: "100%", 
+                  background: "linear-gradient(to bottom, rgba(168,85,247,0.06) 0%, rgba(0,0,0,0.22) 100%)", 
+                  borderRadius: 8 
+                }}
+              >
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+                  <defs>
+                    <linearGradient id="moodAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgba(168, 85, 247, 0.35)" />
+                      <stop offset="100%" stopColor="rgba(168, 85, 247, 0)" />
+                    </linearGradient>
+                    <filter id="glowFilter">
+                      <feGaussianBlur stdDeviation="1.5" result="blur" />
+                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                  </defs>
+
+                  {/* Reference grid lines */}
+                  {[8, 36, 64, 92].map((gy) => (
+                    <line key={gy} x1="0" y1={gy} x2="100" y2={gy} stroke="rgba(255,255,255,0.07)" strokeWidth="0.5" strokeDasharray="2,2" vectorEffect="non-scaling-stroke" />
+                  ))}
+
+                  {/* Word count bars (Green) */}
+                  {moodPoints.map((p: any, idx: number) => {
+                    const maxWord = Math.max(...moodPoints.map((pt: any) => pt.wordCount)) || 3000;
+                    const barH = (p.wordCount / maxWord) * 70;
+                    return (
+                      <line key={`bar-${idx}`} x1={p.x} y1={98} x2={p.x} y2={98 - barH} stroke="rgba(16, 185, 129, 0.22)" strokeWidth="6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                    );
+                  })}
+
+                  {/* Tension area fill (smooth) */}
+                  {moodPoints.length > 1 && (
+                    <path
+                      d={`${smoothPath(moodPoints.map((p: any) => ({ x: p.x, y: p.y })))} L ${moodPoints[moodPoints.length - 1].x} 98 L ${moodPoints[0].x} 98 Z`}
+                      fill="url(#moodAreaGrad)"
+                      stroke="none"
+                    />
+                  )}
+
+                  {/* Tension curve (smooth) */}
+                  {moodPoints.length > 1 && (
+                    <path
+                      d={smoothPath(moodPoints.map((p: any) => ({ x: p.x, y: p.y })))}
+                      fill="none"
+                      stroke="#a855f7"
+                      strokeWidth="2.5"
+                      vectorEffect="non-scaling-stroke"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                </svg>
+
+                {/* Y-axis mood level labels */}
+                {[
+                  { label: "高潮", y: 8, color: "#e879f9" },
+                  { label: "布局", y: 36, color: "#c084fc" },
+                  { label: "日常", y: 64, color: "#a78bfa" },
+                  { label: "过渡", y: 92, color: "#6b7280" },
+                ].map((item) => (
+                  <div key={item.label} style={{ position: "absolute", left: 4, top: `${item.y}%`, transform: "translateY(-50%)", fontSize: 8, fontWeight: 600, color: item.color, pointerEvents: "none", opacity: 0.7 }}>{item.label}</div>
+                ))}
+
+                {/* Interactive data points (HTML for perfect circles) */}
+                {moodPoints.map((p: any, idx: number) => {
+                  const isClimax = getMoodLevel(p.mood) === 4;
+                  const isHovered = hoveredChartPoint?.chNum === p.chNum;
+                  return (
+                    <div
+                      key={idx}
+                      onMouseEnter={() => setHoveredChartPoint(p)}
+                      onMouseLeave={() => setHoveredChartPoint(null)}
+                      style={{
+                        position: "absolute",
+                        left: `${p.x}%`,
+                        top: `${p.y}%`,
+                        transform: "translate(-50%, -50%)",
+                        width: isHovered ? 12 : 8,
+                        height: isHovered ? 12 : 8,
+                        borderRadius: "50%",
+                        background: isHovered ? "#fff" : isClimax ? "#f0abfc" : "#a855f7",
+                        border: `2px solid ${isClimax ? "#e879f9" : "#a855f7"}`,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        boxShadow: isClimax ? "0 0 8px rgba(168,85,247,0.6)" : "none",
+                        zIndex: 2,
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Chapter number labels */}
+                {moodPoints.map((p: any, idx: number) => (
+                  <div key={`ch-${idx}`} style={{ position: "absolute", left: `${p.x}%`, bottom: 2, transform: "translateX(-50%)", fontSize: 8, color: "rgba(255,255,255,0.3)", fontWeight: 500, pointerEvents: "none" }}>{p.chNum}</div>
+                ))}
+
+                {/* Hover Tooltip — follows hovered point */}
+                {hoveredChartPoint && (() => {
+                  const xPct = hoveredChartPoint.x;
+                  return (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        ...(xPct < 20 ? { left: `${xPct}%` } : xPct > 80 ? { right: `${100 - xPct}%` } : { left: `${xPct}%`, transform: "translateX(-50%)" }),
+                        padding: "6px 12px",
+                        background: "rgba(10, 10, 10, 0.92)",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                        borderRadius: 6,
+                        fontSize: 10,
+                        color: "var(--text)",
+                        pointerEvents: "none",
+                        display: "flex",
+                        gap: 10,
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(168,85,247,0.1)",
+                        zIndex: 10,
+                        whiteSpace: "nowrap",
+                        backdropFilter: "blur(8px)",
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, color: "var(--accent)" }}>第{hoveredChartPoint.chNum}章</span>
+                      <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: 120, color: "var(--text-muted)" }}>{hoveredChartPoint.title}</span>
+                      <span style={{ color: "#c084fc" }}>🎭 {hoveredChartPoint.mood}</span>
+                      <span style={{ color: "#34d399" }}>✍️ {hoveredChartPoint.wordCount.toLocaleString()}字</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
 
           {/* Chapter Table Container */}
           <div style={{ padding: "0 24px 24px 24px", flex: 1, display: "flex", flexDirection: "column" }}>
@@ -2201,6 +2467,29 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                     title="重新执行防崩一致性审计"
                   >
                     <span>🔁</span> 重新审计
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      executeCommand(selectedChapter.number, "aigc", "aigc-detect");
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      background: "rgba(139, 92, 246, 0.08)",
+                      border: "1px solid rgba(139, 92, 246, 0.3)",
+                      borderRadius: 6,
+                      color: "#a78bfa",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      marginLeft: 8
+                    }}
+                    title="对本章执行 AIGC 痕迹检测"
+                  >
+                    <span>🔍</span> AIGC 检测
                   </button>
                 </div>
                 {selectedChapter.auditIssues && selectedChapter.auditIssues.length > 0 ? (

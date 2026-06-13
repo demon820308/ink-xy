@@ -121,3 +121,11 @@ try {
   console.error("[env-init] Migration failed:", err);
 }
 
+// Global exception safety nets to prevent uncaught/unhandled errors from crashing the server/Electron process
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[Global Safety Net] Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error, origin) => {
+  console.error("[Global Safety Net] Uncaught Exception:", error, "origin:", origin);
+});

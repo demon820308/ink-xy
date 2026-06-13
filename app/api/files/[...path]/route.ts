@@ -293,6 +293,10 @@ export async function GET(
       if (checkOnly) {
         return NextResponse.json({ exists: false });
       }
+      const optional = request.nextUrl.searchParams.get("optional") === "true";
+      if (optional) {
+        return NextResponse.json({ content: null, exists: false });
+      }
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

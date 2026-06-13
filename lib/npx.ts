@@ -1,10 +1,9 @@
 import "./env-init";
-import { execFile, execSync, spawn } from "child_process";
+import { execFile, execSync } from "child_process";
 import { promisify } from "util";
 import { existsSync, readFileSync } from "fs";
 import { dirname, join, delimiter } from "path";
 import { execPath } from "process";
-import { homedir } from "os";
 import { AuthStorage, ModelRegistry, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { findModel } from "./model-resolver";
 
@@ -33,7 +32,7 @@ function fixMacPath() {
     if (userPath) {
       userPath.split(":").forEach((p) => paths.add(p));
     }
-  } catch (e) {
+  } catch {
     // Fail silently if shell invocation fails (e.g. non-Catalina macOS or no zsh)
   }
 
@@ -172,15 +171,10 @@ export async function runNpx(args: string[], opts: RunNpxOptions = {}): Promise<
   });
 }
 
-interface ProviderConfig {
-  apiKey?: string;
-  baseUrl?: string;
-}
-
 /**
  * Resolve environment variables from the isolated ~/.ink/agent/models.json configuration file.
  */
-function resolveModelsEnv(): Record<string, string> {
+export function resolveModelsEnv(): Record<string, string> {
   const envs: Record<string, string> = {};
   try {
     const agentDir = process.env.PI_CODING_AGENT_DIR || getAgentDir();
@@ -193,7 +187,7 @@ function resolveModelsEnv(): Record<string, string> {
         const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
         defaultProvider = settings.defaultProvider || "";
         defaultModel = settings.defaultModel || "";
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -280,100 +274,6 @@ function resolveModelsEnv(): Record<string, string> {
     console.error("[runInkos] Failed to resolve models.json environment:", e);
   }
   return envs;
-}
-
-/**
- * Recursively search upwards starting from a directory to find the local InkOS CLI index.js.
- */
-function findInkosCliPath(workspaceDir?: string): string {
-  const candidates = [
-    workspaceDir,
-    process.env.INK_XY_APP_DIR,
-    __dirname,
-    process.cwd(),
-  ];
-
-  for (const startDir of candidates) {
-    if (!startDir) continue;
-    let dir = startDir;
-    while (true) {
-      const candidate = join(dir, "inkos", "packages", "cli", "dist", "index.js");
-      try {
-        if (existsSync(candidate)) {
-          // If the path contains 'app.asar' (but not 'app.asar.unpacked'), redirect to 'app.asar.unpacked'
-          // since the external system Node process cannot execute files packed inside ASAR.
-          if (candidate.includes("app.asar") && !candidate.includes("app.asar.unpacked")) {
-            const unpackedCandidate = candidate.replace("app.asar", "app.asar.unpacked");
-            if (existsSync(unpackedCandidate)) {
-              return unpackedCandidate;
-            }
-          }
-          return candidate;
-        }
-      } catch {
-        // ignore
-      }
-      const parent = dirname(dir);
-      if (parent === dir) {
-        break;
-      }
-      dir = parent;
-    }
-  }
-
-  // Fallback to static resolution if searching fails
-  const fallback = join(process.cwd(), "inkos", "packages", "cli", "dist", "index.js");
-  if (fallback.includes("app.asar") && !fallback.includes("app.asar.unpacked")) {
-    const unpackedFallback = fallback.replace("app.asar", "app.asar.unpacked");
-    if (existsSync(unpackedFallback)) {
-      return unpackedFallback;
-    }
-  }
-  return fallback;
-}
-
-/**
- * Cross-platform runner for the locally migrated InkOS CLI.
- * Spawns the compiled packages/cli/dist/index.js directly using the resolved Node binary.
- */
-export async function runInkos(args: string[], opts: RunNpxOptions = {}): Promise<RunNpxResult> {
-  const resolved = resolveNpx();
-  const nodeBin = resolved ? resolved.nodePath : "node";
-  const cliPath = findInkosCliPath(opts.cwd);
-
-  const modelsEnv = resolveModelsEnv();
-  console.log(`[runInkos] invoking local InkOS CLI: "${nodeBin} ${cliPath} ${args.join(" ")}"`);
-  return execFileAsync(nodeBin, [cliPath, ...args], {
-    timeout: opts.timeout,
-    cwd: opts.cwd ?? process.cwd(),
-    env: {
-      ...process.env,
-      ...modelsEnv,
-      INKOS_NO_STDIN: "true",
-      NODE_NO_WARNINGS: "1",
-      ...opts.env,
-    },
-  });
-}
-
-export function spawnInkos(args: string[], opts: RunNpxOptions = {}) {
-  const resolved = resolveNpx();
-  const nodeBin = resolved ? resolved.nodePath : "node";
-  const cliPath = findInkosCliPath(opts.cwd);
-
-  const modelsEnv = resolveModelsEnv();
-  console.log(`[spawnInkos] spawning local InkOS CLI: "${nodeBin} ${cliPath} ${args.join(" ")}"`);
-  return spawn(nodeBin, [cliPath, ...args], {
-    cwd: opts.cwd ?? process.cwd(),
-    env: {
-      ...process.env,
-      ...modelsEnv,
-      INKOS_NO_STDIN: "true",
-      NODE_NO_WARNINGS: "1",
-      ...opts.env,
-    },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
 }
 
 

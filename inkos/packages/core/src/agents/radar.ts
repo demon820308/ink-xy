@@ -101,20 +101,46 @@ ${rankingsText}
   }
 
   private parseResult(content: string): RadarResult {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Radar output format error: no JSON found");
+    const firstBrace = content.indexOf("{");
+    const firstBracket = content.indexOf("[");
+    const startChar = (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) ? "{" : "[";
+    const endChar = startChar === "{" ? "}" : "]";
+    const startIndex = startChar === "{" ? firstBrace : firstBracket;
+
+    if (startIndex === -1) {
+      throw new Error("Radar output format error: no JSON start character found");
     }
 
-    try {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        recommendations: parsed.recommendations ?? [],
-        marketSummary: parsed.marketSummary ?? "",
-        timestamp: new Date().toISOString(),
-      };
-    } catch (e) {
-      throw new Error(`Radar JSON parse error: ${e}`);
+    const endIndices: number[] = [];
+    let index = content.indexOf(endChar, startIndex);
+    while (index !== -1) {
+      endIndices.push(index);
+      index = content.indexOf(endChar, index + 1);
     }
+
+    let parsed: any = null;
+    let success = false;
+    let lastError: any = null;
+
+    for (let i = endIndices.length - 1; i >= 0; i--) {
+      const candidate = content.slice(startIndex, endIndices[i] + 1);
+      try {
+        parsed = JSON.parse(candidate);
+        success = true;
+        break;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (!success) {
+      throw new Error(`Radar JSON parse error: ${lastError || "no valid JSON substring found"}`);
+    }
+
+    return {
+      recommendations: parsed.recommendations ?? [],
+      marketSummary: parsed.marketSummary ?? "",
+      timestamp: new Date().toISOString(),
+    };
   }
 }

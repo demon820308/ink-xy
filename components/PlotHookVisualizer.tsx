@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { encodeFilePathForApi } from "@/lib/file-paths";
 
 interface HookItem {
   id: string;
@@ -978,3 +979,131 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
     </div>
   );
 };
+
+export const PlotHookVisualizerWrapper: React.FC<{
+  bookId: string;
+  cwd: string;
+}> = ({ bookId, cwd }) => {
+  const [content, setContent] = useState<string | null>(null);
+  const [totalChapters, setTotalChapters] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const filePath = `books/${bookId}/story/pending_hooks.md`;
+
+  useEffect(() => {
+    let active = true;
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. Fetch file content
+        const encodedFile = encodeFilePathForApi(cwd ? `${cwd}/${filePath}` : filePath);
+        const fileRes = await fetch(`/api/files/${encodedFile}?type=read&check=true`);
+        if (!fileRes.ok) {
+          throw new Error(`无法读取文件，HTTP 状态 ${fileRes.status}`);
+        }
+        const fileData = await fileRes.json();
+        if (fileData.exists === false) {
+          // If file doesn't exist, create an empty pending hooks table structure
+          const initialContent = `# 剧情伏笔池\n\n| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 上游依赖 | 回收卷 | 核心 | 半衰期 | 升级 | 备注 |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n`;
+          setContent(initialContent);
+          // Auto-write it to disk
+          await fetch(`/api/files/${encodedFile}`, {
+            method: "POST",
+            body: new TextEncoder().encode(initialContent)
+          });
+        } else {
+          setContent(fileData.content || "");
+        }
+
+        // 2. Fetch dashboard data for chapters count
+        const dashRes = await fetch("/api/inkos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "dashboard",
+            cwd,
+            args: { bookId }
+          })
+        });
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          if (dashData.success && dashData.chapters) {
+            setTotalChapters(dashData.chapters.length);
+          }
+        }
+      } catch (err: any) {
+        console.error("Failed to load plot hooks data:", err);
+        setError(err.message || String(err));
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadData();
+    return () => {
+      active = false;
+    };
+  }, [bookId, cwd]);
+
+  const handleChange = async (newVal: string) => {
+    setContent(newVal);
+    try {
+      const encodedFile = encodeFilePathForApi(cwd ? `${cwd}/${filePath}` : filePath);
+      const res = await fetch(`/api/files/${encodedFile}`, {
+        method: "POST",
+        body: new TextEncoder().encode(newVal)
+      });
+      if (res.ok) {
+        // Dispatch refresh event for workspace explorer
+        window.dispatchEvent(new Event("refresh-explorer"));
+      }
+    } catch (err) {
+      console.error("Failed to save pending_hooks.md:", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "var(--bg-panel)", color: "var(--text-muted)", fontFamily: "var(--font-serif)" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin" style={{ animation: "spin 1s linear infinite" }}>
+            <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" /><line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" /><line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" /><line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+          </svg>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>正在加载剧情伏笔池...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "var(--bg-panel)", color: "#ef4444", fontFamily: "var(--font-serif)", padding: 24, textAlign: "center" }}>
+        <div>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>加载伏笔数据失败</div>
+          <div style={{ fontSize: 12, opacity: 0.8, maxWidth: 360, margin: "0 auto 16px", lineHeight: 1.5 }}>{error}</div>
+          <button
+            onClick={() => {
+              setContent(null);
+              setLoading(true);
+            }}
+            style={{ padding: "6px 14px", border: "1px solid #ef4444", background: "rgba(239,68,68,0.08)", borderRadius: 6, color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+          >
+            重试
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PlotHookVisualizer
+      editContent={content || ""}
+      onChange={handleChange}
+      totalChapters={totalChapters}
+    />
+  );
+};
+

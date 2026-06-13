@@ -49,3 +49,11 @@ node_modules/
 # licensing server isolation
 /licensing-server/node_modules/
 /licensing-server/.wrangler/
+
+# executables and temporary log files
+/mimo.exe
+*.exe
+/eslint-errors.txt
+/eslint-errors-utf8.txt
+/api-error.log
+
