@@ -362,12 +362,12 @@ export const EmotionalArcVisualizer: React.FC<EmotionalArcVisualizerProps> = ({ 
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", textAlign: "left" }}>
               <thead style={{ background: "var(--bg)", position: "sticky", top: 0, zIndex: 1, borderBottom: "1px solid var(--border)" }}>
                 <tr>
-                  <th style={{ padding: "8px 12px" }}>角色</th>
-                  <th style={{ padding: "8px 12px" }}>章节</th>
-                  <th style={{ padding: "8px 12px" }}>情绪状态</th>
-                  <th style={{ padding: "8px 12px" }}>波动强度</th>
+                  <th style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>角色</th>
+                  <th style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>章节</th>
+                  <th style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>情绪状态</th>
+                  <th style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>波动强度</th>
                   <th style={{ padding: "8px 12px" }}>触发事件</th>
-                  <th style={{ padding: "8px 12px" }}>弧线走向</th>
+                  <th style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>弧线走向</th>
                 </tr>
               </thead>
               <tbody>
@@ -379,16 +379,18 @@ export const EmotionalArcVisualizer: React.FC<EmotionalArcVisualizerProps> = ({ 
                       background: idx % 2 === 0 ? "transparent" : "rgba(var(--text-dim-rgb), 0.02)"
                     }}
                   >
-                    <td style={{ padding: "8px 12px", fontWeight: 600, color: charColors[row.character] }}>{row.character}</td>
-                    <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)" }}>第 {row.chapter} 章</td>
-                    <td style={{ padding: "8px 12px" }}>{row.emotion}</td>
-                    <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", fontWeight: 600 }}>{row.intensity} / 10</td>
-                    <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{row.trigger}</td>
-                    <td style={{ padding: "8px 12px" }}>
+                    <td style={{ padding: "8px 12px", fontWeight: 600, color: charColors[row.character], whiteSpace: "nowrap" }}>{row.character}</td>
+                    <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>第 {row.chapter} 章</td>
+                    <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>{row.emotion}</td>
+                    <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", fontWeight: 600, whiteSpace: "nowrap" }}>{row.intensity} / 10</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-muted)", minWidth: "150px" }}>{row.trigger}</td>
+                    <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       <span style={{
+                        display: "inline-block",
                         padding: "2px 6px",
                         borderRadius: "4px",
                         fontSize: "10px",
+                        whiteSpace: "nowrap",
                         background: row.direction.includes("上") ? "rgba(16, 185, 129, 0.1)" : row.direction.includes("下") ? "rgba(239, 68, 68, 0.1)" : "rgba(100,100,100,0.1)",
                         color: row.direction.includes("上") ? "#10b981" : row.direction.includes("下") ? "#ef4444" : "var(--text-dim)"
                       }}>{row.direction}</span>
