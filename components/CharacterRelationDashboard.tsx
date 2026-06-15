@@ -5,6 +5,15 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 
+function getCleanCharacterName(target: string): string {
+  return target
+    .replace(/^\*+|\*+$/g, "")
+    .replace(/^与|^对|^和/, "")
+    .replace(/（[^）]+）/g, "")
+    .replace(/\([^\)]+\)/g, "")
+    .trim();
+}
+
 interface Node {
   id: string;
   name: string;
@@ -39,6 +48,8 @@ export function CharacterRelationDashboard({ bookId, cwd, onOpenFile }: Props) {
   const [newTier, setNewTier] = useState<"major" | "minor">("major");
   const [newTags, setNewTags] = useState("");
   const [newContrast, setNewContrast] = useState("");
+  const [newBio, setNewBio] = useState("");
+  const [newRelationshipsText, setNewRelationshipsText] = useState("");
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -829,17 +840,18 @@ ${relText}
 tier: ${newTier}
 name: ${name}
 ---
+
 ## Core_Tags
-${tagsText || "性格标签1, 标签2"}
+${tagsText || "暂无标签"}
 
 ## Contrast_Detail
-${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
+${newContrast.trim() || "暂无细节"}
 
 ## Back_Story
-这里写人物的背景故事与生平小传...
+${newBio.trim() || "暂无小传"}
 
 ## Relationship_Network
-- 主角: 关系描述
+${newRelationshipsText.trim() || "- 暂无关系线"}
 `;
 
       try {
@@ -859,6 +871,8 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
         setNewTier("major");
         setNewTags("");
         setNewContrast("");
+        setNewBio("");
+        setNewRelationshipsText("");
 
         // Reload list
         await loadGraphData();
@@ -1494,15 +1508,16 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                       </h3>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
                         {activeNode.relationships.map((rel, i: number) => {
-                          const relNode = nodes.find(n => n.name === rel.target || n.name === rel.target.replace(/^\*+|\*+$/g, "").replace(/^与|^对|^和/, "").trim());
+                          const cleanTargetName = getCleanCharacterName(rel.target);
+                          const relNode = nodes.find(n => n.name === cleanTargetName || n.name === rel.target);
                           const cleanTarget = rel.target.replace(/^\*+|\*+$/g, "");
                           
                           // Check contradiction for this relationship target
-                          const cleanTargetName = cleanTarget.replace(/^与|^对|^和/, "").trim();
                           const relFacts = facts.filter(f => 
                             f.subject === activeNode.name && 
                             f.predicate.toLowerCase().includes("relationship") &&
-                            f.predicate.toLowerCase().includes(cleanTargetName.toLowerCase())
+                            (f.predicate.toLowerCase().includes(cleanTargetName.toLowerCase()) || 
+                             f.predicate.toLowerCase().includes(cleanTarget.toLowerCase()))
                           );
                           const isConflict = relFacts.length > 1 && (() => {
                             const first = relFacts[0].object;
@@ -1526,7 +1541,7 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                                 } else {
                                   // Pre-fill Add Fact modal
                                   setNewFactSubject(activeNode.name);
-                                  setNewFactPredicate(`relationship:${cleanTarget}`);
+                                  setNewFactPredicate(`relationship:${cleanTargetName}`);
                                   setNewFactObject(rel.type);
                                   setNewFactValidFrom(currentChapterFilter || 1);
                                   setNewFactValidUntil("");
@@ -1582,7 +1597,7 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                                         setEditFactValidUntil(existingFact.validUntilChapter ?? "");
                                       } else {
                                         setNewFactSubject(activeNode.name);
-                                        setNewFactPredicate(`relationship:${cleanTarget}`);
+                                        setNewFactPredicate(`relationship:${cleanTargetName}`);
                                         setNewFactObject(rel.type);
                                         setNewFactValidFrom(currentChapterFilter || 1);
                                         setNewFactValidUntil("");
@@ -1708,7 +1723,7 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
         >
           <div
             style={{
-              width: "min(420px, 90%)",
+              width: (!isBatchImport && !isParsing) ? "min(820px, 95%)" : "min(460px, 90%)",
               background: "var(--bg-panel)",
               border: "1px solid var(--border)",
               borderRadius: 12,
@@ -1716,7 +1731,8 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
               boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.3)",
               display: "flex",
               flexDirection: "column",
-              gap: 16
+              gap: 16,
+              transition: "width 0.2s"
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1871,6 +1887,7 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                     </button>
                   </div>
                 )}
+                <div style={{ borderBottom: "1px dashed var(--border)", margin: "4px 0" }} />
               </div>
             )}
 
@@ -1949,92 +1966,140 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                   </p>
                 </div>
               ) : (
-                <>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>姓名 (必填)</label>
-                    <input
-                      type="text"
-                      required
-                      autoFocus
-                      placeholder="例如：林动"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      style={{
-                        padding: "8px 12px",
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 6,
-                        fontSize: 12,
-                        color: "var(--text)",
-                        outline: "none"
-                      }}
-                    />
-                  </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, width: "100%" }}>
+                  {/* Left Column - Basics */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>姓名 (必填)</label>
+                      <input
+                        type="text"
+                        required
+                        autoFocus
+                        placeholder="例如：林动"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        style={{
+                          padding: "8px 12px",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: "var(--text)",
+                          outline: "none"
+                        }}
+                      />
+                    </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>角色等级</label>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", color: "var(--text)" }}>
-                        <input
-                          type="radio"
-                          name="tier"
-                          checked={newTier === "major"}
-                          onChange={() => setNewTier("major")}
-                        />
-                        主要角色 (主角)
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", color: "var(--text)" }}>
-                        <input
-                          type="radio"
-                          name="tier"
-                          checked={newTier === "minor"}
-                          onChange={() => setNewTier("minor")}
-                        />
-                        次要角色 (普通配角)
-                      </label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>角色等级</label>
+                      <div style={{ display: "flex", gap: 10, padding: "4px 0" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", color: "var(--text)" }}>
+                          <input
+                            type="radio"
+                            name="tier"
+                            checked={newTier === "major"}
+                            onChange={() => setNewTier("major")}
+                          />
+                          主要角色 (主角)
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", color: "var(--text)" }}>
+                          <input
+                            type="radio"
+                            name="tier"
+                            checked={newTier === "minor"}
+                            onChange={() => setNewTier("minor")}
+                          />
+                          次要角色 (普通配角)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>核心标签 (选填)</label>
+                      <input
+                        type="text"
+                        placeholder="例如：冷静, 坚毅, 剑客 (逗号隔开)"
+                        value={newTags}
+                        onChange={(e) => setNewTags(e.target.value)}
+                        style={{
+                          padding: "8px 12px",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: "var(--text)",
+                          outline: "none"
+                        }}
+                      />
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>核心标签 (选填)</label>
-                    <input
-                      type="text"
-                      placeholder="例如：冷静, 坚毅, 剑客 (逗号隔开)"
-                      value={newTags}
-                      onChange={(e) => setNewTags(e.target.value)}
-                      style={{
-                        padding: "8px 12px",
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 6,
-                        fontSize: 12,
-                        color: "var(--text)",
-                        outline: "none"
-                      }}
-                    />
-                  </div>
+                  {/* Right Column - Advanced */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>反差设计 (选填)</label>
+                      <textarea
+                        placeholder="例如：冷酷的外表下有着极其细腻的心思..."
+                        value={newContrast}
+                        onChange={(e) => setNewContrast(e.target.value)}
+                        rows={2}
+                        style={{
+                          padding: "8px 12px",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: "var(--text)",
+                          outline: "none",
+                          resize: "none",
+                          fontFamily: "inherit"
+                        }}
+                      />
+                    </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>反差设计 (选填)</label>
-                    <textarea
-                      placeholder="例如：冷酷的外表下有着极其细腻的心思..."
-                      value={newContrast}
-                      onChange={(e) => setNewContrast(e.target.value)}
-                      rows={3}
-                      style={{
-                        padding: "8px 12px",
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 6,
-                        fontSize: 12,
-                        color: "var(--text)",
-                        outline: "none",
-                        resize: "none",
-                        fontFamily: "inherit"
-                      }}
-                    />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>背景故事与生平小传 (选填)</label>
+                      <textarea
+                        placeholder="这里写人物的背景故事与生平小传..."
+                        value={newBio}
+                        onChange={(e) => setNewBio(e.target.value)}
+                        rows={2}
+                        style={{
+                          padding: "8px 12px",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: "var(--text)",
+                          outline: "none",
+                          resize: "none",
+                          fontFamily: "inherit"
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>人际关系网络 (选填)</label>
+                      <textarea
+                        placeholder="例如：&#10;- 与沈砚：七年前的恋人&#10;- 与苏晴 (闺蜜)：唯一知道全部情况的朋友"
+                        value={newRelationshipsText}
+                        onChange={(e) => setNewRelationshipsText(e.target.value)}
+                        rows={2}
+                        style={{
+                          padding: "8px 12px",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: "var(--text)",
+                          outline: "none",
+                          resize: "none",
+                          fontFamily: "inherit"
+                        }}
+                      />
+                    </div>
                   </div>
-                </>
+                </div>
               )}
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
