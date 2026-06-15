@@ -197,6 +197,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
   const [error, setError] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [viewMode, setViewMode] = useState<"source" | "diff">("source");
+  const [diffType, setDiffType] = useState<"unified" | "split">("split");
   const [useVisualView, setUseVisualView] = useState(true);
   const [wrapLines, setWrapLines] = useState(false);
   const [watching, setWatching] = useState(false);
@@ -2675,29 +2676,58 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
 
         {/* Diff / Source toggle — shown only when there are changes */}
         {hasDiff && (
-          <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: "1px solid var(--border)" }}>
-            <button
-              onClick={() => setViewMode("source")}
-              style={{
-                padding: "2px 8px", fontSize: 11, border: "none", cursor: "pointer",
-                background: viewMode === "source" ? "var(--bg-selected)" : "var(--bg-hover)",
-                color: viewMode === "source" ? "var(--text)" : "var(--text-muted)",
-                fontWeight: viewMode === "source" ? 600 : 400,
-              }}
-            >
-              Source
-            </button>
-            <button
-              onClick={() => setViewMode("diff")}
-              style={{
-                padding: "2px 8px", fontSize: 11, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
-                background: viewMode === "diff" ? "var(--bg-selected)" : "var(--bg-hover)",
-                color: viewMode === "diff" ? "var(--text)" : "var(--text-muted)",
-                fontWeight: viewMode === "diff" ? 600 : 400,
-              }}
-            >
-              Diff {changeCount > 0 && <span style={{ color: "#4ade80", marginLeft: 2 }}>+{changeCount}</span>}
-            </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: "1px solid var(--border)" }}>
+              <button
+                onClick={() => setViewMode("source")}
+                style={{
+                  padding: "2px 8px", fontSize: 11, border: "none", cursor: "pointer",
+                  background: viewMode === "source" ? "var(--bg-selected)" : "var(--bg-hover)",
+                  color: viewMode === "source" ? "var(--text)" : "var(--text-muted)",
+                  fontWeight: viewMode === "source" ? 600 : 400,
+                }}
+              >
+                Source
+              </button>
+              <button
+                onClick={() => setViewMode("diff")}
+                style={{
+                  padding: "2px 8px", fontSize: 11, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
+                  background: viewMode === "diff" ? "var(--bg-selected)" : "var(--bg-hover)",
+                  color: viewMode === "diff" ? "var(--text)" : "var(--text-muted)",
+                  fontWeight: viewMode === "diff" ? 600 : 400,
+                }}
+              >
+                Diff {changeCount > 0 && <span style={{ color: "#4ade80", marginLeft: 2 }}>+{changeCount}</span>}
+              </button>
+            </div>
+
+            {viewMode === "diff" && (
+              <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: "1px solid var(--border)" }}>
+                <button
+                  onClick={() => setDiffType("unified")}
+                  style={{
+                    padding: "2px 8px", fontSize: 11, border: "none", cursor: "pointer",
+                    background: diffType === "unified" ? "var(--bg-selected)" : "var(--bg-hover)",
+                    color: diffType === "unified" ? "var(--text)" : "var(--text-muted)",
+                    fontWeight: diffType === "unified" ? 600 : 400,
+                  }}
+                >
+                  Unified
+                </button>
+                <button
+                  onClick={() => setDiffType("split")}
+                  style={{
+                    padding: "2px 8px", fontSize: 11, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
+                    background: diffType === "split" ? "var(--bg-selected)" : "var(--bg-hover)",
+                    color: diffType === "split" ? "var(--text)" : "var(--text-muted)",
+                    fontWeight: diffType === "split" ? 600 : 400,
+                  }}
+                >
+                  Split
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -2921,7 +2951,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
       <div style={{ flex: 1, overflow: "auto", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
         {viewMode === "diff" && hasDiff ? (
           <div style={{ flex: 1, overflow: "auto" }}>
-            <DiffView oldContent={prevContent!} newContent={editContent} language={data.language} />
+            <DiffView oldContent={prevContent!} newContent={editContent} language={data.language} viewType={diffType} />
           </div>
         ) : isHtml && previewMode ? (
           <div style={{ flex: 1, overflow: "hidden" }}>

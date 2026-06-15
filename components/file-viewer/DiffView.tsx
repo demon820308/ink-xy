@@ -33,7 +33,7 @@ export function diffLines(oldLines: string[], newLines: string[]): DiffLine[] {
         const result: DiffLine[] = [];
         let cx = m, cy = n;
         for (let dd = d; dd > 0; dd--) {
-          const pv = trace[dd - 1];
+          const pv = trace[dd];
           const pk = cx - cy;
           let prevK: number;
           if (pk === -dd || (pk !== dd && pv[pk - 1 + max] < pv[pk + 1 + max])) {
@@ -78,11 +78,12 @@ interface DiffViewProps {
   oldContent: string;
   newContent: string;
   language: string;
+  viewType?: "unified" | "split";
 }
 
-export function DiffView({ oldContent, newContent }: DiffViewProps) {
-  const oldLines = oldContent.split("\n");
-  const newLines = newContent.split("\n");
+export function DiffView({ oldContent, newContent, viewType = "split" }: DiffViewProps) {
+  const oldLines = oldContent.replace(/\r/g, "").split("\n");
+  const newLines = newContent.replace(/\r/g, "").split("\n");
   const diff = diffLines(oldLines, newLines);
 
   const hasChanges = diff.some((l) => l.type !== "unchanged");
@@ -93,6 +94,249 @@ export function DiffView({ oldContent, newContent }: DiffViewProps) {
       </div>
     );
   }
+
+  if (viewType === "split") {
+    // Pre-calculate line numbers for left (old) and right (new) sides
+    let leftLno = 1;
+    let rightLno = 1;
+    const processedDiff = diff.map((line) => {
+      let leftNum: number | undefined;
+      let rightNum: number | undefined;
+      if (line.type === "unchanged") {
+        leftNum = leftLno++;
+        rightNum = rightLno++;
+      } else if (line.type === "removed") {
+        leftNum = leftLno++;
+      } else if (line.type === "added") {
+        rightNum = rightLno++;
+      }
+      return { ...line, leftNum, rightNum };
+    });
+
+    // Group into side-by-side rows
+    interface SplitRow {
+      type: "unchanged" | "split";
+      left?: { type: "unchanged" | "removed"; text: string; lineNo: number };
+      right?: { type: "unchanged" | "added"; text: string; lineNo: number };
+    }
+
+    const rows: SplitRow[] = [];
+    let idx = 0;
+    while (idx < processedDiff.length) {
+      if (processedDiff[idx].type === "unchanged") {
+        rows.push({
+          type: "unchanged",
+          left: { type: "unchanged", text: processedDiff[idx].text, lineNo: processedDiff[idx].leftNum! },
+          right: { type: "unchanged", text: processedDiff[idx].text, lineNo: processedDiff[idx].rightNum! },
+        });
+        idx++;
+      } else {
+        const removed: typeof processedDiff = [];
+        const added: typeof processedDiff = [];
+        while (idx < processedDiff.length && processedDiff[idx].type !== "unchanged") {
+          if (processedDiff[idx].type === "removed") {
+            removed.push(processedDiff[idx]);
+          } else if (processedDiff[idx].type === "added") {
+            added.push(processedDiff[idx]);
+          }
+          idx++;
+        }
+        const maxLen = Math.max(removed.length, added.length);
+        for (let j = 0; j < maxLen; j++) {
+          rows.push({
+            type: "split",
+            left: removed[j] ? { type: "removed", text: removed[j].text, lineNo: removed[j].leftNum! } : undefined,
+            right: added[j] ? { type: "added", text: added[j].text, lineNo: added[j].rightNum! } : undefined,
+          });
+        }
+      }
+    }
+
+    // Determine visibility based on CONTEXT around change rows
+    const CONTEXT = 3;
+    const changedIndices = new Set<number>();
+    rows.forEach((row, rIdx) => {
+      if (row.type === "split") {
+        changedIndices.add(rIdx);
+      }
+    });
+
+    const visibleIndices = new Set<number>();
+    for (const ci of changedIndices) {
+      for (let j = Math.max(0, ci - CONTEXT); j <= Math.min(rows.length - 1, ci + CONTEXT); j++) {
+        visibleIndices.add(j);
+      }
+    }
+
+    const splitSegments: Array<{ hidden: true; count: number } | { hidden: false; rows: SplitRow[] }> = [];
+    let rIdx = 0;
+    while (rIdx < rows.length) {
+      if (visibleIndices.has(rIdx)) {
+        const block: SplitRow[] = [];
+        while (rIdx < rows.length && visibleIndices.has(rIdx)) {
+          block.push(rows[rIdx]);
+          rIdx++;
+        }
+        splitSegments.push({ hidden: false, rows: block });
+      } else {
+        let count = 0;
+        while (rIdx < rows.length && !visibleIndices.has(rIdx)) {
+          count++;
+          rIdx++;
+        }
+        splitSegments.push({ hidden: true, count });
+      }
+    }
+
+    return (
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, lineHeight: 1.6, border: "1px solid var(--border)", borderRadius: 4, overflow: "hidden" }}>
+        {splitSegments.map((seg, si) => {
+          if (seg.hidden) {
+            return (
+              <div
+                key={si}
+                style={{
+                  padding: "4px 16px",
+                  color: "var(--text-dim)",
+                  background: "var(--bg-panel)",
+                  fontSize: 11,
+                  borderTop: si > 0 ? "1px solid var(--border)" : "none",
+                  borderBottom: "1px solid var(--border)",
+                  textAlign: "center",
+                  userSelect: "none",
+                }}
+              >
+                ... {seg.count} unchanged lines ...
+              </div>
+            );
+          }
+
+          return (
+            <div key={si}>
+              {seg.rows.map((row, ri) => {
+                const leftBg = row.left
+                  ? row.left.type === "removed"
+                    ? "rgba(240,60,60,0.14)"
+                    : "transparent"
+                  : "var(--bg-panel)";
+                const rightBg = row.right
+                  ? row.right.type === "added"
+                    ? "rgba(0,200,80,0.12)"
+                    : "transparent"
+                  : "var(--bg-panel)";
+
+                const leftPrefix = row.left ? (row.left.type === "removed" ? "-" : " ") : "";
+                const rightPrefix = row.right ? (row.right.type === "added" ? "+" : " ") : "";
+
+                const leftPrefixColor = row.left
+                  ? row.left.type === "removed" ? "#f87171" : "var(--text-dim)"
+                  : "transparent";
+                const rightPrefixColor = row.right
+                  ? row.right.type === "added" ? "#4ade80" : "var(--text-dim)"
+                  : "transparent";
+
+                const leftBorderColor = row.left?.type === "removed" ? "#f87171" : "transparent";
+                const rightBorderColor = row.right?.type === "added" ? "#4ade80" : "transparent";
+
+                return (
+                  <div key={ri} style={{ display: "flex", width: "100%", borderBottom: "1px solid rgba(128,128,128,0.08)" }}>
+                    {/* Left half (Old) */}
+                    <div style={{ flex: 1, width: "50%", display: "flex", background: leftBg, borderRight: "1px solid var(--border)", borderLeft: `3px solid ${leftBorderColor}` }}>
+                      <span
+                        style={{
+                          minWidth: 44,
+                          padding: "0 8px 0 16px",
+                          textAlign: "right",
+                          color: "var(--text-dim)",
+                          userSelect: "none",
+                          fontSize: 11,
+                          borderRight: "1px solid var(--border)",
+                          background: "var(--bg-panel)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {row.left?.lineNo || ""}
+                      </span>
+                      <span
+                        style={{
+                          minWidth: 16,
+                          padding: "0 6px",
+                          color: leftPrefixColor,
+                          userSelect: "none",
+                          flexShrink: 0,
+                          fontWeight: 600,
+                          textAlign: "center",
+                        }}
+                      >
+                        {leftPrefix}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          padding: "0 8px 0 0",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-all",
+                          color: row.left ? "var(--text)" : "var(--text-dim)",
+                          overflowX: "auto",
+                        }}
+                      >
+                        {row.left?.text || "\u00a0"}
+                      </span>
+                    </div>
+
+                    {/* Right half (New) */}
+                    <div style={{ flex: 1, width: "50%", display: "flex", background: rightBg, borderLeft: `3px solid ${rightBorderColor}` }}>
+                      <span
+                        style={{
+                          minWidth: 44,
+                          padding: "0 8px 0 16px",
+                          textAlign: "right",
+                          color: "var(--text-dim)",
+                          userSelect: "none",
+                          fontSize: 11,
+                          borderRight: "1px solid var(--border)",
+                          background: "var(--bg-panel)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {row.right?.lineNo || ""}
+                      </span>
+                      <span
+                        style={{
+                          minWidth: 16,
+                          padding: "0 6px",
+                          color: rightPrefixColor,
+                          userSelect: "none",
+                          flexShrink: 0,
+                          fontWeight: 600,
+                          textAlign: "center",
+                        }}
+                      >
+                        {rightPrefix}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          padding: "0 8px 0 0",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-all",
+                          color: row.right ? "var(--text)" : "var(--text-dim)",
+                          overflowX: "auto",
+                        }}
+                      >
+                        {row.right?.text || "\u00a0"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
 
   // Render with context: show 3 lines around each change, collapse the rest
   const CONTEXT = 3;
