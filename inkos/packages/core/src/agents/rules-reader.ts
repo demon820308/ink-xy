@@ -8,7 +8,23 @@ import { BookConfigSchema } from "../models/book.js";
 
 function resolveBuiltinGenresDir(): string {
   const currentDir = dirname(fileURLToPath(import.meta.url));
+
+  // Check APP_ROOT if specified (e.g. Electron production runtime environment)
+  if (process.env.APP_ROOT) {
+    const appRootCandidates = [
+      join(process.env.APP_ROOT, "inkos/skills/genres"),
+      join(process.env.APP_ROOT, "skills/genres"),
+    ];
+    for (const c of appRootCandidates) {
+      if (existsSync(join(c, "other.md"))) {
+        return c;
+      }
+    }
+  }
+
   const candidates = [
+    join(currentDir, "../../../../../inkos/skills/genres"), // when running inside electron production app.asar
+    join(currentDir, "../../../../../skills/genres"),
     join(currentDir, "../../../../skills/genres"), // when running locally inside packages/core/dist/agents/
     join(currentDir, "../../../skills/genres"),    // when running bundled or published
     join(currentDir, "../../skills/genres"),       // other possible monorepo structures

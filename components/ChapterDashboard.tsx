@@ -397,6 +397,8 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let isSuccess = true;
+      let errorReason = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -412,6 +414,11 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             const chunk = JSON.parse(line);
             if (chunk.type === "stdout" || chunk.type === "stderr") {
               appendLog(chNum, chunk.data || "");
+            } else if (chunk.type === "result") {
+              if (chunk.success === false) {
+                isSuccess = false;
+                errorReason = chunk.error || chunk.stderr || "未知的执行错误";
+              }
             }
           } catch {
             // ignore JSON parse failures of chunks
@@ -424,11 +431,20 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
           const chunk = JSON.parse(buffer);
           if (chunk.type === "stdout" || chunk.type === "stderr") {
             appendLog(chNum, chunk.data || "");
+          } else if (chunk.type === "result") {
+            if (chunk.success === false) {
+              isSuccess = false;
+              errorReason = chunk.error || chunk.stderr || "未知的执行错误";
+            }
           }
         } catch {}
       }
 
-      appendLog(chNum, `\n🎉 执行完成。已成功刷新章节 ${chNum} 的数据结构。`);
+      if (isSuccess) {
+        appendLog(chNum, `\n🎉 执行完成。已成功刷新章节 ${chNum} 的数据结构。`);
+      } else {
+        appendLog(chNum, `\n❌ 执行失败: ${errorReason}`);
+      }
       
       // Auto fold console after success
       setTimeout(() => {
@@ -479,6 +495,8 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let isSuccess = true;
+      let errorReason = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -492,12 +510,35 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             const chunk = JSON.parse(line);
             if (chunk.type === "stdout" || chunk.type === "stderr") {
               appendLog(chNum, chunk.data || "");
+            } else if (chunk.type === "result") {
+              if (chunk.success === false) {
+                isSuccess = false;
+                errorReason = chunk.error || chunk.stderr || "未知的执行错误";
+              }
             }
           } catch {}
         }
       }
 
-      appendLog(chNum, `\n✅ 审核成功！章节 ${chNum} 状态已变更为 [已过审]。`);
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "stdout" || chunk.type === "stderr") {
+            appendLog(chNum, chunk.data || "");
+          } else if (chunk.type === "result") {
+            if (chunk.success === false) {
+              isSuccess = false;
+              errorReason = chunk.error || chunk.stderr || "未知的执行错误";
+            }
+          }
+        } catch {}
+      }
+
+      if (isSuccess) {
+        appendLog(chNum, `\n✅ 审核成功！章节 ${chNum} 状态已变更为 [已过审]。`);
+      } else {
+        appendLog(chNum, `\n❌ 审核提交失败: ${errorReason}`);
+      }
       setTimeout(() => {
         setExpandedConsoles((prev) => {
           const next = new Set(prev);
@@ -559,6 +600,8 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let isSuccess = true;
+      let errorReason = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -572,12 +615,35 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             const chunk = JSON.parse(line);
             if (chunk.type === "stdout" || chunk.type === "stderr") {
               appendLog(chNum, chunk.data || "");
+            } else if (chunk.type === "result") {
+              if (chunk.success === false) {
+                isSuccess = false;
+                errorReason = chunk.error || chunk.stderr || "未知的执行错误";
+              }
             }
           } catch {}
         }
       }
 
-      appendLog(chNum, `\n✅ 驳回且状态回滚完成！`);
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.type === "stdout" || chunk.type === "stderr") {
+            appendLog(chNum, chunk.data || "");
+          } else if (chunk.type === "result") {
+            if (chunk.success === false) {
+              isSuccess = false;
+              errorReason = chunk.error || chunk.stderr || "未知的执行错误";
+            }
+          }
+        } catch {}
+      }
+
+      if (isSuccess) {
+        appendLog(chNum, `\n✅ 驳回且状态回滚完成！`);
+      } else {
+        appendLog(chNum, `\n❌ 驳回执行失败: ${errorReason}`);
+      }
       
       // Close tabs for rolled back files
       window.dispatchEvent(new CustomEvent("refresh-explorer"));
@@ -1920,7 +1986,13 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                 (() => {
                   const hasPlanFile = chapters.find(c => c.number === planningProgressNum)?.hasPlan || (nextChapter?.number === planningProgressNum && nextChapter.hasPlan);
                   const logStr = (logs[planningProgressNum] || []).join("");
-                  if (logStr.includes("执行失败") || logStr.includes("Error") || logStr.includes("❌")) {
+                   if (
+                    logStr.includes("执行失败") ||
+                    logStr.includes("Error") ||
+                    logStr.includes("error\":") ||
+                    logStr.includes("success\": false") ||
+                    logStr.includes("❌")
+                  ) {
                     return (
                       <span style={{ color: "#ef4444" }}>❌ 规划执行失败，请检查下方日志错误</span>
                     );
