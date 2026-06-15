@@ -380,7 +380,7 @@ export const EmotionalArcVisualizer: React.FC<EmotionalArcVisualizerProps> = ({ 
                     }}
                   >
                     <td style={{ padding: "8px 12px", fontWeight: 600, color: charColors[row.character], whiteSpace: "nowrap" }}>{row.character}</td>
-                    <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>第 {row.chapter} 章</td>
+                    <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>{row.chapter}</td>
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>{row.emotion}</td>
                     <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", fontWeight: 600, whiteSpace: "nowrap" }}>{row.intensity} / 10</td>
                     <td style={{ padding: "8px 12px", color: "var(--text-muted)", minWidth: "150px" }}>{row.trigger}</td>
