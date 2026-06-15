@@ -6,9 +6,6 @@ import os from "os";
 process.env.PI_CODING_AGENT_DIR = path.join(os.homedir(), ".ink", "agent");
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
