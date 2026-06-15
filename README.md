@@ -81,23 +81,23 @@
 
 ```mermaid
 graph TD
-    subgraph Browser (Electron / Next.js SPA)
+    subgraph Browser ["Browser (Electron / Next.js SPA)"]
         A[Zen Markdown Editor] <-->|自动保存 / 字数统计| B[Frontend State]
         C[Sidebar / Project Explorer] -->|选择工作区| B
         D[AI Co-writers Gems Panel] <-->|SSE 实时流 / 对话分支树| B
     end
 
-    subgraph Next.js In-Process Server (Port 30142)
+    subgraph NextJS ["Next.js In-Process Server (Port 30142)"]
         B <-->|1. 接口桥接 POST /api/inkos| E[API Router]
         B <-->|3. SSE 对话 /api/agent/[id]| F[Agent RPC Manager]
         B <-->|读写目录 /api/files| G[File System Bridge]
     end
 
-    subgraph Local Engine & Workspace
+    subgraph LocalEngine ["Local Engine & Workspace"]
         E <-->|2. 执行 CLI 进程| H[runInkos - CLI Bundle Wrapper]
         F <-->|4. 扫描真理设定| I[compileLoreCards]
         H <-->|初始化 / 审计 / 蓝图生成| J[(小说本地工作区 CWD)]
-        I <-->|提取 角色设定/ & 世界观设定/| J
+        I <-->|提取 角色设定/ 和 世界观设定/| J
         G <-->|读写草稿章节| J
     end
 
