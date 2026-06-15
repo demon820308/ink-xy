@@ -1,4 +1,5 @@
 import { BaseAgent } from "./base.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 import type { ArchitectOutput } from "./architect.js";
 
 export interface FoundationReviewResult {
@@ -97,35 +98,14 @@ export class FoundationReviewerAgent extends BaseAgent {
     canonBlock: string,
     styleBlock: string,
   ): string {
-    return `你是一位资深小说编辑，正在审核一本新书的基础设定（世界观 + 大纲 + 规则）。
+    const loadedTemplate = PromptLoader.loadRequiredPrompt("foundation_reviewer_system_zh.md");
 
-你需要从以下维度逐项打分（0-100），并给出具体意见：
+    const dimsText = dimensions.map((dim, i) => `${i + 1}. ${dim}`).join("\n");
 
-${dimensions.map((dim, i) => `${i + 1}. ${dim}`).join("\n")}
-
-## 评分标准
-- 80+ 通过，可以开始写作
-- 60-79 有明显问题，需要修改
-- <60 方向性错误，需要重新设计
-
-## 输出格式（严格遵守）
-=== DIMENSION: 1 ===
-分数：{0-100}
-意见：{具体反馈}
-
-=== DIMENSION: 2 ===
-分数：{0-100}
-意见：{具体反馈}
-
-...（每个维度一个 block）
-
-=== OVERALL ===
-总分：{加权平均}
-通过：{是/否}
-总评：{1-2段总结，指出最大的问题和最值得保留的优点}
-${canonBlock}${styleBlock}
-
-审核时要严格。不要因为"还行"就给高分。80分意味着"可以直接开写，不需要改"。`;
+    return loadedTemplate
+      .replaceAll("{{dimensions}}", dimsText)
+      .replaceAll("{{canonBlock}}", canonBlock)
+      .replaceAll("{{styleBlock}}", styleBlock);
   }
 
   private buildEnglishReviewPrompt(
@@ -133,35 +113,14 @@ ${canonBlock}${styleBlock}
     canonBlock: string,
     styleBlock: string,
   ): string {
-    return `You are a senior fiction editor reviewing a new book's foundation (worldbuilding + outline + rules).
+    const loadedTemplate = PromptLoader.loadRequiredPrompt("foundation_reviewer_system_en.md");
 
-Score each dimension (0-100) with specific feedback:
+    const dimsText = dimensions.map((dim, i) => `${i + 1}. ${dim}`).join("\n");
 
-${dimensions.map((dim, i) => `${i + 1}. ${dim}`).join("\n")}
-
-## Scoring
-- 80+ Pass — ready to write
-- 60-79 Needs revision
-- <60 Fundamental direction problem
-
-## Output format (strict)
-=== DIMENSION: 1 ===
-Score: {0-100}
-Feedback: {specific feedback}
-
-=== DIMENSION: 2 ===
-Score: {0-100}
-Feedback: {specific feedback}
-
-...
-
-=== OVERALL ===
-Total: {weighted average}
-Passed: {yes/no}
-Summary: {1-2 paragraphs — biggest problem and best quality}
-${canonBlock}${styleBlock}
-
-Be strict. 80 means "ready to write without changes."`;
+    return loadedTemplate
+      .replaceAll("{{dimensions}}", dimsText)
+      .replaceAll("{{canonBlock}}", canonBlock)
+      .replaceAll("{{styleBlock}}", styleBlock);
   }
 
   private buildFoundationExcerpt(foundation: ArchitectOutput, language: "zh" | "en"): string {

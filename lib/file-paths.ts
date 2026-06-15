@@ -21,8 +21,18 @@ export function getFileName(filePath: string): string {
 export function getRelativeFilePath(filePath: string, cwd?: string): string {
   if (!cwd) return filePath;
 
-  const normalizedFile = normalizeFilePathSlashes(filePath);
-  const normalizedCwd = normalizeFilePathSlashes(cwd).replace(/\/$/, "");
+  let normalizedFile = normalizeFilePathSlashes(filePath);
+  let normalizedCwd = normalizeFilePathSlashes(cwd).replace(/\/$/, "");
+
+  // Normalize drive letter casing for Windows paths
+  const driveLetterRegex = /^[a-zA-Z]:\//;
+  if (driveLetterRegex.test(normalizedFile) && driveLetterRegex.test(normalizedCwd)) {
+    if (normalizedFile[0].toLowerCase() === normalizedCwd[0].toLowerCase()) {
+      normalizedFile = normalizedFile[0].toLowerCase() + normalizedFile.slice(1);
+      normalizedCwd = normalizedCwd[0].toLowerCase() + normalizedCwd.slice(1);
+    }
+  }
+
   if (normalizedFile.startsWith(normalizedCwd + "/")) {
     return normalizedFile.slice(normalizedCwd.length + 1);
   }

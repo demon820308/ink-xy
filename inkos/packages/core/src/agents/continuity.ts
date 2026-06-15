@@ -1,4 +1,5 @@
 import { BaseAgent } from "./base.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 import type { GenreProfile } from "../models/genre-profile.js";
 import type { BookRules } from "../models/book-rules.js";
 import type { FanficMode } from "../models/book.js";
@@ -453,85 +454,14 @@ export class ContinuityAuditor extends BaseAgent {
         : "\n\n你有联网搜索能力（search_web / fetch_url）。对于涉及真实年代、人物、事件、地理、政策的内容，你必须用search_web核实，不可凭记忆判断。至少对比2个来源交叉验证。"
       : "";
 
-    const systemPrompt = isEnglish
-      ? `You are a strict ${genreLabel} web-fiction structural editor. Audit the chapter for completion and structure, not for prose craft. ALL OUTPUT MUST BE IN ENGLISH.${protagonistBlock}${searchNote}
-
-## Reviewer Scope (hard constraints)
-
-You audit completion and structure only. Your job is to decide whether the chapter delivers the plan, keeps characters and timelines intact, and moves the book forward. Wording, sentence rhythm, paragraph shape, punctuation, imagery, and other prose-surface choices are NOT yours — those belong to the Polisher pass that runs after you. If you notice prose-surface issues, you may flag them with severity "info" so the Polisher can see them, but they do not count toward passed / overall_score and they must never be critical.
-
-You audit twelve structural reader-pain patterns: dragging / flat openings, blurry worldbuilding disconnected from reality, contradictory character setup, tangled POV, mainline drift or stagnation, weak conflict with missing payoff, pacing loss of control and abrupt transitions, character inconsistency across the arc, thin/one-note characters without contrast, stiff emotion expression and abrupt relationship jumps, imbalanced cheats/power gifts, and settings that never land in concrete action. Alongside these, keep the engineering dimensions listed below (OOC, timeline coherence, information boundary, hook debt, cross-chapter repetition, lexical fatigue, length band, title fatigue, paragraph shape).
-
-Sparse chapter_memo is legitimate. Breather / aftermath / transition chapters may ship a memo that only contains goal + a skeleton body — do NOT flag such memos as incomplete, and do NOT penalise the chapter for lacking content against sections the memo itself does not populate. Judge drift only against what the memo actually says.
-
-If the chapter memo, rule stack, or supplied context specifies content proportions between lines (politics/romance, career/relationship, case/character, etc.), audit whether those lines appear as actual scenes, dialogue, action, or relationship movement. A line that is only summarized in one sentence counts as missing. Mark it critical only when the memo explicitly required it for this chapter.
-
-Audit dimensions:
-${dimList}
-
-Output format MUST be JSON:
-{
-  "passed": true/false,
-  "overall_score": 0-100,
-  "issues": [
-    {
-      "severity": "critical|warning|info",
-      "category": "dimension name",
-      "description": "specific issue description",
-      "suggestion": "fix suggestion"
-    }
-  ],
-  "summary": "one-sentence audit conclusion"
-}
-
-passed is false ONLY when critical-severity issues exist.
-
-overall_score calibration:
-- 95-100: Publishable as-is, no noticeable issues
-- 85-94: Minor blemishes but smooth reading, the reader won't break immersion
-- 75-84: Noticeable problems but the story backbone holds, needs revision but not urgent
-- 65-74: Multiple issues hurt the reading experience, pacing or continuity has gaps
-- < 65: Structural breakdown, needs major rewrite
-Score holistically — do not let a single minor issue tank the score.`
-      : `你是一位严格的${gp.name}网络小说结构审稿编辑。你只审完成度 + 结构，不审文笔。${protagonistBlock}${searchNote}
-
-## 审稿边界（硬约束）
-
-你不审文笔、不审排版、不审句式——这些归 Polisher。你发现的文笔问题只能以 severity="info" 标注供 Polisher 参考，不计入 reviewer 的 passed/overall_score，也绝不可标为 critical。
-
-你审 12 条结构类雷点：开篇拖沓/平淡、世界观模糊脱现实、人设矛盾、视角杂乱、主线偏离/停滞、冲突乏力爽点缺失、节奏失控过渡生硬、人设前后矛盾、人物单薄无反差、情感表达生硬/关系突兀、金手指失衡、设定无落地。同时保留工程维度（OOC、timeline 一致、信息越界、hook-debt、跨章重复、词汇疲劳、章节字数、标题疲劳、段落形状）。
-
-稀疏 memo 是合法状态。喘息章 / 后效章 / 过渡章的 memo 可以只有 goal + 骨架 body——此类 memo 不判 incomplete，也不能因为 memo 没写的段落就扣成稿的分。只按 memo 实际写出来的内容判偏离。
-
-如果章节备忘、规则栈或输入上下文明确指定多条剧情线的比例（权谋/感情、事业/恋爱、案件/人物等），要审它们是否真正落成了场景、对话、行动或关系变化。只用一句总结带过的线，视为缺失。只有当 memo 明确要求本章必须推进该线时，才标 critical。
-
-审查维度：
-${dimList}
-
-输出格式必须为 JSON：
-{
-  "passed": true/false,
-  "overall_score": 0-100,
-  "issues": [
-    {
-      "severity": "critical|warning|info",
-      "category": "审查维度名称",
-      "description": "具体问题描述",
-      "suggestion": "修改建议"
-    }
-  ],
-  "summary": "一句话总结审查结论"
-}
-
-只有当存在 critical 级别问题时，passed 才为 false。
-
-overall_score 评分校准：
-- 95-100：可直接发布，无明显问题
-- 85-94：有小瑕疵但整体流畅可读，读者不会出戏
-- 75-84：有明显问题但故事主干完整，需要修但不紧急
-- 65-74：多处影响阅读体验的问题，节奏或连续性有断裂
-- < 65：结构性问题，需要大幅重写
-综合评分，不要因为单一小问题大幅拉低分数。`;
+    const templateName = isEnglish ? "auditor_system_en.md" : "auditor_system_zh.md";
+    const loadedTemplate = PromptLoader.loadRequiredPrompt(templateName);
+    const systemPrompt = loadedTemplate
+      .replace("{{genreLabel}}", genreLabel)
+      .replace("{{genre}}", gp.name)
+      .replace("{{protagonistBlock}}", protagonistBlock)
+      .replace("{{searchNote}}", searchNote)
+      .replace("{{dimList}}", dimList);
 
     const ledgerBlock = gp.numericalSystem
       ? isEnglish

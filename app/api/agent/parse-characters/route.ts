@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     console.log("[parse-characters] Resolved agentDir:", agentDir);
 
     // 1. Resolve default provider and model from settings
-    const settings = SettingsManager.create(process.cwd(), agentDir);
+    const settings = SettingsManager.create(process.env.APP_ROOT || process.cwd(), agentDir);
     let provider = settings.getDefaultProvider() || "";
     let modelId = settings.getDefaultModel() || "";
     console.log("[parse-characters] Default provider from settings:", provider);

@@ -19,8 +19,8 @@ import {
 import { parseMemo, PlannerParseError } from "../utils/chapter-memo-parser.js";
 import {
   buildPlannerUserMessage,
-  getPlannerMemoSystemPrompt,
 } from "./planner-prompts.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 import {
   composeCurrentArcProse,
   extractCollaboratorRows,
@@ -235,7 +235,8 @@ export class PlannerAgent extends BaseAgent {
       language,
     });
 
-    const systemPrompt = getPlannerMemoSystemPrompt(language);
+    const systemPromptFilename = language === "en" ? "planner_system_en.md" : "planner_system_zh.md";
+    const systemPrompt = PromptLoader.loadRequiredPrompt(systemPromptFilename);
 
     let currentUserMessage = userMessage;
     let lastError: PlannerParseError | undefined;

@@ -37,31 +37,15 @@
 
 ## 🚀 核心闪光点 (Feature Highlights)
 
-### 1. 🤖 深度整合 InkOS 多智能体写作引擎
-内置本地多智能体小说辅助开发引擎 `InkOS`。前端通过极简的 **REST API 桥接层** 调度 `runInkos` 系统 Node 进程包装器，支持在后台快速、异步执行 `init`、`audit`、`plan`、`compose` 等多智能体分析任务。
+### 1. 🤖 深度整合 InkOS 多智能体写作引擎 (Prompt 外置化重构)
+* **后端 API 进程桥接**：内置本地多智能体小说辅助开发引擎 `InkOS`。前端通过极简的 **REST API 桥接层** 调度 `runInkos` 系统 Node 进程包装器，支持在后台快速、异步执行 `init`、`audit`、`plan`、`compose` 等多智能体分析任务。
+* **提示词外置化 (Skills Prompt Externalization)**：深度内核重构，彻底移除了原本硬编码在核心 Agent 源码中的所有系统/用户提示词，将其全部外置至 `inkos/skills/genres/prompts/` 目录下的物理 Markdown 文件中。通过 `PromptLoader` 动态读取并安全插值（如 `{{genre}}`、`{{dimList}}`），实现了提示词编写与程序代码的 100% 解耦，赋予系统极高的灵活性与免编译热调优能力。
 
-### 2. 📚 15 类中英文小说题材 (Bilingual Genres Support)
-系统预置了 15 类题材，分为**中文网文题材**与**英文原生题材**，不仅提供写作大纲指引，更是智能体进行“数值核对”、“战力分析”与“时代研究”的引擎开关：
-
-| 题材 ID | 题材名称 | 默认语言 | 章节类型 (chapterTypes) | 数值系统 (numericalSystem) | 战力等级 (powerScaling) | 时代背景研究 (eraResearch) |
-|---|---|---|---|:---:|:---:|:---:|
-| `xuanhuan` | **玄幻奇幻** (Xuanhuan) | `zh` | 战斗章, 布局章, 过渡章, 回收章 | ✅ | ✅ | ❌ |
-| `xianxia` | **仙侠修真** (Xianxia) | `zh` | 战斗章, 悟道章, 布局章, 过渡章, 回收章 | ✅ | ✅ | ❌ |
-| `urban` | **都市异能** (Urban) | `zh` | 商战章, 社交章, 布局章, 过渡章, 回收章 | ❌ | ❌ | ✅ |
-| `horror` | **悬疑恐怖** (Horror) | `zh` | 氛围章, 事件章, 揭示章, 过渡章, 回收章 | ❌ | ❌ | ❌ |
-| `other` | **其它通用** (Other) | `zh` | 推进章, 布局章, 过渡章, 回收章 | ❌ | ❌ | ❌ |
-| `litrpg` | **数据无限流/系统流** (LitRPG) | `en` | Progression, Setup, Transition, Payoff, Combat | ✅ | ✅ | ❌ |
-| `progression` | **升级流奇幻** (Progression Fantasy) | `en` | Training, Breakthrough, Setup, Transition, Payoff | ❌ | ✅ | ❌ |
-| `cozy` | **温馨奇幻** (Cozy Fantasy) | `en` | Slice-of-Life, Community, Setup, Transition, Payoff | ❌ | ❌ | ❌ |
-| `cultivation` | **英文修真** (English Cultivation) | `en` | Training, Breakthrough, Combat, Setup, Transition, Payoff | ❌ | ✅ | ❌ |
-| `dungeon-core` | **地下城核心流** (Dungeon Core) | `en` | Strategy, Adventurer POV, Setup, Transition, Payoff | ✅ | ❌ | ❌ |
-| `isekai` | **异世界穿梭** (Isekai / Portal Fantasy) | `en` | Exploration, Adaptation, Setup, Transition, Payoff, Combat | ❌ | ✅ | ❌ |
-| `romantasy` | **浪漫奇幻** (Romantasy) | `en` | Romance, Action, Setup, Transition, Payoff | ❌ | ❌ | ❌ |
-| `sci-fi` | **科学幻想** (Science Fiction) | `en` | Exploration, Combat, Setup, Transition, Payoff | ❌ | ❌ | ✅ |
-| `system-apocalypse` | **系统废土流** (System Apocalypse) | `en` | Survival, Combat, Setup, Transition, Payoff | ✅ | ✅ | ❌ |
-| `tower-climber` | **爬塔闯关流** (Tower Climbing) | `en` | Floor Challenge, Progression, Setup, Transition, Payoff | ❌ | ✅ | ❌ |
-
-此外，系统支持 **同人创作 (`fanfic`)** 专属初始化流程，支持 `canon` (正典延续)、`au` (平行宇宙)、`ooc` (角色偏离)、`cp` (角色配对) 四种独立模式，可自动解析原著素材文本。
+### 2. 🧩 动态题材系统与可视化题材管理 (Dynamic Genres & Genre Manager)
+* **从硬编码演进为动态 Markdown 配置**：小说题材彻底告别代码硬编码，升级为完全动态的属性配置文件。内置题材（包含玄幻奇幻、仙侠修真、都市异能、科幻、LitRPG、异世界穿梭等 25 种题材）与自定义题材统一存储为 `inkos/skills/genres/*.md` 物理文件，支持在程序运行时动态扫描读取。
+* **项目级题材覆盖与自定义**：作者可以在具体小说项目的根目录下创建 `genres/` 目录并建立专属的题材规则 Markdown，实现对系统预置题材的继承、重写或零编译新增。
+* **图形化【题材管理】控制台**：顶栏新增“题材管理”图标按钮，支持免重启热添加、编辑或删除题材，支持中/英双语。作者可以自由设置题材的数值系统、战力等级及时代背景研究开关，自定义节奏规则、读者爽点类型，并能从 **37 种底层审计维度** 中按需勾选启用相应的防崩检查项。
+* **同人创作支持**：支持 **同人创作 (`fanfic`)** 专属初始化流程，支持 `canon` (正典延续)、`au` (平行宇宙)、`ooc` (角色偏离)、`cp` (角色配对) 四种独立模式，可自动解析原著素材文本。
 
 ### 3. ✍️ 全局与局部协同写作控制带 (Bilingual Writing & Control Toolbelt)
 * **全局智能续写/草稿 split-button**：页面顶栏右侧新增了橙色双模式写作按钮，会自动根据您书籍的最新进度动态探测并展示为 `智能续写第N+1章` / `极速草稿第N+1章`。
@@ -74,6 +58,8 @@
 * **可视化伏笔看板 (Hook Dashboard)**：同步设定后，右侧面板以彩色卡片形式直观展示待兑现 (pending)、已兑现 (resolved) 和已过期 (expired) 的剧情伏笔。
 * **设定事实编辑与删除**：对账生成的设定事实条目支持**直接单击修改**，鼠标悬停时提供一键删除 (Delete) 操作，深度定制你的 `story/` 真相账本。
 * **时光机预览扩展**：时光机滑块上限提升至 `maxChapter + 1`，支持全局显示开关，帮助作家全景透视后续剧情的逻辑走向。
+* **人设与书籍可视化表单编辑器 (Form Editors)**：打开 `story/roles/*.md` 人设卡或 `book.json` 配置文件并切换至【可视化视图】，即可在表单中直观配置角色属性与书籍基本参数，系统自动进行数据转换和反序列化写入，完全规避手动编辑 YAML/Markdown/JSON 的语法损坏风险。
+* **角色情感曲线可视化 (Emotional Arc Visualizer)**：在打开 `emotional_arcs.md` 情感账本并开启【可视化视图】时，系统会自动将情绪表格转化为精美的交互式 SVG 折线图看板，X 轴为章节，Y 轴为情绪强度（1-10），并支持单个角色过滤聚焦，帮助作家轻松掌控多主角心路起伏。
 
 ### 5. 🛡️ 真理系统“设定上下文防线” (Truth System Context Injector)
 * **动态背景设定提取**：在会话右侧与 AI Gems 写作姬交流时，系统会在后台**静默、深度扫描**当前工作区中 `角色设定/` 和 `世界观设定/` 文件夹下的所有人物卡片与世界背景 Markdown 文件。
@@ -84,6 +70,10 @@
 * **👤 角色塑造师**：包装人物设定，打磨对话口吻，让配角同样立体。
 * **✍️ 细节扩写师**：划词扩写，把动作、情绪、环境描写打磨得极具画面美感。
 * **🔍 纠错校对师**：自动过滤章节中的错别字、病句与逻辑语病。
+
+### 7. 🛡️ AI 质量审计与检测指令配置 (Audit Prompt Config)
+* **零编译图形化自定义控制台**：顶栏新增“AI 审计与检测指令”盾牌按钮，无需重新构建、无需重启客户端，即可在图形化界面里直接实时编辑、修改、保存或一键恢复默认的底层 Agent 工作提示词（涵盖质量审计指令、AI味检测指令及状态真理校验指令，支持中/英双语）。
+* **安全插值变量保护**：保存时会自动校验必要的大括号插值占位符（如 `{{genre}}`、`{{dimList}}`、`{{content}}`、`{{langInstruction}}` 等），对缺少关键参数的自定义提交进行弹窗核对警告，保障底层多智能体分析引擎在加载自定义提示词时正常解析。
 
 ---
 

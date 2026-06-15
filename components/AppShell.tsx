@@ -10,6 +10,7 @@ import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { GenresConfig } from "./GenresConfig";
 import { StyleGuidesConfig } from "./StyleGuidesConfig";
+import { AuditPromptConfig } from "./AuditPromptConfig";
 import { ExporterPanel } from "./ExporterPanel";
 import { PlotHookVisualizerWrapper } from "./PlotHookVisualizer";
 import { BranchNavigator } from "./BranchNavigator";
@@ -38,6 +39,7 @@ export function AppShell() {
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [genresConfigOpen, setGenresConfigOpen] = useState(false);
   const [styleGuidesConfigOpen, setStyleGuidesConfigOpen] = useState(false);
+  const [auditPromptConfigOpen, setAuditPromptConfigOpen] = useState(false);
   const [exporterPanelOpen, setExporterPanelOpen] = useState(false);
   const [genresRefreshKey, setGenresRefreshKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1387,6 +1389,26 @@ export function AppShell() {
       </div>
     </div>
 
+    {/* AI Audit & Detection Prompts toggle — placed left of Style Guides Config button */}
+    <button
+      onClick={() => setAuditPromptConfigOpen(true)}
+      title="AI 审计与检测指令"
+      style={{
+        position: "fixed", top: 0, right: 252, zIndex: 300,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, padding: 0,
+        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+        color: "var(--text-muted)",
+        cursor: "pointer", transition: "color 0.12s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    </button>
+
     {/* Style Guides Config toggle — placed left of Genres Config button */}
     <button
       onClick={() => setStyleGuidesConfigOpen(true)}
@@ -1552,6 +1574,9 @@ export function AppShell() {
         onClose={() => setGenresConfigOpen(false)}
         onGenresChanged={() => setGenresRefreshKey((k) => k + 1)}
       />
+    )}
+    {auditPromptConfigOpen && (
+      <AuditPromptConfig onClose={() => setAuditPromptConfigOpen(false)} />
     )}
     {styleGuidesConfigOpen && activeBookId && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
       <StyleGuidesConfig

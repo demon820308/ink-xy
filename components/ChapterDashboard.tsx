@@ -289,6 +289,36 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
     }
   }, [cwd, bookId, onOpenFile]);
 
+  const handleOpenSettings = useCallback(async () => {
+    const p = joinFilePath(cwd, `books/${bookId}/book.json`);
+    const exists = await checkFileExists(p);
+    if (exists) {
+      onOpenFile(p, "book.json");
+    } else {
+      alert("未找到书籍配置文件。");
+    }
+  }, [cwd, bookId, onOpenFile]);
+
+  const handleOpenEmotionalArcs = useCallback(async () => {
+    const p = joinFilePath(cwd, `books/${bookId}/story/emotional_arcs.md`);
+    const exists = await checkFileExists(p);
+    if (exists) {
+      onOpenFile(p, "emotional_arcs.md");
+    } else {
+      alert("未找到情感弧线文件。如果尚未同步设定或当前章节无情感互动，该文件可能尚未生成。");
+    }
+  }, [cwd, bookId, onOpenFile]);
+
+  const handleOpenCurrentState = useCallback(async () => {
+    const p = joinFilePath(cwd, `books/${bookId}/story/current_state.md`);
+    const exists = await checkFileExists(p);
+    if (exists) {
+      onOpenFile(p, "current_state.md");
+    } else {
+      alert("未找到当前状态卡文件（请确认书籍 story 目录已初始化且已同步过设定）。");
+    }
+  }, [cwd, bookId, onOpenFile]);
+
 
   // Auto scroll console logs to bottom
   const appendLog = useCallback((chNum: number, text: string) => {
@@ -636,7 +666,35 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       >
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>📊</span> 《{bookId}》 章节管控中心
+            <span>📊</span>
+            <span>《{bookId}》 章节管控中心</span>
+            <button
+              onClick={handleOpenSettings}
+              title="书籍核心参数"
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 16,
+                padding: "2px 6px",
+                borderRadius: 4,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+                color: "var(--text-muted)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--text)";
+                e.currentTarget.style.background = "var(--bg-hover)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--text-muted)";
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              ⚙️
+            </button>
           </h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -725,6 +783,35 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             }}
           >
             <span>🔗</span> 伏笔
+          </button>
+
+          {/* 现状 */}
+          <button
+            onClick={handleOpenCurrentState}
+            style={{
+              padding: "6px 12px",
+              background: "rgba(20, 184, 166, 0.08)",
+              border: "1px solid rgba(20, 184, 166, 0.3)",
+              borderRadius: 6,
+              color: "#2dd4bf",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(20, 184, 166, 0.15)";
+              e.currentTarget.style.borderColor = "#2dd4bf";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(20, 184, 166, 0.08)";
+              e.currentTarget.style.borderColor = "rgba(20, 184, 166, 0.3)";
+            }}
+          >
+            <span>📍</span> 现状
           </button>
 
 
@@ -838,6 +925,38 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                   >
                     <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEmotionalArcs();
+                    }}
+                    title="打开情感弧线分析图"
+                    style={{
+                      marginLeft: 8,
+                      padding: "2px 8px",
+                      background: "rgba(16, 185, 129, 0.08)",
+                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                      borderRadius: 4,
+                      color: "#10b981",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(16, 185, 129, 0.15)";
+                      e.currentTarget.style.borderColor = "#10b981";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(16, 185, 129, 0.08)";
+                      e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.3)";
+                    }}
+                  >
+                    📊 情感走向
+                  </button>
                 </div>
                 <div style={{ 
                   display: "flex", 

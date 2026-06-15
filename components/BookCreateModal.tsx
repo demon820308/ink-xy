@@ -620,15 +620,22 @@ export default function BookCreateModal({
                   }}
                 >
                   {(() => {
+                    const CHINESE_GENRE_IDS = new Set([
+                      "xuanhuan", "xianxia", "urban", "horror"
+                    ]);
+                    const ENGLISH_GENRE_IDS = new Set([
+                      "litrpg", "progression", "cozy", "cultivation", "dungeon-core",
+                      "isekai", "romantasy", "sci-fi", "system-apocalypse", "tower-climber"
+                    ]);
                     const BUILTIN_GENRE_IDS = new Set([
-                      "xuanhuan", "xianxia", "urban", "horror", "other", "litrpg",
-                      "progression", "cozy", "cultivation", "dungeon-core", "isekai",
-                      "romantasy", "sci-fi", "system-apocalypse", "tower-climber"
+                      ...CHINESE_GENRE_IDS,
+                      ...ENGLISH_GENRE_IDS,
+                      "other"
                     ]);
                     const hasDynamic = dynamicGenres && dynamicGenres.length > 0;
                     if (hasDynamic) {
-                      const zhGenres = dynamicGenres.filter(g => g.profile?.language === "zh" && BUILTIN_GENRE_IDS.has(g.id) && g.id !== "other");
-                      const enGenres = dynamicGenres.filter(g => g.profile?.language === "en" && BUILTIN_GENRE_IDS.has(g.id));
+                      const zhGenres = dynamicGenres.filter(g => CHINESE_GENRE_IDS.has(g.id));
+                      const enGenres = dynamicGenres.filter(g => ENGLISH_GENRE_IDS.has(g.id));
                       const customGenres = dynamicGenres.filter(g => !BUILTIN_GENRE_IDS.has(g.id) && g.id !== "fanfic");
                       const otherGenreObj = dynamicGenres.find(g => g.id === "other");
 

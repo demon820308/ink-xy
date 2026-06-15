@@ -1,6 +1,7 @@
 import type { BookConfig } from "../models/book.js";
 import type { GenreProfile } from "../models/genre-profile.js";
 import type { BookRules } from "../models/book-rules.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 
 export function buildSettlerSystemPrompt(
   book: BookConfig,
@@ -10,12 +11,30 @@ export function buildSettlerSystemPrompt(
 ): string {
   const resolvedLang = language ?? genreProfile.language;
   const isEnglish = resolvedLang === "en";
-  const numericalBlock = genreProfile.numericalSystem
-    ? `\n- 本题材有数值/资源体系，你必须在 UPDATED_LEDGER 中追踪正文中出现的所有资源变动
-- 数值验算铁律：期初 + 增量 = 期末，三项必须可验算`
-    : `\n- 本题材无数值系统，UPDATED_LEDGER 留空`;
 
-  const hookRules = `
+  const filename = isEnglish ? "settler_system_en.md" : "settler_system_zh.md";
+  const loadedTemplate = PromptLoader.loadRequiredPrompt(filename);
+
+  const numericalBlock = genreProfile.numericalSystem
+    ? (isEnglish
+      ? `\n- This genre tracks numerical/resources systems; UPDATED_LEDGER must capture every resource change shown in the chapter.\n- Numerical verification law: beginning + increment = ending. These three values must be consistent.`
+      : `\n- 本题材有数值/资源体系，你必须在 UPDATED_LEDGER 中追踪正文中出现的所有资源变动\n- 数值验算铁律：期初 + 增量 = 期末，三项必须可验算`)
+    : (isEnglish
+      ? `\n- This genre has no numerical system; leave UPDATED_LEDGER empty.`
+      : `\n- 本题材无数值系统，UPDATED_LEDGER 留空`);
+
+  const hookRules = isEnglish ? `
+## Hook Tracking Rules (Strictly Enforced)
+
+- New hooks: Only add a new hook_id when an unresolved question/suspense arises in the text that will persist into subsequent chapters and has a specific payoff direction. Do not open a new hook for restating, rephrasing, or abstractly summarizing an old hook.
+- Mentioned hooks: If an existing hook is mentioned in this chapter, but no new information, evidence, relationship shift, risk escalation, or scope narrowing occurs → place it in the mention array, do not update the last advanced chapter.
+- Advanced hooks: If an existing hook has new facts, evidence, relationship shifts, risk escalations, or scope narrowings in this chapter → **must** update the "lastAdvancedChapter" to the current chapter number, and update the status and notes.
+- Resolved hooks: If a hook is explicitly revealed, resolved, or no longer stands in this chapter → change status to "resolved", note the resolution method.
+- Deferred hooks: Mark as "deferred" only when the text explicitly shows that the hook is actively put aside, backgrounded, or delayed; do not defer mechanically just because "several chapters have passed".
+- Brand-new unresolved thread: Do not fabricate a new hookId directly. Put candidate hooks into newHookCandidates, and the system will decide whether it maps to an old hook, becomes a true new hook, or gets rejected as a restatement.
+- payoffTiming uses narrative pacing, not hard chapter numbers: only immediate / near-term / mid-arc / slow-burn / endgame are permitted.
+- **Iron Law**: Do not treat "mentioning again", "rephrasing/restating", or "abstract review" as advancement. Update the last advanced chapter ONLY when the state actually changes. Otherwise, place it in the mention array.`
+  : `
 ## 伏笔追踪规则（严格执行）
 
 - 新伏笔：只有当正文中出现一个会延续到后续章节、且有具体回收方向的未解问题时，才新增 hook_id。不要为旧 hook 的换说法、重述、抽象总结再开新 hook
@@ -28,67 +47,103 @@ export function buildSettlerSystemPrompt(
 - **铁律**：不要把“再次提到”“换个说法重述”“抽象复盘”当成推进。只有状态真的变了，才更新最近推进。只是出现过的旧 hook，放进 mention 数组。`;
 
   const fullCastBlock = bookRules?.enableFullCastTracking
-    ? `\n## 全员追踪\nPOST_SETTLEMENT 必须额外包含：本章出场角色清单、角色间关系变动、未出场但被提及的角色。`
+    ? (isEnglish
+      ? `\n## Full Cast Tracking\nPOST_SETTLEMENT must additionally contain: a list of characters appearing in this chapter, relationship changes, and characters mentioned but not appearing.`
+      : `\n## 全员追踪\nPOST_SETTLEMENT 必须额外包含：本章出场角色清单、角色间关系变动、未出场但被提及的角色。`)
     : "";
 
   const langPrefix = isEnglish
     ? `【LANGUAGE OVERRIDE】ALL output (state card, hooks, summaries, subplots, emotional arcs, character matrix) MUST be in English. The === TAG === markers remain unchanged.\n\n`
     : "";
 
-  return `${langPrefix}你是状态追踪分析师。给定新章节正文和当前 truth 文件，你的任务是产出更新后的 truth 文件。
+  const outputFormat = buildSettlerOutputFormat(genreProfile, isEnglish);
 
-## 工作模式
-
-你不是在写作。你的任务是：
-1. 仔细阅读正文，提取所有状态变化
-2. 基于"当前追踪文件"做增量更新
-3. 严格按照 === TAG === 格式输出
-
-## 分析维度
-
-从正文中提取以下信息：
-- 角色出场、退场、状态变化（受伤/突破/死亡等）
-- 位置移动、场景转换
-- 物品/资源的获得与消耗
-- 伏笔的埋设、推进、回收
-- 情感弧线变化
-- 支线进展
-- 角色间关系变化、新的信息边界
-
-## 书籍信息
-
-- 标题：${book.title}
-- 题材：${genreProfile.name}（${book.genre}）
-- 平台：${book.platform}
-${numericalBlock}
-${hookRules}${fullCastBlock}
-
-## 输出格式（必须严格遵循）
-
-${buildSettlerOutputFormat(genreProfile)}
-
-## 关键规则
-
-1. 状态卡和伏笔池必须基于"当前追踪文件"做增量更新，不是从零开始
-2. 正文中的每一个事实性变化都必须反映在对应的追踪文件中
-3. 不要遗漏细节：数值变化、位置变化、关系变化、信息变化都要记录
-4. 角色交互矩阵中的"信息边界"要准确——角色只知道他在场时发生的事
-
-## 铁律：只记录正文中实际发生的事（严格执行）
-
-- **只提取正文中明确描写的事件和状态变化**。不要推断、预测、或补充正文没有写到的内容
-- 如果正文只写到角色走到门口还没进去，状态卡就不能写"角色已进入房间"
-- 如果正文只暗示了某种可能性但没有确认，不要把它当作已发生的事实记录
-- 不要从卷纲或大纲中补充正文尚未到达的剧情到状态卡
-- 不要删除或修改已有 hooks 中与本章无关的内容——只更新本章正文涉及的 hooks
-- 第 1 章尤其注意：初始追踪文件可能包含从大纲预生成的内容，只保留正文实际支持的部分，不要保留正文未涉及的预设
-- **伏笔例外**：正文中出现的未解疑问、悬念、伏笔线索必须在 hooks 中记录。这不是"推断"，而是"提取正文中的叙事承诺"。如果正文暗示了一个谜题/冲突/秘密但没有解答，那就是一个 hook，必须记录`;
+  return loadedTemplate
+    .replaceAll("{{title}}", book.title)
+    .replaceAll("{{genre}}", genreProfile.name)
+    .replaceAll("{{genreCode}}", book.genre)
+    .replaceAll("{{platform}}", book.platform)
+    .replaceAll("{{langPrefix}}", langPrefix)
+    .replaceAll("{{numericalBlock}}", numericalBlock)
+    .replaceAll("{{hookRules}}", hookRules)
+    .replaceAll("{{fullCastBlock}}", fullCastBlock)
+    .replaceAll("{{outputFormat}}", outputFormat);
 }
 
-function buildSettlerOutputFormat(gp: GenreProfile): string {
+function buildSettlerOutputFormat(gp: GenreProfile, isEnglish?: boolean): string {
   const chapterTypeExample = gp.chapterTypes.length > 0
     ? gp.chapterTypes[0]
-    : "主线推进";
+    : (isEnglish ? "Mainline Advance" : "主线推进");
+
+  if (isEnglish) {
+    return `=== POST_SETTLEMENT ===
+(Briefly explain what state changes, hook advancements, and settlement notes occur in this chapter; Markdown tables or bullet points are permitted)
+
+=== RUNTIME_STATE_DELTA ===
+(Must output JSON, do NOT output Markdown, do NOT add explanation)
+\`\`\`json
+{
+  "chapter": 12,
+  "currentStatePatch": {
+    "currentLocation": "optional",
+    "protagonistState": "optional",
+    "currentGoal": "optional",
+    "currentConstraint": "optional",
+    "currentAlliances": "optional",
+    "currentConflict": "optional"
+  },
+  "hookOps": {
+    "upsert": [
+      {
+        "hookId": "mentor-oath",
+        "startChapter": 8,
+        "type": "relationship",
+        "status": "progressing",
+        "lastAdvancedChapter": 12,
+        "expectedPayoff": "reveal mentor's debt truth",
+        "payoffTiming": "slow-burn",
+        "notes": "why advanced/deferred/resolved in this chapter"
+      }
+    ],
+    "mention": ["hookId mentioned in this chapter but not advanced"],
+    "resolve": ["resolved hookId"],
+    "defer": ["hookId that needs to be marked deferred"]
+  },
+  "newHookCandidates": [
+    {
+      "type": "mystery",
+      "expectedPayoff": "where the new hook will be resolved in future",
+      "payoffTiming": "near-term",
+      "notes": "why this new unresolved question is raised in this chapter"
+    }
+  ],
+  "chapterSummary": {
+    "chapter": 12,
+    "title": "chapter title",
+    "characters": "char1,char2",
+    "events": "one sentence summarizing key events",
+    "stateChanges": "one sentence summarizing state changes",
+    "hookActivity": "mentor-oath advanced",
+    "mood": "tense",
+    "chapterType": "${chapterTypeExample}"
+  },
+  "subplotOps": [],
+  "emotionalArcOps": [],
+  "characterMatrixOps": [],
+  "notes": []
+}
+\`\`\`
+
+Rules:
+1. Only output delta, do not rewrite complete truth files.
+2. All chapter number fields must be integers, do not write natural language.
+3. Only hookIds that "already exist in the current hook pool" can be written in hookOps.upsert. Do not fabricate new hookIds.
+4. All brand-new unresolved threads must be written in newHookCandidates, do not fabricate hookIds.
+5. If an old hook is only mentioned and has no real state change, put it in mention, do not update lastAdvancedChapter.
+6. If this chapter advances an old hook, lastAdvancedChapter must equal the current chapter number.
+7. If resolving or deferring a hook, it must be placed in the resolve / defer arrays.
+8. chapterSummary.chapter must equal the current chapter number.`;
+  }
 
   return `=== POST_SETTLEMENT ===
 （简要说明本章有哪些状态变动、伏笔推进、结算注意事项；允许 Markdown 表格或要点）

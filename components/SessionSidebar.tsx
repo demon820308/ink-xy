@@ -175,7 +175,7 @@ export function SessionSidebar({
   // Writing execution states (Kept in parent as they trigger the core workflow in sidebar and report modal)
   const [isWriteLoading, setIsWriteLoading] = useState(false);
   // writeProgressText drives the progress label shown during write operations
-  const [, setWriteProgressText] = useState("");
+  const [writeProgressText, setWriteProgressText] = useState("");
   const [writeReportTitle, setWriteReportTitle] = useState("");
   const [writeReportContent, setWriteReportContent] = useState("");
   const [isWriteReportOpen, setIsWriteReportOpen] = useState(false);
@@ -984,6 +984,7 @@ export function SessionSidebar({
     setLogs([]);
     setWriteError(null);
 
+    let hasError = false;
     try {
       const res = await fetch("/api/inkos", {
         method: "POST",
@@ -1049,11 +1050,14 @@ export function SessionSidebar({
       window.dispatchEvent(new CustomEvent("refresh-explorer"));
       await checkWorkspaceStatus(activeCwd);
     } catch (err) {
+      hasError = true;
       console.error(err);
       const message = err instanceof Error ? err.message : String(err);
       setWriteError(message);
     } finally {
-      setIsWriteLoading(false);
+      if (!hasError) {
+        setIsWriteLoading(false);
+      }
     }
   };
 
@@ -1067,7 +1071,9 @@ export function SessionSidebar({
     setWriteReportTitle("");
     setWriteReportContent("");
     setLogs([]);
+    setWriteError(null);
 
+    let hasError = false;
     try {
       const res = await fetch("/api/inkos", {
         method: "POST",
@@ -1215,6 +1221,7 @@ export function SessionSidebar({
       window.dispatchEvent(new CustomEvent("refresh-explorer"));
       await checkWorkspaceStatus(activeCwd);
     } catch (err: unknown) {
+      hasError = true;
       console.error(err);
       const isTimeout = (err instanceof Error && (err.message.includes("超时") || err.message.includes("timed out"))) || logs.some(l => l.includes("超时"));
       if (isTimeout) {
@@ -1224,7 +1231,9 @@ export function SessionSidebar({
         setWriteError(errMsg || String(err));
       }
     } finally {
-      setIsWriteLoading(false);
+      if (!hasError) {
+        setIsWriteLoading(false);
+      }
     }
   };
 
@@ -2108,6 +2117,10 @@ export function SessionSidebar({
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+        @keyframes pulse {
+          0%, 100% { transform: scale(0.95); opacity: 0.5; }
+          50% { transform: scale(1.1); opacity: 1; }
+        }
       `}</style>
 
       {/* Modals & Dialogs Components */}
@@ -2196,6 +2209,169 @@ export function SessionSidebar({
           setExplorerKey((k) => k + 1);
         }}
       />
+
+      {/* Chapter Write Progress Modal */}
+      {isWriteLoading && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(10, 10, 12, 0.65)",
+          backdropFilter: "blur(8px)",
+        }}>
+          <div style={{
+            background: "var(--bg-panel)",
+            border: "1px solid rgba(139, 92, 246, 0.2)",
+            borderRadius: "16px",
+            width: "min(600px, 90vw)",
+            padding: "32px 28px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(139, 92, 246, 0.05)",
+            fontFamily: "var(--font-serif)",
+            textAlign: "center",
+            position: "relative",
+            overflow: "hidden",
+          }}>
+            {!writeError ? (
+              <div style={{ position: "relative", width: "56px", height: "56px", margin: "0 auto 20px" }}>
+                <div style={{
+                  position: "absolute",
+                  inset: -4,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%)",
+                  animation: "pulse 2s infinite ease-in-out"
+                }} />
+                <div style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "3px solid rgba(139, 92, 246, 0.1)",
+                  borderTopColor: "var(--accent)",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+                  boxShadow: "0 0 15px rgba(139, 92, 246, 0.25)"
+                }} />
+              </div>
+            ) : (
+              <div style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "2px solid rgba(239, 68, 68, 0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "24px",
+                color: "#ef4444",
+                margin: "0 auto 20px",
+                boxShadow: "0 0 15px rgba(239, 68, 68, 0.15)"
+              }}>
+                ⚠️
+              </div>
+            )}
+            <div style={{ fontWeight: 600, color: writeError ? "#ef4444" : "var(--text)", marginBottom: 8, fontSize: "14px" }}>
+              {writeError 
+                ? (writeProgressText.includes("蓝图") ? "规划首章蓝图失败" : "智能写作首章失败") 
+                : (writeProgressText.includes("蓝图") ? "正在规划首章蓝图..." : "正在进行智能首章写作...")
+              }
+            </div>
+            <div style={{ color: "var(--text-muted)", fontSize: "11px", lineHeight: 1.6 }}>
+              {writeError ? `错误详情: ${writeError}` : writeProgressText}
+            </div>
+
+            {/* Terminal Live Output Console */}
+            <div style={{ display: "flex", flexDirection: "column", marginTop: "20px" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid var(--border)",
+                borderBottom: "none",
+                padding: "8px 12px",
+                borderTopLeftRadius: "8px",
+                borderTopRightRadius: "8px",
+                fontSize: "10px",
+                fontFamily: "var(--font-mono)",
+                color: "var(--text-muted)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{
+                    width: "8px", height: "8px", borderRadius: "50%",
+                    background: writeError ? "#ef4444" : "#10b981",
+                    boxShadow: writeError ? "0 0 8px #ef4444" : "0 0 8px #10b981",
+                  }} />
+                  <span style={{ fontWeight: 600, letterSpacing: "0.05em" }}>STDOUT / STDERR LOGS</span>
+                </div>
+                <div style={{ opacity: 0.6 }}>LOGSTREAM</div>
+              </div>
+              <div 
+                ref={consoleRef}
+                style={{
+                  background: "#09090b",
+                  border: "1px solid var(--border)",
+                  borderBottomLeftRadius: "8px",
+                  borderBottomRightRadius: "8px",
+                  padding: "14px 16px",
+                  height: "220px",
+                  overflowY: "auto",
+                  textAlign: "left",
+                  fontFamily: "var(--font-mono), monospace",
+                  fontSize: "11px",
+                  lineHeight: "1.6",
+                  color: "#e4e4e7",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                }}
+              >
+                {logs.length === 0 ? (
+                  <span style={{ color: "var(--text-dim)", fontStyle: "italic" }}>正在初始化并启动创作引擎，请稍候...</span>
+                ) : (
+                  logs.map((log, index) => (
+                    <div key={index} style={{ marginBottom: 2, borderBottom: "1px dashed rgba(255,255,255,0.02)", paddingBottom: 2 }}>
+                      {log}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {writeError && (
+              <button
+                onClick={() => {
+                  setIsWriteLoading(false);
+                  setWriteError(null);
+                }}
+                style={{
+                  marginTop: 20,
+                  padding: "8px 24px",
+                  background: "var(--accent)",
+                  border: "none",
+                  borderRadius: "6px",
+                  color: "white",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 12px rgba(139, 92, 246, 0.2)",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.filter = "brightness(1.1)";
+                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(139, 92, 246, 0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.filter = "none";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(139, 92, 246, 0.2)";
+                }}
+              >
+                关闭并返回
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Writing & Blueprint Planning feedback report modal */}
       {isWriteReportOpen && (

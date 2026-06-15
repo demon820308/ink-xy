@@ -68,8 +68,6 @@ export {
   type ComposeChapterOutput,
 } from "./agents/composer.js";
 export {
-  PLANNER_MEMO_SYSTEM_PROMPT,
-  PLANNER_MEMO_USER_TEMPLATE,
   buildPlannerUserMessage,
   buildGoldenOpeningGuidance,
   type PlannerUserMessageInput,
@@ -294,6 +292,7 @@ export { PolisherAgent, type PolishChapterInput, type PolishChapterOutput } from
 export { RadarAgent, type RadarResult, type RadarRecommendation } from "./agents/radar.js";
 export { FanqieRadarSource, QidianRadarSource, TextRadarSource, type RadarSource, type PlatformRankings, type RankingEntry } from "./agents/radar-source.js";
 export { readGenreProfile, readBookRules, listAvailableGenres, getBuiltinGenresDir } from "./agents/rules-reader.js";
+export { PromptLoader } from "./prompts/prompt-loader.js";
 export { buildWriterSystemPrompt, buildGoldenOpeningDiscipline } from "./agents/writer-prompts.js";
 export { analyzeAITells, type AITellResult, type AITellIssue } from "./agents/ai-tells.js";
 export { analyzeSensitiveWords, type SensitiveWordResult, type SensitiveWordMatch } from "./agents/sensitive-words.js";
@@ -390,3 +389,6 @@ export async function sendWebhook(
   const transport = await import("./notify/webhook.js");
   await transport.sendWebhook(config, payload);
 }
+
+// Service layer
+export { InkOSService, type InkOSServiceConfig } from "./service/inkos-service.js";

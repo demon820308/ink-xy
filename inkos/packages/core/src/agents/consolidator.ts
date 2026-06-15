@@ -1,4 +1,5 @@
 import { BaseAgent } from "./base.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { readVolumeMap } from "../utils/outline-paths.js";
@@ -110,10 +111,12 @@ export class ConsolidatorAgent extends BaseAgent {
     for (const vol of completedVolumes) {
       const volSummaryRows = vol.rows.map((r) => r.raw).join("\n");
 
+      const systemPrompt = PromptLoader.loadRequiredPrompt("consolidator_system.md");
+
       const response = await this.chat([
         {
           role: "system",
-          content: `You are a narrative summarizer. Compress chapter-by-chapter summaries into a single coherent paragraph (max 500 words) that captures the key events, character developments, and plot progression of this volume. Preserve specific names, locations, and plot points. Write in the same language as the input.`,
+          content: systemPrompt,
         },
         {
           role: "user",

@@ -18,6 +18,7 @@ import { writeExportArtifact } from "./export-artifact.js";
 import { safeChildPath } from "../utils/path-safety.js";
 import { deriveBookIdFromTitle } from "../utils/book-id.js";
 import { normalizePlatformOrOther } from "../models/book.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 
 const SAFE_TRUTH_FLAT_FILE_NAMES = new Set([
   "author_intent.md",
@@ -346,15 +347,7 @@ const CREATE_BOOK_TOOL: ToolDefinition = {
   },
 };
 
-const BOOK_DRAFT_SYSTEM_PROMPT = [
-  "你是 InkOS 的建书助手。用户会描述想写的书，你需要调用 create_book 工具来生成建书参数。",
-  "",
-  "规则：",
-  "1. 从用户描述中推断所有字段，大胆预填合理默认值。",
-  "2. brief 字段要详细——它会传给 Architect 智能体生成完整的世界观、主角、冲突等 foundation 文件。把用户提到的所有创意要素都写进 brief。",
-  "3. 如果用户后续要求修改某些字段，重新调用 create_book 工具，只更新被提到的字段，其余保持不变。",
-  "4. 不要只回复文字讨论——必须调用 create_book 工具输出结构化参数。",
-].join("\n");
+const BOOK_DRAFT_SYSTEM_PROMPT = PromptLoader.loadRequiredPrompt("book_draft_helper_system.md");
 
 /** Map directive field keys to BookCreationDraft property names. */
 function applyFieldsToDraft(
@@ -593,12 +586,7 @@ export function createInteractionToolsFromDeps(
             [
               {
                 role: "system",
-                content: [
-                  "You are InkOS inside the terminal workbench.",
-                  "Respond conversationally and briefly.",
-                  "If there is no active book, help the user decide what to write next.",
-                  "If there is an active book, keep the answer grounded in that book context.",
-                ].join(" "),
+                content: PromptLoader.loadRequiredPrompt("workbench_chat_system.md"),
               },
               {
                 role: "user",

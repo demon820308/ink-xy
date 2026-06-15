@@ -75,7 +75,7 @@
       "output": "dist"
     },
     "asarUnpack": [
-      "inkos/packages/core/genres/**/*"
+      "inkos/skills/genres/**/*"
     ],
     "win": {
       "target": "nsis",
@@ -118,7 +118,7 @@
       "!.next/cache/**/*",
       "bin/**/*",
       "public/**/*",
-      "inkos/packages/core/genres/**/*"
+      "inkos/skills/**/*"
     ]
   }
 }

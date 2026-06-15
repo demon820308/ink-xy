@@ -352,3 +352,74 @@ We have successfully resolved the user request to simplify chapter file paths in
   - 暂时脱离当前章节视角，从数据库中拉取并展示该角色所有的时序事实卡片。
   - 此时滑块处于不可用置灰状态，标题显示“全部时序设定事实”，方便全局统览。
   - 再次点击 `按章节过滤` 即可无缝切回时光机过滤视图。
+
+---
+
+## ⚡ InkOS 内核重构第二阶段：提示词模板外置化与回滚保障 (2026-06-14)
+
+我们已成功完成第二阶段内核重构，将原本硬编码在核心 Agent 中的全部 LLM 提示词完整外置到独立的 Markdown 物理模板中，并实现了完善的降级回滚保障与类型安全验证：
+
+### 1. 物理模版文件生成与结构化存储
+所有提示词均已提取为无任何内容偏差的 Markdown 文件并存储在 `inkos/skills/genres/prompts/` 下：
+- **普通 Agent 提示词**：
+  - `architect_system_zh.md` / `architect_system_en.md` (系统架构师系统提示词)
+  - `architect_revise_system_zh.md` / `architect_revise_system_en.md` (架构稿修订引导)
+  - `auditor_system_zh.md` / `auditor_system_en.md` (合规审查员系统提示词)
+  - `polisher_system_zh.md` / `polisher_system_en.md` (文字润色系统提示词)
+  - `radar_system_zh.md` (趋势雷达分析提示词)
+  - `detector_system_zh.md` / `detector_system_en.md` (AI味/风格特征检测提示词)
+- **短篇小说管道提示词** (`short_fiction/` 子目录下共 12 个模板)：
+  - 覆盖了大纲（Outline）、大纲评估（OutlineReview）、正文起草（Writer）、草稿评估（DraftReview）、整体打包（Package）等全生命周期的系统和用户提示词模板。
+
+### 2. 运行时动态加载与降级回滚机制 (Safe Fallback)
+- **非侵入式动态加载**：实现了 [PromptLoader](file:///e:/ink-xY/inkos/packages/core/src/prompts/prompt-loader.ts) 工具类，统一加载物理路径下的 `.md` 文件，并在运行时使用 `.replace()` 做参数插值，维持 100% 运行时逻辑等价。
+- **静态回退机制**：提取了原先在 TS 文件中声明的全部长篇硬编码提示词至独立的 [fallback-prompts.ts](file:///e:/ink-xY/inkos/packages/core/src/prompts/fallback-prompts.ts) 文件。当部署或测试沙箱中缺少物理模板文件时，`PromptLoader` 会自动捕获异常并无缝回退到 fallback 常量，保障系统永不崩溃。
+- **混合拼接算法保留**：针对 `ContinuityAuditor` 复杂的维度列表（`dimList`）和 `ReviserAgent` 的分流控制逻辑（`routingDirective`），保留了 TS 运行时的强类型算法拼接逻辑，采用 `{{dimList}}` 等占位符动态填充，完美兼顾“外置模板的灵活性”与“硬编码的确定性”。
+
+### 3. 类型安全与单元测试验证
+- **测试通过率 100%**：运行核心模块的 `pnpm test` 测试集（共 108 个测试文件），所有断言与解析校验全部通过，证实没有破坏任何原有的 output structure 或解析器逻辑。
+- **单独模块校验**：已单独跑通修改过的 Agent 测试，包括 `architect.test.ts`、`continuity.test.ts`、`polisher.test.ts`、`detector.test.ts` 以及 `short-fiction-public.test.ts`，验证在无物理模板文件（测试用例默认沙箱环境）时 fallback 的正确性与可靠性。
+
+---
+
+## ⚡ 恢复并美化“智能写作”与“规划蓝图”执行进度弹窗 (2026-06-14)
+
+为解决“点击智能写作或规划首章蓝图后没有弹窗看写作进度”的问题，我们修复了相应的 React 状态生命周期 Bug，并重新设计并还原了高颜值的进度日志监控弹窗：
+
+### 1. 修复状态生命周期 Bug
+- **Bug 根源**：原先的 `handleStartWriting` 与 `handlePlanBlueprint` 异步方法中，`setIsWriteLoading(false)` 被放置在 `finally` 块中无条件执行。这就导致无论是接口超时、API 报错还是中途网络断开触发 Catch 逻辑时，加载状态 `isWriteLoading` 都会瞬间变回 `false`，从而导致进度弹窗瞬间闪退关闭。而此时错误报告弹窗 `isWriteReportOpen` 尚未被置为 `true`，导致用户完全看不到任何错误提示或运行状态。
+- **修复方案**：引入了局部的错误标记变量 `let hasError = false`，只有在**无任何错误（执行成功）**的情况下才会在 `finally` 中将 `isWriteLoading` 设为 `false`。如果发生错误，进度弹窗将保持打开状态，用于展示错误详情与完整的 STDOUT 实时日志，并为用户提供一个明确的“关闭并返回”按钮以进行状态复位。
+
+### 2. 补全缺失的状态读取
+- 修复了 React 状态声明 `const [, setWriteProgressText] = useState("")` 对状态变量 `writeProgressText` 的忽略，修正为 `const [writeProgressText, setWriteProgressText] = useState("")`，使进度提示语能够正确被弹窗读取。
+
+### 3. 重构并美化写作进度与实时日志弹窗 (Premium Modal)
+- **磨砂毛玻璃背景**：使用 `backdropFilter: "blur(8px)"` 及暗色半透明遮罩（`rgba(10, 10, 12, 0.65)`）营造沉浸式的毛玻璃视效。
+- **微光呼吸动效**：通过新增 `@keyframes pulse`，为正在写作时的加载态图标设计了精美的紫色微光呼吸光晕，结合流畅的圆环旋转，大幅度提升了 AI 协作的呼吸感与高级感。
+- **拟真开发者控制台**：设计了带有绿/红状态呼吸灯的 `STDOUT / STDERR LOGS` 终端风格输出面板：
+  - 采用全黑科技感背景（`#09090b`）和高对比度单色等宽字体。
+  - 支持自动定位到底部以显示最新流式日志。
+  - 为日志行添加了微弱的虚线分割线，增强日志阅读舒适度。
+- **双引擎文案适配**：智能检测当前正在执行的是“首章写作蓝图规划”还是“首章正文智能写作”，动态展示匹配的标题与错误反馈。
+
+---
+
+## ⚡ InkOS 内核重构：彻底移除提示词 Fallback 与常数定义 (2026-06-14)
+
+我们已成功完成内核重构的最后一步，彻底移除了所有 Agent 中的 fallback 常量以及 fallback 回滚逻辑。当底层的物理 Markdown 提示词模板文件缺失时，系统现在会立即抛出异常并中止，实现了 100% 物理模版依赖的高可靠性要求。
+
+### 1. 短篇小说管道提示词模板外置重构
+- 重构了 [short-fiction.ts](file:///e:/ink-xY/inkos/packages/core/src/prompts/short-fiction.ts)，将其中的 12 个大纲、起草、评估、打包等系统与用户提示词构建器全部改造为使用 `PromptLoader.loadRequiredPrompt` 从 `short_fiction/` 子目录下动态加载物理模板。
+- 删除了原本硬编码的提示词数组与常量，并移除了不再使用的 `buildShortFictionCraftPrompt` 辅助函数。
+- 保持了所有外部强类型定义接口（如 `ShortFictionOutlinePromptInput` 等）的完好，确保上游接口类型安全无偏差。
+
+### 2. 清理全局导出项与彻底移除 Fallback 文件
+- 修改了 [index.ts](file:///e:/ink-xY/inkos/packages/core/src/index.ts)，移除已删除的 planner 常量（`PLANNER_MEMO_SYSTEM_PROMPT` 与 `PLANNER_MEMO_USER_TEMPLATE`）的导出项，解决了 core 包的编译错误。
+- 彻底从磁盘上删除了 `fallback-prompts.ts` 文件。
+
+### 3. 完备性验证
+- **TypeScript 静态检查**：在 core 包下运行 `tsc --noEmit`，编译通过且 **0 compiler errors**。
+- **单元测试验证**：运行 `pnpm test` 测试集，所有 **1170 个单元测试断言全部通过**。验证了物理文件动态读取的逻辑一致性。
+
+
+

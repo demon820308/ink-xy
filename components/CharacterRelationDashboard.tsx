@@ -61,6 +61,8 @@ export function CharacterRelationDashboard({ bookId, cwd, onOpenFile }: Props) {
 
   // Edit fact form state
   const [editingFact, setEditingFact] = useState<any | null>(null);
+  const [editFactSubject, setEditFactSubject] = useState("");
+  const [editFactPredicate, setEditFactPredicate] = useState("");
   const [editFactObject, setEditFactObject] = useState("");
   const [editFactValidFrom, setEditFactValidFrom] = useState(1);
   const [editFactValidUntil, setEditFactValidUntil] = useState<number | "">( "");
@@ -464,7 +466,9 @@ ${minorLines.join("\n") || "（无）"}
             id: editingFact.id,
             validFromChapter: editFactValidFrom,
             validUntilChapter: editFactValidUntil === "" ? null : Number(editFactValidUntil),
-            object: editFactObject
+            object: editFactObject,
+            predicate: editFactPredicate,
+            subject: editFactSubject
           }
         })
       });
@@ -1339,6 +1343,8 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                               key={fact.id}
                               onClick={() => {
                                 setEditingFact(fact);
+                                setEditFactSubject(fact.subject);
+                                setEditFactPredicate(fact.predicate);
                                 setEditFactObject(fact.object);
                                 setEditFactValidFrom(fact.validFromChapter);
                                 setEditFactValidUntil(fact.validUntilChapter ?? "");
@@ -1512,6 +1518,8 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                                 const existingFact = relFacts[0];
                                 if (existingFact) {
                                   setEditingFact(existingFact);
+                                  setEditFactSubject(existingFact.subject);
+                                  setEditFactPredicate(existingFact.predicate);
                                   setEditFactObject(existingFact.object);
                                   setEditFactValidFrom(existingFact.validFromChapter);
                                   setEditFactValidUntil(existingFact.validUntilChapter ?? "");
@@ -1567,6 +1575,8 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                                       const existingFact = relFacts[0];
                                       if (existingFact) {
                                         setEditingFact(existingFact);
+                                        setEditFactSubject(existingFact.subject);
+                                        setEditFactPredicate(existingFact.predicate);
                                         setEditFactObject(existingFact.object);
                                         setEditFactValidFrom(existingFact.validFromChapter);
                                         setEditFactValidUntil(existingFact.validUntilChapter ?? "");
@@ -2116,14 +2126,55 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>属性/关系名 (Predicate)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="例如：relationship:角色名"
-                  value={newFactPredicate}
-                  onChange={(e) => setNewFactPredicate(e.target.value)}
-                  style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
-                />
+                <select
+                  value={["当前冲突", "当前目标", "主角状态", "当前限制", "当前位置", "当前敌我"].includes(newFactPredicate) ? newFactPredicate : (newFactPredicate === "" ? "" : "custom")}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "custom") {
+                      setNewFactPredicate("");
+                    } else {
+                      setNewFactPredicate(val);
+                    }
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: "var(--text)",
+                    outline: "none"
+                  }}
+                >
+                  <option value="">-- 请选择设定类型 --</option>
+                  <option value="当前冲突">当前冲突 (高优 - 打架/冲突事件)</option>
+                  <option value="当前目标">当前目标 (高优 - 主角阶段任务)</option>
+                  <option value="主角状态">主角状态 (高优 - 主角身心状态)</option>
+                  <option value="当前限制">当前限制 (高优 - 剧情负面规避)</option>
+                  <option value="当前位置">当前位置 (中优 - 场景地点)</option>
+                  <option value="当前敌我">当前敌我 (中优 - 关系/阵营设定)</option>
+                  <option value="custom">✍️ 自定义输入 / 角色关系...</option>
+                </select>
+                
+                {(!["当前冲突", "当前目标", "主角状态", "当前限制", "当前位置", "当前敌我"].includes(newFactPredicate)) && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="例如：relationship:角色名 或其他自定义属性"
+                    value={newFactPredicate}
+                    onChange={(e) => setNewFactPredicate(e.target.value)}
+                    style={{
+                      marginTop: 6,
+                      padding: "8px 12px",
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: "var(--text)",
+                      outline: "none"
+                    }}
+                  />
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>设定值 (Object)</label>
@@ -2216,7 +2267,69 @@ ${newContrast.trim() || "人物矛盾冲突与反差细节描写"}
                 主体: {editingFact.subject} | 属性: {editingFact.predicate}
               </p>
             </div>
-            <form onSubmit={handleUpdateFact} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+             <form onSubmit={handleUpdateFact} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>主体 (Subject)</label>
+                <input
+                  type="text"
+                  required
+                  value={editFactSubject}
+                  onChange={(e) => setEditFactSubject(e.target.value)}
+                  style={{ padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--text)", outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>属性/关系名 (Predicate)</label>
+                <select
+                  value={["当前冲突", "当前目标", "主角状态", "当前限制", "当前位置", "当前敌我"].includes(editFactPredicate) ? editFactPredicate : (editFactPredicate === "" ? "" : "custom")}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "custom") {
+                      setEditFactPredicate("");
+                    } else {
+                      setEditFactPredicate(val);
+                    }
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: "var(--text)",
+                    outline: "none"
+                  }}
+                >
+                  <option value="">-- 请选择设定类型 --</option>
+                  <option value="当前冲突">当前冲突 (高优 - 打架/冲突事件)</option>
+                  <option value="当前目标">当前目标 (高优 - 主角阶段任务)</option>
+                  <option value="主角状态">主角状态 (高优 - 主角身心状态)</option>
+                  <option value="当前限制">当前限制 (高优 - 剧情负面规避)</option>
+                  <option value="当前位置">当前位置 (中优 - 场景地点)</option>
+                  <option value="当前敌我">当前敌我 (中优 - 关系/阵营设定)</option>
+                  <option value="custom">✍️ 自定义输入 / 角色关系...</option>
+                </select>
+                
+                {(!["当前冲突", "当前目标", "主角状态", "当前限制", "当前位置", "当前敌我"].includes(editFactPredicate)) && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="例如：relationship:角色名 或其他自定义属性"
+                    value={editFactPredicate}
+                    onChange={(e) => setEditFactPredicate(e.target.value)}
+                    style={{
+                      marginTop: 6,
+                      padding: "8px 12px",
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: "var(--text)",
+                      outline: "none"
+                    }}
+                  />
+                )}
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>设定值 (Object)</label>
                 <textarea

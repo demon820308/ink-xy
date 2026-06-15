@@ -1,6 +1,7 @@
 import { BaseAgent } from "./base.js";
 import type { LengthNormalizeMode, LengthSpec } from "../models/length-governance.js";
 import { countChapterLength, chooseNormalizeMode, isOutsideHardRange, isOutsideSoftRange } from "../utils/length-metrics.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 
 export interface NormalizeLengthInput {
   readonly chapterContent: string;
@@ -80,13 +81,8 @@ export class LengthNormalizerAgent extends BaseAgent {
       ? "compress"
       : "expand";
 
-    return `你是一位章节长度修正器。你的任务是对章节正文做一次单次修正，只能执行一次，不得递归重写。
-
-修正目标：
-- ${action} 章节长度到给定目标区间
-- 保留章节原有事实、关键钩子、角色名和必须保留的标记
-- 不要引入新的支线、未来揭示或额外总结
-- 不要在正文外输出任何解释`;
+    return PromptLoader.loadRequiredPrompt("length_normalizer_system.md")
+      .replaceAll("{{action}}", action);
   }
 
   private buildUserPrompt(
@@ -100,28 +96,20 @@ export class LengthNormalizerAgent extends BaseAgent {
     const controlBlock = input.reducedControlBlock
       ? `\n## Reduced Control Block\n${input.reducedControlBlock}\n`
       : "";
+    const modeVerb = mode === "compress" ? "压缩" : "扩写";
 
-    return `请对下面正文做一次${mode === "compress" ? "压缩" : "扩写"}修正。
-
-## Length Spec
-- Target: ${input.lengthSpec.target}
-- Soft Range: ${input.lengthSpec.softMin}-${input.lengthSpec.softMax}
-- Hard Range: ${input.lengthSpec.hardMin}-${input.lengthSpec.hardMax}
-- Counting Mode: ${input.lengthSpec.countingMode}
-
-## Current Count
-${originalCount}
-
-## Correction Rules
-- 只修正一次，不要递归
-- 保留正文中的关键标记、人物名、地点名和已有事实
-- 不要凭空新增子情节
-- 不要插入解释性总结或分析
-- 输出修正后的完整正文，不要加标签
-
-${intentBlock}${controlBlock}
-## Chapter Content
-${input.chapterContent}`;
+    return PromptLoader.loadRequiredPrompt("length_normalizer_user.md")
+      .replaceAll("{{modeVerb}}", modeVerb)
+      .replaceAll("{{target}}", String(input.lengthSpec.target))
+      .replaceAll("{{softMin}}", String(input.lengthSpec.softMin))
+      .replaceAll("{{softMax}}", String(input.lengthSpec.softMax))
+      .replaceAll("{{hardMin}}", String(input.lengthSpec.hardMin))
+      .replaceAll("{{hardMax}}", String(input.lengthSpec.hardMax))
+      .replaceAll("{{countingMode}}", input.lengthSpec.countingMode)
+      .replaceAll("{{originalCount}}", String(originalCount))
+      .replaceAll("{{intentBlock}}", intentBlock)
+      .replaceAll("{{controlBlock}}", controlBlock)
+      .replaceAll("{{chapterContent}}", input.chapterContent);
   }
 
   private buildWarning(finalCount: number, lengthSpec: LengthSpec): string | undefined {

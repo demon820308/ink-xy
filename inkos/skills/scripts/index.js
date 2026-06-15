@@ -191,7 +191,7 @@ function parseBookAndChapter(args) {
 // Run mapping
 async function main() {
   const needAI = ["write-next", "draft", "plan", "compose", "revise", "short-run", "aigc-detect", "radar-scan"].includes(action);
-  const needCore = !["dashboard", "style-list", "style-switch"].includes(action);
+  const needCore = !["dashboard", "style-list", "style-switch", "get-facts", "add-fact", "update-fact", "delete-fact"].includes(action);
 
   if (needAI) {
     const { AuthStorage, ModelRegistry, getAgentDir } = await import("@earendil-works/pi-coding-agent");
@@ -200,50 +200,34 @@ async function main() {
   }
 
   let core;
-  let createPipelineRunner;
-  let createPipelineConfig;
   let state;
+  let service;
 
   if (needCore) {
     core = await import("@actalk/inkos-core");
-
-    createPipelineRunner = async (options = {}) => {
-      const config = await core.loadProjectConfig(cwd);
-      const sinks = [
-        {
-          write(entry) {
-            process.stdout.write(`[${entry.level.toUpperCase()}] ${entry.message}\n`);
-          },
-        },
-      ];
-      const logger = core.createLogger({ tag: "inkos", sinks });
-      return new core.PipelineRunner({
-        client: core.createLLMClient(config.llm),
-        model: config.llm.model,
-        projectRoot: cwd,
-        defaultLLMConfig: config.llm,
-        foundationReviewRetries: config.foundation.reviewRetries,
-        writingReviewRetries: config.writing?.reviewRetries ?? 1,
-        modelOverrides: config.modelOverrides,
-        inputGovernanceMode: config.inputGovernanceMode,
-        notifyChannels: config.notify,
-        logger,
-        onStreamProgress: (progress) => {
-          process.stdout.write(`[PROGRESS] streaming ${Math.round(progress.elapsedMs / 1000)}s, ${progress.totalChars} chars (${progress.chineseChars} CJK)\n`);
-        },
-        externalContext: options.externalContext,
-      });
-    };
-
-    createPipelineConfig = async () => {
-      const config = await core.loadProjectConfig(cwd);
-      return {
-        client: core.createLLMClient(config.llm),
-        model: config.llm.model,
-      };
-    };
-
     state = new core.StateManager(cwd);
+
+    const onProgress = (progress) => {
+      if (progress.stage === "stream") {
+        const p = progress.data || {};
+        const elapsed = Math.round((p.elapsedMs || 0) / 1000);
+        process.stdout.write(`[PROGRESS] {"stage": "stream", "elapsed": ${elapsed}, "chars": ${p.totalChars || 0}, "cjk": ${p.chineseChars || 0}}\n`);
+      } else if (progress.stage === "log") {
+        const entry = progress.data || {};
+        const stageMatches = progress.message.match(/^阶段：(.*)$/) || progress.message.match(/^Stage: (.*)$/);
+        if (stageMatches && stageMatches[1]) {
+          process.stdout.write(`[PROGRESS] {"stage": "stage_change", "message": "${stageMatches[1].trim()}"}\n`);
+        }
+        process.stdout.write(`[${(entry.level || "INFO").toUpperCase()}] ${progress.message}\n`);
+      } else if (progress.stage === "pipeline_start" || progress.stage === "pipeline_end") {
+        process.stdout.write(`[PROGRESS] {"stage": "stage_change", "message": "${progress.message}"}\n`);
+      }
+    };
+
+    service = new core.InkOSService({
+      projectRoot: cwd,
+      onProgress,
+    });
   }
 
   let result;
@@ -339,8 +323,7 @@ async function main() {
         }
       }
 
-      const pipeline = await createPipelineRunner({ externalContext: brief });
-      await pipeline.initBook(book);
+      await service.createBook(book, { externalContext: brief });
 
       result = {
         bookId,
@@ -377,8 +360,7 @@ async function main() {
         fanficMode: mode,
       };
 
-      const pipeline = await createPipelineRunner();
-      await pipeline.initFanficBook(book, sourceText, sourceName, mode);
+      await service.createFanficBook(book, sourceText, sourceName, mode);
 
       result = {
         bookId,
@@ -399,8 +381,7 @@ async function main() {
       const sourceText = fs.readFileSync(args.from, "utf-8");
       const sourceName = path.basename(args.from);
 
-      const pipeline = await createPipelineRunner();
-      await pipeline.importFanficCanon(bookId, sourceText, sourceName, mode);
+      await service.importFanficCanon(bookId, sourceText, sourceName, mode);
 
       result = { bookId, source: sourceName, refreshedAt: new Date().toISOString() };
       break;
@@ -409,31 +390,21 @@ async function main() {
     case "write-next": {
       const bookId = await resolveBookId(state, args.bookId);
       const wordCount = args.words ? parseInt(args.words, 10) : undefined;
-      const pipeline = await createPipelineRunner();
-      const writeResult = await pipeline.writeNextChapter(bookId, wordCount);
-      result = writeResult;
+      result = await service.writeNextChapter(bookId, wordCount, args.context);
       break;
     }
 
     case "draft": {
       const bookId = await resolveBookId(state, args.bookId);
       const wordCount = args.words ? parseInt(args.words, 10) : undefined;
-      const pipeline = await createPipelineRunner({ externalContext: args.context });
-      const draftResult = await pipeline.writeDraft(bookId, args.context, wordCount);
-      result = draftResult;
+      result = await service.writeDraft(bookId, args.context, wordCount);
       break;
     }
 
     case "consolidate": {
       const bookId = await resolveBookId(state, args.bookId);
-      const pipelineConfig = await createPipelineConfig();
-      const consolidator = new core.ConsolidatorAgent({
-        client: pipelineConfig.client,
-        model: pipelineConfig.model,
-        projectRoot: cwd,
-      });
-      const bookDir = state.bookDir(bookId);
-      result = await consolidator.consolidate(bookDir);
+      await service.consolidate(bookId);
+      result = { success: true };
       break;
     }
 
@@ -441,22 +412,19 @@ async function main() {
       if (!args.chapter) throw new Error("审计的目标章节文件不能为空");
       const { bookId: parsedBookId, chapterNumber } = parseBookAndChapter(args);
       const bookId = await resolveBookId(state, parsedBookId);
-      const pipeline = await createPipelineRunner();
-      result = await pipeline.auditDraft(bookId, chapterNumber);
+      result = await service.auditDraft(bookId, chapterNumber);
       break;
     }
 
     case "plan": {
       const bookId = await resolveBookId(state, args.bookId);
-      const pipeline = await createPipelineRunner({ externalContext: args.context });
-      result = await pipeline.planChapter(bookId, args.context);
+      result = await service.planChapter(bookId, args.context);
       break;
     }
 
     case "compose": {
       const bookId = await resolveBookId(state, args.bookId);
-      const pipeline = await createPipelineRunner();
-      result = await pipeline.composeChapter(bookId, args.context);
+      result = await service.composeChapter(bookId, args.context);
       break;
     }
 
@@ -464,8 +432,7 @@ async function main() {
       const { bookId: parsedBookId, chapterNumber } = parseBookAndChapter(args);
       const bookId = await resolveBookId(state, parsedBookId);
       const mode = args.mode || "polish";
-      const pipeline = await createPipelineRunner({ externalContext: args.brief });
-      result = await pipeline.reviseDraft(bookId, chapterNumber, mode);
+      result = await service.reviseDraft(bookId, chapterNumber, mode, args.brief);
       break;
     }
 
@@ -473,8 +440,7 @@ async function main() {
       if (!args.chapter) throw new Error("要同步的章节号不能为空");
       const { bookId: parsedBookId, chapterNumber } = parseBookAndChapter(args);
       const bookId = await resolveBookId(state, parsedBookId);
-      const pipeline = await createPipelineRunner({ externalContext: args.brief });
-      result = await pipeline.resyncChapterArtifacts(bookId, chapterNumber);
+      result = await service.resyncChapterArtifacts(bookId, chapterNumber);
       break;
     }
 
@@ -623,8 +589,7 @@ async function main() {
         chapters = [...core.splitChapters(text, args.split)];
       }
 
-      const pipeline = await createPipelineRunner();
-      result = await pipeline.importChapters({
+      result = await service.importChapters({
         bookId,
         chapters,
         resumeFrom: args.resumeFrom ? parseInt(args.resumeFrom, 10) : undefined,
@@ -636,8 +601,7 @@ async function main() {
     case "import-canon": {
       if (!args.from) throw new Error("原著/前作 Book ID 不能为空");
       const bookId = await resolveBookId(state, args.bookId);
-      const pipeline = await createPipelineRunner();
-      result = await pipeline.importCanon(bookId, args.from);
+      result = await service.importCanon(bookId, args.from);
       break;
     }
 
@@ -667,8 +631,7 @@ async function main() {
       );
 
       if (!args.statsOnly) {
-        const pipeline = await createPipelineRunner();
-        await pipeline.generateStyleGuide(bookId, text, args.name || fromPath);
+        await service.generateStyleGuide(bookId, text, args.name || fromPath);
       }
 
       try {
@@ -809,8 +772,7 @@ async function main() {
     }
 
     case "radar-scan": {
-      const pipeline = await createPipelineRunner();
-      const scanResult = await pipeline.runRadar();
+      const scanResult = await service.runRadar();
 
       const radarDir = path.join(cwd, "radar");
       fs.mkdirSync(radarDir, { recursive: true });
@@ -843,8 +805,6 @@ async function main() {
         break;
       }
 
-      const pipelineConfig = await createPipelineConfig();
-
       const readChapterContent = (bDir, chNum) => {
         const chaptersDir = path.join(bDir, "chapters");
         const files = fs.readdirSync(chaptersDir);
@@ -864,7 +824,7 @@ async function main() {
         const results = [];
         for (const ch of index) {
           const content = readChapterContent(bookDir, ch.number);
-          const r = await core.detectChapter(detectionConfig, content, ch.number, pipelineConfig);
+          const r = await service.detectChapter(detectionConfig, content, ch.number);
           results.push(r);
         }
         result = { results };
@@ -873,7 +833,7 @@ async function main() {
         const targetChapter = chapterNumber || (await state.getNextChapterNumber(bookId)) - 1;
         if (targetChapter < 1) throw new Error("No chapters to detect.");
         const content = readChapterContent(bookDir, targetChapter);
-        result = await core.detectChapter(detectionConfig, content, targetChapter, pipelineConfig);
+        result = await service.detectChapter(detectionConfig, content, targetChapter);
       }
       break;
     }
@@ -926,6 +886,82 @@ async function main() {
           process.stdout.write(`[PROGRESS] ${msg}\n`);
         },
       });
+      break;
+    }
+
+    case "get-facts": {
+      const bookId = args.bookId;
+      if (!bookId) throw new Error("书籍ID不能为空");
+      const dbPath = path.join(cwd, "books", bookId, "story", "memory.db");
+      if (!fs.existsSync(dbPath)) {
+        result = { success: true, facts: [] };
+        break;
+      }
+      const { DatabaseSync } = require("node:sqlite");
+      const db = new DatabaseSync(dbPath);
+      let rows;
+      if (typeof args.chapter === "number") {
+        const ch = args.chapter;
+        rows = db.prepare("SELECT id, subject, predicate, object, valid_from_chapter AS validFromChapter, valid_until_chapter AS validUntilChapter, source_chapter AS sourceChapter FROM facts WHERE valid_from_chapter <= ? AND (valid_until_chapter IS NULL OR valid_until_chapter > ?)")
+          .all(ch, ch);
+      } else {
+        rows = db.prepare("SELECT id, subject, predicate, object, valid_from_chapter AS validFromChapter, valid_until_chapter AS validUntilChapter, source_chapter AS sourceChapter FROM facts")
+          .all();
+      }
+      db.close();
+      result = { success: true, facts: rows };
+      break;
+    }
+
+    case "update-fact": {
+      const bookId = args.bookId;
+      const factId = args.id;
+      if (!bookId || !factId) throw new Error("书籍ID和事实ID不能为空");
+      const dbPath = path.join(cwd, "books", bookId, "story", "memory.db");
+      const { DatabaseSync } = require("node:sqlite");
+      const db = new DatabaseSync(dbPath);
+      db.prepare("UPDATE facts SET valid_from_chapter = ?, valid_until_chapter = ?, object = ?, predicate = ?, subject = ? WHERE id = ?").run(
+        args.validFromChapter,
+        args.validUntilChapter === null ? null : args.validUntilChapter,
+        args.object,
+        args.predicate,
+        args.subject,
+        factId
+      );
+      db.close();
+      result = { success: true };
+      break;
+    }
+
+    case "add-fact": {
+      const bookId = args.bookId;
+      if (!bookId) throw new Error("书籍ID不能为空");
+      const dbPath = path.join(cwd, "books", bookId, "story", "memory.db");
+      const { DatabaseSync } = require("node:sqlite");
+      const db = new DatabaseSync(dbPath);
+      db.prepare("INSERT INTO facts (subject, predicate, object, valid_from_chapter, valid_until_chapter, source_chapter) VALUES (?, ?, ?, ?, ?, ?)").run(
+        args.subject,
+        args.predicate,
+        args.object,
+        args.validFromChapter,
+        args.validUntilChapter === null ? null : args.validUntilChapter,
+        -1
+      );
+      db.close();
+      result = { success: true };
+      break;
+    }
+
+    case "delete-fact": {
+      const bookId = args.bookId;
+      const factId = args.id;
+      if (!bookId || !factId) throw new Error("书籍ID和事实ID不能为空");
+      const dbPath = path.join(cwd, "books", bookId, "story", "memory.db");
+      const { DatabaseSync } = require("node:sqlite");
+      const db = new DatabaseSync(dbPath);
+      db.prepare("DELETE FROM facts WHERE id = ?").run(factId);
+      db.close();
+      result = { success: true };
       break;
     }
 

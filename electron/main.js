@@ -37,6 +37,7 @@ function startNextServer() {
           ...env,
           PORT,
           NODE_ENV: "production",
+          APP_ROOT: path.join(__dirname, ".."),
           PI_CODING_AGENT_DIR: path.join(require("os").homedir(), ".ink", "agent")
         },
         stdio: "inherit"

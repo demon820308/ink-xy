@@ -36,6 +36,7 @@ jobs:
           version: 9
 
       - name: Build InkOS Engine
+        shell: bash
         run: |
           cd inkos
           pnpm install
@@ -43,6 +44,7 @@ jobs:
           cd ..
 
       - name: Install dependencies
+        shell: bash
         run: npm install
 
       # Strip macOS quarantine attributes to avoid permission & signature check issues
@@ -90,6 +92,7 @@ jobs:
           Write-Host "winCodeSign cache populated successfully!"
 
       - name: Build Next.js & Package App
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false # Disables keychain lookup on macOS

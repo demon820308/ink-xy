@@ -1227,9 +1227,41 @@ ${overrides}\n`;
     output: WriteChapterOutput,
     language: "zh" | "en",
   ): Promise<RuntimeStateArtifacts | null> {
-    if (!output.runtimeStateDelta) return null;
+    let delta = output.runtimeStateDelta;
+
+    if (!delta) {
+      const updatedHooksRaw = output.updatedHooks;
+      if (updatedHooksRaw && !updatedHooksRaw.includes("|")) {
+        const parsedHooks = parsePendingHooksMarkdown(updatedHooksRaw);
+        if (parsedHooks.length > 0) {
+          const candidates = parsedHooks.map((h) => ({
+            type: h.type || "unspecified",
+            expectedPayoff: h.expectedPayoff || "",
+            notes: h.notes || "",
+          }));
+
+          delta = {
+            chapter: output.chapterNumber,
+            newHookCandidates: candidates,
+            hookOps: {
+              upsert: [],
+              mention: [],
+              resolve: [],
+              defer: [],
+            },
+            subplotOps: [],
+            emotionalArcOps: [],
+            characterMatrixOps: [],
+            notes: [],
+          };
+        }
+      }
+    }
+
+    if (!delta) return null;
+
     const safeDelta = this.normalizeRuntimeStateDeltaChapter(
-      output.runtimeStateDelta,
+      delta,
       output.chapterNumber,
     );
     if (
@@ -1252,6 +1284,7 @@ ${overrides}\n`;
       bookDir,
       delta: safeDelta,
       language,
+      allowReapply: true,
     });
   }
 

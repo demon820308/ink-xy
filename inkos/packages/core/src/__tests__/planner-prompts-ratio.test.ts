@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { PLANNER_MEMO_SYSTEM_PROMPT, PLANNER_MEMO_SYSTEM_PROMPT_EN } from "../agents/planner-prompts.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
+
+const PLANNER_MEMO_SYSTEM_PROMPT = PromptLoader.loadRequiredPrompt("planner_system_zh.md");
+const PLANNER_MEMO_SYSTEM_PROMPT_EN = PromptLoader.loadRequiredPrompt("planner_system_en.md");
 
 describe("planner prompt line-ratio handling", () => {
   it("requires user-specified plot proportions to become visible chapter beats", () => {

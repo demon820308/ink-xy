@@ -126,109 +126,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (action === "get-facts") {
-      const bookId = args.bookId;
-      if (!bookId) {
-        return NextResponse.json({ error: "书籍ID不能为空" }, { status: 400 });
-      }
-      const dbPath = join(cwd, "books", bookId, "story", "memory.db");
-      if (!existsSync(dbPath)) {
-        return NextResponse.json({ success: true, facts: [] });
-      }
-      try {
-        const { createRequire } = require("node:module");
-        const requireESM = createRequire(import.meta.url);
-        const { DatabaseSync } = requireESM("node:sqlite");
-        const db = new DatabaseSync(dbPath);
-        
-        let rows;
-        if (typeof args.chapter === "number") {
-          const ch = args.chapter;
-          rows = db.prepare("SELECT id, subject, predicate, object, valid_from_chapter AS validFromChapter, valid_until_chapter AS validUntilChapter, source_chapter AS sourceChapter FROM facts WHERE valid_from_chapter <= ? AND (valid_until_chapter IS NULL OR valid_until_chapter >= ?)").all(ch, ch) as any[];
-        } else {
-          rows = db.prepare("SELECT id, subject, predicate, object, valid_from_chapter AS validFromChapter, valid_until_chapter AS validUntilChapter, source_chapter AS sourceChapter FROM facts").all() as any[];
-        }
-        db.close();
-        return NextResponse.json({ success: true, facts: rows });
-      } catch (e: any) {
-        return NextResponse.json({ success: false, error: e.message || String(e) }, { status: 500 });
-      }
-    }
 
-    if (action === "update-fact") {
-      const bookId = args.bookId;
-      const factId = args.id;
-      if (!bookId || !factId) {
-        return NextResponse.json({ error: "书籍ID和事实ID不能为空" }, { status: 400 });
-      }
-      const dbPath = join(cwd, "books", bookId, "story", "memory.db");
-      try {
-        const { createRequire } = require("node:module");
-        const requireESM = createRequire(import.meta.url);
-        const { DatabaseSync } = requireESM("node:sqlite");
-        const db = new DatabaseSync(dbPath);
-        
-        db.prepare("UPDATE facts SET valid_from_chapter = ?, valid_until_chapter = ?, object = ? WHERE id = ?").run(
-          args.validFromChapter,
-          args.validUntilChapter === null ? null : args.validUntilChapter,
-          args.object,
-          factId
-        );
-        db.close();
-        return NextResponse.json({ success: true });
-      } catch (e: any) {
-        return NextResponse.json({ success: false, error: e.message || String(e) }, { status: 500 });
-      }
-    }
-
-    if (action === "add-fact") {
-      const bookId = args.bookId;
-      if (!bookId) {
-        return NextResponse.json({ error: "书籍ID不能为空" }, { status: 400 });
-      }
-      const dbPath = join(cwd, "books", bookId, "story", "memory.db");
-      try {
-        const { createRequire } = require("node:module");
-        const requireESM = createRequire(import.meta.url);
-        const { DatabaseSync } = requireESM("node:sqlite");
-        const db = new DatabaseSync(dbPath);
-        
-        db.prepare("INSERT INTO facts (subject, predicate, object, valid_from_chapter, valid_until_chapter, source_chapter) VALUES (?, ?, ?, ?, ?, ?)").run(
-          args.subject,
-          args.predicate,
-          args.object,
-          args.validFromChapter,
-          args.validUntilChapter === null ? null : args.validUntilChapter,
-          args.sourceChapter || 1
-        );
-        db.close();
-        return NextResponse.json({ success: true });
-      } catch (e: any) {
-        return NextResponse.json({ success: false, error: e.message || String(e) }, { status: 500 });
-      }
-    }
-
-    if (action === "delete-fact") {
-      const bookId = args.bookId;
-      const factId = args.id;
-      if (!bookId || !factId) {
-        return NextResponse.json({ error: "书籍ID和事实ID不能为空" }, { status: 400 });
-      }
-      const dbPath = join(cwd, "books", bookId, "story", "memory.db");
-      try {
-        const { createRequire } = require("node:module");
-        const requireESM = createRequire(import.meta.url);
-        const { DatabaseSync } = requireESM("node:sqlite");
-        const db = new DatabaseSync(dbPath);
-        
-        db.prepare("DELETE FROM facts WHERE id = ?").run(factId);
-        db.close();
-        return NextResponse.json({ success: true });
-      } catch (e) {
-        const errorMsg = e instanceof Error ? e.message : String(e);
-        return NextResponse.json({ success: false, error: errorMsg }, { status: 500 });
-      }
-    }
 
     if (action === "style-tune") {
       const bookId = args.bookId;
@@ -320,7 +218,8 @@ ${tuneEndMarker}\n\n`;
       }
     }
 
-    const scriptPath = join(process.cwd(), "inkos", "skills", "scripts", "index.js");
+    const rootDir = process.env.APP_ROOT || process.cwd();
+    const scriptPath = join(rootDir, "inkos", "skills", "scripts", "index.js");
 
     // Spawn the node process calling the Skill script
     const child = spawn(process.execPath, [scriptPath, action, JSON.stringify(args), "--cwd", cwd], {
@@ -382,16 +281,45 @@ ${tuneEndMarker}\n\n`;
         let stdoutAccumulator = "";
         let stderrAccumulator = "";
 
+        let stdoutBuffer = "";
         child.stdout.on("data", (chunk) => {
           const text = chunk.toString();
           stdoutAccumulator += text;
-          send({ type: "stdout", data: text });
+          stdoutBuffer += text;
+
+          let lineIndex = stdoutBuffer.indexOf("\n");
+          while (lineIndex !== -1) {
+            const line = stdoutBuffer.slice(0, lineIndex).trim();
+            stdoutBuffer = stdoutBuffer.slice(lineIndex + 1);
+
+            if (line.startsWith("[PROGRESS]")) {
+              const jsonStr = line.slice("[PROGRESS]".length).trim();
+              try {
+                const progressObj = JSON.parse(jsonStr);
+                send({ type: "progress", ...progressObj });
+              } catch (e) {
+                send({ type: "stdout", data: line + "\n" });
+              }
+            } else {
+              send({ type: "stdout", data: line + "\n" });
+            }
+            lineIndex = stdoutBuffer.indexOf("\n");
+          }
         });
 
+        let stderrBuffer = "";
         child.stderr.on("data", (chunk) => {
           const text = chunk.toString();
           stderrAccumulator += text;
-          send({ type: "stdout", data: text });
+          stderrBuffer += text;
+
+          let lineIndex = stderrBuffer.indexOf("\n");
+          while (lineIndex !== -1) {
+            const line = stderrBuffer.slice(0, lineIndex).trim();
+            stderrBuffer = stderrBuffer.slice(lineIndex + 1);
+            send({ type: "stdout", data: line + "\n" });
+            lineIndex = stderrBuffer.indexOf("\n");
+          }
         });
 
         child.on("close", (code) => {

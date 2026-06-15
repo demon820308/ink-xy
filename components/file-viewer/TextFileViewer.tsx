@@ -10,6 +10,9 @@ import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/fi
 import { PlotHookVisualizer } from "../PlotHookVisualizer";
 import { RevisionConsole } from "../RevisionConsole";
 import { DiffView } from "./DiffView";
+import { BookSettingsEditor } from "./BookSettingsEditor";
+import { CharacterCardFormEditor } from "./CharacterCardFormEditor";
+import { EmotionalArcVisualizer } from "./EmotionalArcVisualizer";
 import {
   DetectReport,
   AuditReport,
@@ -194,6 +197,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
   const [error, setError] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [viewMode, setViewMode] = useState<"source" | "diff">("source");
+  const [useVisualView, setUseVisualView] = useState(true);
   const [wrapLines, setWrapLines] = useState(false);
   const [watching, setWatching] = useState(false);
   const [changeCount, setChangeCount] = useState(0);
@@ -226,6 +230,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
   const [isReportOpen, setIsReportOpen] = useState(false);
   const isRunning = writeLoading || reviseLoading || auditLoading || syncLoading || planLoading || detectLoading;
   const [logs, setLogs] = useState<string[]>([]);
+  const [contextInput, setContextInput] = useState("");
   const consoleRef = useRef<HTMLDivElement>(null);
 
   const [chapterStatus, setChapterStatus] = useState<string | null>(null);
@@ -256,6 +261,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
     chapterNumber: number;
     mode: "write-next" | "draft";
     forceRewrite: boolean;
+    context?: string;
   } | null>(null);
   const [activeChapterHooks, setActiveChapterHooks] = useState<ChapterHooks | null>(null);
   const [isHookPopoverOpen, setIsHookPopoverOpen] = useState(false);
@@ -274,7 +280,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
     title: string;
     description: string;
     actionType: "write-next" | "draft" | "detect-llm" | "spot-fix" | "anti-detect" | "polish" | "rewrite" | "rework" | "audit" | "sync" | "plan";
-    onConfirm: () => void;
+    onConfirm: (ctx?: string) => void | Promise<void>;
   } | null>(null);
 
   useEffect(() => {
@@ -543,7 +549,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
 
   const requestRunAction = useCallback((
     actionType: "write-next" | "draft" | "detect-llm" | "spot-fix" | "anti-detect" | "polish" | "rewrite" | "rework" | "audit" | "sync" | "plan",
-    onConfirm: () => void
+    onConfirm: (ctx?: string) => void | Promise<void>
   ) => {
     if (!localShowConfirm) {
       onConfirm();
@@ -551,6 +557,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
     }
 
     const meta = getActionMeta(actionType);
+    setContextInput("");
     setExecConfirm({
       title: meta.title,
       description: meta.desc,
@@ -1251,7 +1258,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
     }
   };
 
-  const handleWriteNext = async (forceRewrite: any = false, bypassPlanCheck = false) => {
+  const handleWriteNext = async (forceRewrite: any = false, bypassPlanCheck = false, context?: string) => {
     if (!cwd) return;
 
     // Safety check for license if next chapter is >= 2
@@ -1269,7 +1276,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               prompt: "🔒 续写第二章及以上章节是专业版专属功能，请录入授权码开启您的无限创作宇宙！",
               onSuccess: () => {
                 setTimeout(() => {
-                  handleWriteNext(forceRewrite, bypassPlanCheck);
+                  handleWriteNext(forceRewrite, bypassPlanCheck, context);
                 }, 100);
               }
             }
@@ -1319,6 +1326,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
         chapterNumber: nextChapterNum,
         mode: "write-next",
         forceRewrite,
+        context,
       });
       return;
     }
@@ -1352,7 +1360,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
         body: JSON.stringify({
           action: "write-next",
           cwd,
-          args: { bookId, json: true, activeChapter, forceRewrite: isForce }
+          args: { bookId, json: true, activeChapter, forceRewrite: isForce, context }
         }),
       });
 
@@ -1367,7 +1375,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
             warning: "注意：此操作不可逆！",
             message: `${conflictData.message}\n\n确认要重写该章节并永久删除后续所有章节吗？`,
             onConfirm: () => {
-              handleWriteNext(true, bypassPlanCheck);
+              handleWriteNext(true, bypassPlanCheck, context);
             }
           });
         }
@@ -1580,7 +1588,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
     }
   };
 
-  const handleDraft = async (forceRewrite: any = false, bypassPlanCheck = false) => {
+  const handleDraft = async (forceRewrite: any = false, bypassPlanCheck = false, context?: string) => {
     if (!cwd) return;
 
     // Safety check for license if next chapter is >= 2
@@ -1598,7 +1606,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               prompt: "🔒 续写第二章及以上章节是专业版专属功能，请录入授权码开启您的无限创作宇宙！",
               onSuccess: () => {
                 setTimeout(() => {
-                  handleDraft(forceRewrite, bypassPlanCheck);
+                  handleDraft(forceRewrite, bypassPlanCheck, context);
                 }, 100);
               }
             }
@@ -1648,6 +1656,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
         chapterNumber: nextChapterNum,
         mode: "draft",
         forceRewrite,
+        context,
       });
       return;
     }
@@ -1708,7 +1717,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
             activeChapter, 
             forceRewrite: isForce,
             words: draftWords,
-            context: draftContext
+            context: context || draftContext
           }
         }),
       });
@@ -1724,7 +1733,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
             warning: "注意：此操作不可逆！",
             message: `${conflictData.message}\n\n确认要起草该章节并永久删除后续所有章节吗？`,
             onConfirm: () => {
-              handleDraft(true, bypassPlanCheck);
+              handleDraft(true, bypassPlanCheck, context);
             }
           });
         }
@@ -1875,7 +1884,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
       if (isRunning || saveStatus === "saving") return;
 
       if (customEvent.detail.mode === "normal") {
-        requestRunAction("write-next", () => handleWriteNext(false));
+        requestRunAction("write-next", (ctx) => handleWriteNext(false, false, ctx));
       } else if (customEvent.detail.mode === "draft") {
         setIsDraftDialogOpen(true);
       }
@@ -2224,6 +2233,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
   const handleContentChange = (newVal: string) => {
     setEditContent(newVal);
     setSaveStatus("dirty");
+    setChapterHasSnapshot(false);
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -2267,6 +2277,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
     setData(null);
     setPrevContent(null);
     setPreviewMode(false);
+    setUseVisualView(filePath.endsWith("book.json") || (filePath.replace(/\\/g, "/").includes("/story/roles/") && filePath.endsWith(".md")) || filePath.endsWith("emotional_arcs.md"));
     setViewMode("source");
     setWrapLines(false);
     setChangeCount(0);
@@ -2285,6 +2296,11 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
     fetchContent(filePath).then((d) => {
       if (d) {
         setEditContent(d.content);
+        const isCharacterCard = filePath.replace(/\\/g, "/").includes("/story/roles/") && filePath.endsWith(".md");
+        const isEmotionalArc = filePath.endsWith("emotional_arcs.md");
+        if (filePath.endsWith("pending_hooks.md") || isCharacterCard || isEmotionalArc) {
+          setPreviewMode(true);
+        }
         if (filePath.endsWith("pending_hooks.md")) {
           setPreviewMode(true);
           // Fetch real chapter count from the book index so the
@@ -2370,6 +2386,11 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
   const isHtml = data.language === "html";
   const isMarkdown = data.language === "markdown";
   const hasDiff = prevContent !== null && prevContent !== data.content;
+
+  const isBookConfig = filePath.endsWith("book.json");
+  const isCharacterCard = filePath.replace(/\\/g, "/").includes("/story/roles/") && filePath.endsWith(".md");
+  const isEmotionalArc = filePath.endsWith("emotional_arcs.md");
+  const hasVisualView = isBookConfig || isCharacterCard || isEmotionalArc;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
@@ -2801,7 +2822,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
         )}
 
         {/* Markdown preview/raw toggle */}
-        {isMarkdown && viewMode === "source" && (
+        {isMarkdown && viewMode === "source" && !hasVisualView && (
           <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: "1px solid var(--border)" }}>
             <button
               onClick={() => setPreviewMode(true)}
@@ -2824,6 +2845,40 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               }}
             >
               沉浸创作
+            </button>
+          </div>
+        )}
+
+        {/* Custom Visual/Source toggle for visual assets */}
+        {hasVisualView && viewMode === "source" && (
+          <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: "1px solid var(--border)" }}>
+            <button
+              onClick={() => {
+                setUseVisualView(true);
+                if (isMarkdown) setPreviewMode(true);
+              }}
+              style={{
+                padding: "2px 8px", fontSize: 11, border: "none", cursor: "pointer",
+                background: useVisualView ? "var(--bg-selected)" : "var(--bg-hover)",
+                color: useVisualView ? "var(--text)" : "var(--text-muted)",
+                fontWeight: useVisualView ? 600 : 400,
+              }}
+            >
+              👁️ 可视化编辑
+            </button>
+            <button
+              onClick={() => {
+                setUseVisualView(false);
+                if (isMarkdown) setPreviewMode(false);
+              }}
+              style={{
+                padding: "2px 8px", fontSize: 11, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
+                background: !useVisualView ? "var(--bg-selected)" : "var(--bg-hover)",
+                color: !useVisualView ? "var(--text)" : "var(--text-muted)",
+                fontWeight: !useVisualView ? 600 : 400,
+              }}
+            >
+              📝 源码模式
             </button>
           </div>
         )}
@@ -2880,6 +2935,10 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
         ) : isMarkdown && previewMode ? (
           filePath.endsWith("pending_hooks.md") ? (
             <PlotHookVisualizer editContent={editContent} onChange={handleContentChange} totalChapters={totalChapters} />
+          ) : isCharacterCard && useVisualView ? (
+            <CharacterCardFormEditor filePath={filePath} cwd={cwd || ""} initialContent={editContent} onSaveSuccess={handleContentChange} />
+          ) : isEmotionalArc && useVisualView ? (
+            <EmotionalArcVisualizer initialContent={editContent} />
           ) : (
             <div style={{ flex: 1, overflow: "auto" }}>
               <div
@@ -2890,6 +2949,10 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               </div>
             </div>
           )
+        ) : isBookConfig && useVisualView ? (
+          <div style={{ flex: 1, overflow: "auto", padding: "24px" }}>
+            <BookSettingsEditor filePath={filePath} cwd={cwd || ""} initialContent={editContent} onSaveSuccess={handleContentChange} />
+          </div>
         ) : (data.language === "markdown" || data.language === "text") ? (
 
           /* Zen Writing Editor */
@@ -2987,10 +3050,10 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                     disabled={syncLoading || writeLoading || reviseLoading || auditLoading || planLoading || saveStatus === "saving"}
                     style={{
                       padding: "5px 12px",
-                      background: "rgba(16, 185, 129, 0.08)",
-                      border: "1px solid rgba(16, 185, 129, 0.4)",
+                      background: chapterHasSnapshot ? "rgba(16, 185, 129, 0.08)" : "rgba(245, 158, 11, 0.08)",
+                      border: chapterHasSnapshot ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(245, 158, 11, 0.4)",
                       borderRadius: "6px",
-                      color: "#34d399",
+                      color: chapterHasSnapshot ? "#34d399" : "#fbbf24",
                       cursor: "pointer",
                       fontSize: "11px",
                       fontWeight: 600,
@@ -3000,22 +3063,39 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                       whiteSpace: "nowrap",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(16, 185, 129, 0.16)";
-                      e.currentTarget.style.borderColor = "#10b981";
-                      e.currentTarget.style.color = "#6ee7b7";
+                      e.currentTarget.style.background = chapterHasSnapshot ? "rgba(16, 185, 129, 0.16)" : "rgba(245, 158, 11, 0.16)";
+                      e.currentTarget.style.borderColor = chapterHasSnapshot ? "#10b981" : "#f59e0b";
+                      e.currentTarget.style.color = chapterHasSnapshot ? "#6ee7b7" : "#fcd34d";
                       e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.2)";
+                      e.currentTarget.style.boxShadow = chapterHasSnapshot 
+                        ? "0 4px 12px rgba(16, 185, 129, 0.2)" 
+                        : "0 4px 12px rgba(245, 158, 11, 0.2)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "rgba(16, 185, 129, 0.08)";
-                      e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.4)";
-                      e.currentTarget.style.color = "#34d399";
+                      e.currentTarget.style.background = chapterHasSnapshot ? "rgba(16, 185, 129, 0.08)" : "rgba(245, 158, 11, 0.08)";
+                      e.currentTarget.style.borderColor = chapterHasSnapshot ? "rgba(16, 185, 129, 0.4)" : "rgba(245, 158, 11, 0.4)";
+                      e.currentTarget.style.color = chapterHasSnapshot ? "#34d399" : "#fbbf24";
                       e.currentTarget.style.transform = "none";
                       e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
                     }}
                   >
                     {syncLoading ? "正在同步中..." : (
                       <span style={{ display: "flex", alignItems: "center" }}>
+                        <span 
+                          style={{
+                            width: "6px",
+                            height: "6px",
+                            borderRadius: "50%",
+                            background: chapterHasSnapshot ? "#10b981" : "#f59e0b",
+                            marginRight: "6px",
+                            boxShadow: chapterHasSnapshot 
+                              ? "0 0 6px rgba(16, 185, 129, 0.6)" 
+                              : "0 0 6px rgba(245, 158, 11, 0.6)",
+                            display: "inline-block",
+                            flexShrink: 0
+                          }}
+                          title={chapterHasSnapshot ? "设定已同步到 AI 记忆" : "正文或设定有变更，建议点击同步"}
+                        />
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
                           <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                           <path d="M16 3h5v5" />
@@ -4447,12 +4527,12 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
 
               <button
                 onClick={() => {
-                  const { mode, forceRewrite } = planReminder;
+                  const { mode, forceRewrite, context } = planReminder;
                   setPlanReminder(null);
                   if (mode === "write-next") {
-                    handleWriteNext(forceRewrite, true);
+                    handleWriteNext(forceRewrite, true, context);
                   } else {
-                    handleDraft(forceRewrite, true);
+                    handleDraft(forceRewrite, true, context);
                   }
                 }}
                 style={{
@@ -4586,6 +4666,33 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                   {meta.desc}
                 </div>
 
+                {(execConfirm.actionType === "write-next" || execConfirm.actionType === "draft") && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                      💡 本章剧情走向与限制（可选）
+                    </label>
+                    <textarea
+                      placeholder="例如：在这章中增加主角跟女二在图书馆的偶遇，并发现了密室钥匙。"
+                      value={contextInput}
+                      onChange={(e) => setContextInput(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "80px",
+                        background: "var(--bg)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        color: "var(--text)",
+                        fontSize: "12px",
+                        padding: "8px 12px",
+                        resize: "none",
+                        outline: "none",
+                        fontFamily: "var(--font-serif)",
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                )}
+
                 <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
                   💡 提示：您可以在顶部的“系统全局设置” ⚙️ 中关闭此确认弹窗。
                 </div>
@@ -4628,7 +4735,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                   onClick={() => {
                     const confirmFn = execConfirm.onConfirm;
                     setExecConfirm(null);
-                    confirmFn();
+                    confirmFn(contextInput);
                   }}
                   style={{
                     padding: "7px 20px",

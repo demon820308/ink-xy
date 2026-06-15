@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  PLANNER_MEMO_SYSTEM_PROMPT,
-  PLANNER_MEMO_USER_TEMPLATE,
   buildPlannerUserMessage,
   buildGoldenOpeningGuidance,
 } from "../agents/planner-prompts.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
+
+const PLANNER_MEMO_SYSTEM_PROMPT = PromptLoader.loadRequiredPrompt("planner_system_zh.md");
+const PLANNER_MEMO_USER_TEMPLATE = PromptLoader.loadRequiredPrompt("planner_user_zh.md");
 
 describe("PLANNER_MEMO_SYSTEM_PROMPT", () => {
   it("contains key methodology phrases from new.txt", () => {

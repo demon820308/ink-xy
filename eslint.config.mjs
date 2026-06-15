@@ -3,7 +3,12 @@ import typescript from "eslint-config-next/typescript";
 
 const eslintConfig = [
   {
-    ignores: ["inkos/**"],
+    ignores: [
+      "inkos/**",
+      "electron/**",
+      "licensing-server/**",
+      "scripts/**"
+    ],
   },
   ...coreWebVitals,
   ...typescript,

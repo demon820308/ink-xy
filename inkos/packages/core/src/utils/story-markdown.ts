@@ -122,19 +122,34 @@ export function parsePendingHooksMarkdown(markdown: string): StoredHook[] {
   return markdown
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("-"))
-    .map((line) => line.replace(/^-\s*/, ""))
+    .filter((line) => line.startsWith("-") || /^\d+\s*[\.\u002e\u3002]\s*/.test(line))
+    .map((line) => line.replace(/^(?:-\s*|\d+\s*[\.\u002e\u3002]\s*)/, ""))
     .filter(Boolean)
-    .map((line, index) => ({
-      hookId: `hook-${index + 1}`,
-      startChapter: 0,
-      type: "unspecified",
-      status: "open",
-      lastAdvancedChapter: 0,
-      expectedPayoff: "",
-      payoffTiming: undefined,
-      notes: line,
-    }));
+    .filter((text) => {
+      const clean = text.replace(/[\(\)（）\s]+/g, "");
+      return (
+        clean !== "暂无" &&
+        clean !== "none" &&
+        clean !== "na" &&
+        clean !== "无" &&
+        !clean.includes("暂无，本章为起始章")
+      );
+    })
+    .map((line, index) => {
+      const parts = line.split(/\|\||｜｜/);
+      const titleRaw = parts[0]?.trim() ?? "";
+      const cleanTitle = titleRaw.replace(/^\*\*+/, "").replace(/\*\*+$/, "").trim();
+      return {
+        hookId: `hook-${index + 1}`,
+        startChapter: 0,
+        type: "unspecified",
+        status: "open",
+        lastAdvancedChapter: 0,
+        expectedPayoff: "",
+        payoffTiming: undefined,
+        notes: cleanTitle ? `${cleanTitle}：${line}` : line,
+      };
+    });
 }
 
 export function parseCurrentStateFacts(

@@ -5,6 +5,7 @@ import type { LengthSpec } from "../models/length-governance.js";
 import { buildFanficCanonSection, buildCharacterVoiceProfiles, buildFanficModeInstructions } from "./fanfic-prompt-sections.js";
 import { buildEnglishCoreRules, buildEnglishAntiAIRules, buildEnglishCharacterMethod, buildEnglishPreWriteChecklist, buildEnglishGenreIntro } from "./en-prompt-sections.js";
 import { buildLengthSpec } from "../utils/length-metrics.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 
 export interface FanficContext {
   readonly fanficCanon: string;
@@ -99,31 +100,8 @@ function buildGenreIntro(book: BookConfig, gp: GenreProfile): string {
 function buildGovernedInputContract(language: "zh" | "en", governed: boolean): string {
   if (!governed) return "";
 
-  if (language === "en") {
-    return `## Input Governance Contract
-
-- Chapter-specific steering comes from the provided chapter intent and composed context package.
-- The outline is the default plan, not unconditional global supremacy.
-- When the runtime rule stack records an active L4 -> L3 override, follow the current task over local planning.
-- Keep hard guardrails compact: canon, continuity facts, and explicit prohibitions still win.
-- If an English Variance Brief is provided, obey it: avoid the listed phrase/opening/ending patterns and satisfy the scene obligation.
-- If Hook Debt Briefs are provided, they contain the ORIGINAL SEED TEXT from the chapter where each hook was planted. Use this text to write a continuation or payoff that feels connected to what the reader already saw — not a vague mention, but a scene that builds on the specific promise.
-- When the explicit hook agenda names an eligible resolve target, land a concrete payoff beat that answers the reader's original question from the seed chapter.
-- When stale debt is present, do not open sibling hooks casually; clear pressure from old promises before minting fresh debt.
-- In multi-character scenes, include at least one resistance-bearing exchange instead of reducing the beat to summary or explanation.`;
-  }
-
-  return `## 输入治理契约
-
-- 本章具体写什么，以提供给你的 chapter intent 和 composed context package 为准。
-- 卷纲是默认规划，不是全局最高规则。
-- 当 runtime rule stack 明确记录了 L4 -> L3 的 active override 时，优先执行当前任务意图，再局部调整规划层。
-- 真正不能突破的只有硬护栏：世界设定、连续性事实、显式禁令。
-- 如果提供了 English Variance Brief，必须主动避开其中列出的高频短语、重复开头和重复结尾模式，并完成 scene obligation。
-- 如果提供了 Hook Debt 简报，里面包含每个伏笔种下时的**原始文本片段**。用这些原文来写延续或兑现场景——不是模糊地提一嘴，而是接着读者已经看到的具体承诺来写。
-- 如果显式 hook agenda 里出现了可回收目标，本章必须写出具体兑现片段，回答种子章节中读者的原始疑问。
-- 如果存在 stale debt，先消化旧承诺的压力，再决定是否开新坑；同类 sibling hook 不得随手再开。
-- 多角色场景里，至少给出一轮带阻力的直接交锋，不要把人物关系写成纯解释或纯总结。`;
+  const filename = language === "en" ? "writer_governed_input_en.md" : "writer_governed_input_zh.md";
+  return PromptLoader.loadRequiredPrompt(filename);
 }
 
 // ---------------------------------------------------------------------------
@@ -133,37 +111,8 @@ function buildGovernedInputContract(language: "zh" | "en", governed: boolean): s
 function buildChapterMemoContract(language: "zh" | "en", governed: boolean): string {
   if (!governed) return "";
 
-  if (language === "en") {
-    return `## Chapter Memo Alignment
-
-You will receive a chapter_memo composed of 7 markdown sections:
-
-- ## 当前任务 → the concrete action this chapter must complete; stay aligned with it throughout
-- ## 读者此刻在等什么 → controls how emotional gaps are created / delayed / paid off
-- ## 该兑现的 / 暂不掀的 → payoffs that must land this chapter + cards you must NOT reveal
-- ## 日常/过渡承担什么任务 → function map for non-conflict passages ([passage location] → [function])
-- ## 关键抉择过三连问 → three-question check every key character choice must pass
-- ## 章尾必须发生的改变 → 1-3 concrete changes the ending must deliver (info / relation / physical / power)
-- ## 本章 hook 账 → **hard correspondence rule**: each hook_id listed under advance/resolve MUST have a **concretely locatable payoff scene** in the prose — explicit characters acting on or talking about a specific object/event/piece of information, with observable actions. No "sideways hints" or "deferred to next chapter". Example: if the memo says 'advance: H007 Huzi's IOU → planted → pressured', the prose must contain a scene where Lin Qiu actually touches / sees / picks up that specific IOU and does something. An inner mention like "he remembered the IOU was still in the drawer" does NOT count. Each advance/resolve payoff scene must be at least 60 chars. Entries under defer need no prose. Entries under open only need a natural new-hook seed near the chapter end
-- ## 不要做 → hard prohibitions for this chapter
-
-Address each section in order when drafting the chapter. Every section must leave a visible trace in the prose — if a section is not reflected, the chapter is incomplete. **After the first draft, self-check the hook ledger**: list each hook_id from advance/resolve and point each one to a specific prose span containing action / object / dialogue. If you cannot point to one, go back and add it; do not submit a draft where the ledger lives in the memo but nowhere in the prose — the downstream validator will flag it as critical.`;
-  }
-
-  return `## 章节备忘对齐
-
-你将收到本章的 chapter_memo，由 7 段 markdown 组成：
-
-- ## 当前任务 → 本章必须完成的具体动作，写作时始终对齐这条
-- ## 读者此刻在等什么 → 控制情绪缺口的制造/延迟/兑现程度
-- ## 该兑现的 / 暂不掀的 → 本章必须兑现的伏笔清单 + 必须压住不掀的底牌
-- ## 日常/过渡承担什么任务 → 非冲突段落的功能映射（[段落位置] → [承担功能]）
-- ## 关键抉择过三连问 → 关键人物选择必须过的检查
-- ## 章尾必须发生的改变 → 结尾落地的 1-3 条具体改变（信息/关系/物理/权力）
-- ## 本章 hook 账 → **硬对应规则**：advance/resolve 下面列出的每一个 hook_id 都必须在正文里有一个**具体可定位的兑现段**——写明人物对着什么物件/事件/信息做出什么可观察的动作或交谈。不允许"侧面暗示""留给下章"。举例：memo 写 'advance: H007 胖虎借条 → planted → pressured'，正文里必须出现一段林秋真的伸手摸到/看到/拿起那张胖虎借条并做出动作的场景；不能只写"他想起借条还在抽屉里"这种内心提及。每个 advance/resolve 的 hook 兑现段至少 60 字。defer 下的不用落，open 段只需要在章末附近安排一个自然引出的新悬念即可
-- ## 不要做 → 硬约束红线
-
-写作时按段落顺序落实，每一段都要在正文里有对应的兑现痕迹。如果某一段没有体现到正文里，本章不算完成。**写完初稿后自检一遍 hook 账**：把 advance 和 resolve 的 hook_id 列下来，对照正文，确认每一个都能指到一段带具体动作/物件/对话的 prose。如果指不到，回去补写；不要提交"账本在 memo 里、正文里没落"的稿子——下游 validator 会直接判 critical 退稿。`;
+  const filename = language === "en" ? "writer_memo_alignment_en.md" : "writer_memo_alignment_zh.md";
+  return PromptLoader.loadRequiredPrompt(filename);
 }
 
 function buildLengthGuidance(lengthSpec: LengthSpec, language: "zh" | "en"): string {
@@ -438,43 +387,8 @@ function buildImmersionTechniques(): string {
 // ---------------------------------------------------------------------------
 
 function buildWritingCraftCard(language: "zh" | "en"): string {
-  if (language === "en") {
-    return `## Writing Craft Rules
-
-- **Emotion**: Externalize through action — never write "he felt angry", write "he crushed the teacup"
-- **Salt in soup**: Values conveyed through behavior, not slogans
-- **Supporting cast**: Every side character has their own agenda. Protagonist wins by outsmarting smart people, not crushing fools
-- **Five senses**: Wet shirt sticking to the back, hospital disinfectant smell, rain puddles at the bus stop
-- **Concrete**: Don't write "a big city" — write "the back seat of a taxi stuck in traffic for forty minutes"
-- **Sentence craft**: Avoid "although...however" / "nevertheless" / excessive "was". Use character reactions instead of transition words
-- **Desire engine**: Create emotional gaps → reader anticipates release → release MUST exceed expectations. 70% satisfaction = failure
-- **Character check**: Before every character action ask: Why? Does it match their profile? Would the reader find it jarring?
-- **Dialogue**: Different characters speak differently — vocabulary, sentence length, verbal tics, dialect traces
-- **Forbidden**: Info-dump character introductions / introducing 3+ new characters at once / "everyone gasped in unison"
-- **Escalation**: Bad things stack — each layer worse than the last. Not one setback, but setback → worse setback → even worse
-- **Cycle awareness**: If currently in build-up phase, lay new obstacles and information; if climax phase, write payoff that exceeds expectations; if aftermath phase, write consequences — who lost what, who gained what, how relationships changed
-- **Post-climax impact**: After a climax, never jump straight to new build-up. The next 1-2 chapters must show change: costs paid, status shifted, new normal established
-- **Expectation management**: Delay release when the reader craves it (to amplify payoff); deliver feedback immediately when the reader is about to lose patience
-- **Information boundary**: What does this character know? What don't they know? What are they wrong about? Characters must act only on information they possess`;
-  }
-
-  return `## 写作铁律
-
-- **情绪**：用动作外化，不写"他感到愤怒"，写"他捏碎了茶杯，滚烫的茶水流过指缝"
-- **盐溶于汤**：价值观通过行为传达，不喊口号
-- **配角**：有自己的算盘和反击，主角压服聪明人不是碾压傻子
-- **五感**：潮湿的短袖黏在后背上、医院消毒水的味、雨天公交站的积水
-- **具体化**：不写"大城市"，写"三环堵了四十分钟的出租车后座"
-- **句式**：少用"虽然但是/然而/因此/了"，用角色内心吐槽替代转折词
-- **欲望驱动**：制造情绪缺口→读者期待释放→释放时超过预期。满足70%等于失败
-- **人设三问**：为什么这么做？符合人设吗？读者会觉得突兀吗？
-- **对话**：不同角色说话方式不同——用词习惯、句子长短、口头禅、方言痕迹
-- **禁止**：资料卡式介绍角色 / 一次引入超3个新角色 / 众人齐声惊呼
-- **升级**：坏事叠坏事，每层比上一层过分——被骂→手机掉了→直播课结束了→包子噎住了
-- **小目标周期意识**：如果当前处于蓄压阶段，铺新阻力新信息；如果是爆发阶段，写兑现超预期；如果是后效阶段，写改变和代价
-- **高潮后影响**：爆发后不能直接跳到下一个蓄压。紧接着的 1-2 章必须写出改变——谁失去了什么、谁得到了什么、关系怎么变了
-- **期待管理**：读者期待释放时适当延迟以增强快感；读者即将失去耐心时立即给反馈
-- **信息边界**：角色此刻知道什么？不知道什么？对局势有什么误判？角色只能基于已掌握的信息行动`;
+  const filename = language === "en" ? "writer_craft_card_en.md" : "writer_craft_card_zh.md";
+  return PromptLoader.loadRequiredPrompt(filename);
 }
 
 // ---------------------------------------------------------------------------
@@ -482,18 +396,8 @@ function buildWritingCraftCard(language: "zh" | "en"): string {
 // ---------------------------------------------------------------------------
 
 function buildCreativeConstitution(language: "zh" | "en"): string {
-  if (language === "en") {
-    return `## Creative Constitution
-
-These fourteen principles are your spine. Internalise them — never quote them, never list them, never narrate them. They tell you how to pick between two plausible next sentences.
-
-Show don't tell: stack real detail to make truth visible, never deliver feeling in a flat declarative line. Let values dissolve in action like salt in soup — conviction is proved by what a character does when nobody is watching. Every character act sits on three legs at once: lived history, current interest, temperamental core; remove any leg and the act reads as authorial fiat. Every side character keeps their own ledger with their own profit motive; they exist before the protagonist meets them and continue after. Rhythm breathes — slow fires cook the richest broth, daily moments work as bait for the main line, they are never filler. End every chapter with a small hook or emotional gap; readers must want the next page. Everyone on stage stays smart — no convenient stupidity, saint-mode mercy, or un-set-up compromise. Use after-time references in the voice of the era they land in. Timeline and period common sense cannot be bent. Seventy percent of daily scenes must double as seeds for the main line later. Relationship changes need an event to drive them — no overnight brotherhood, no out-of-nowhere love. Character setup holds across the arc; growth shows its work. Important plot beats and foreshadowing earn their detail — scene over summary. Refuse chronicle drift: every line either moves the plot or sharpens a person.`;
-  }
-  return `## 创作宪法
-
-这十四条原则是你写作的脊梁。内化它们——绝不引用、绝不列表、绝不在正文里复述。它们的用途是帮你在"两个都说得通的下一句"之间做出选择。
-
-Show don't tell，用细节堆出真实，禁止用一行直白陈述替代情绪。价值观要像盐溶于汤——角色的信念靠"没人看时他在做什么"来证明，不靠口号。任何角色的任何行动都必须同时立于三条腿上：过往经历、当前利益、性格底色；缺一条就成了作者强行安排。每个配角都有自己的账本和利益诉求，他们在遇到主角之前就存在、在离开主角之后继续过日子，不是工具人。节奏即呼吸——慢火才能炖出高汤，日常当饵用，不是填充。每章结尾必须有小悬念或情绪缺口，把读者钉在下一章。全员智商在线——禁止降智、圣母心、无铺垫的妥协。后世梗用符合年代语境的说法落地。时间线与时代常识不能错。日常场景的七成必须在后面成为主线伏笔。任何关系的改变都要事件驱动——没有一夜称兄道弟、没有莫名其妙的深情。人设前后一致，成长有过程。重要剧情和伏笔用场景，不用总结。拒绝流水账——每一行字要么推动剧情，要么塑造人物。`;
+  const filename = language === "en" ? "writer_creative_constitution_en.md" : "writer_creative_constitution_zh.md";
+  return PromptLoader.loadRequiredPrompt(filename);
 }
 
 // ---------------------------------------------------------------------------
@@ -501,18 +405,8 @@ Show don't tell，用细节堆出真实，禁止用一行直白陈述替代情�
 // ---------------------------------------------------------------------------
 
 function buildImmersionPillars(language: "zh" | "en"): string {
-  if (language === "en") {
-    return `## Six Pillars of Immersion
-
-Reader immersion rests on six pillars. Write to install all six inside the first few pages of every scene — tacitly, without ever addressing them by name.
-
-Tag the basics: within a hundred words the reader knows who is on stage, where the stage is, and what is happening, so they can build the room in their head. Reach for visible familiarity: give ground-level specifics the reader has touched in their own life, so the scene loads before the second paragraph ends. Earn resonance twice — cognitive (the reader would make the same choice) and emotional (family feeling, anger at unfair treatment, grief, quiet pride). Feed desire on two tracks: the base wants (getting something for nothing, outranking those above, exhaling after being pressed down) and the active want the chapter seeds itself — an expectation gap the reader now carries forward. Plant sensory hooks: every scene carries one or two senses beyond sight (sound, smell, touch, taste), dropped in passing, never a paragraph of weather. Make characters alive with a core tag plus one contrasting detail — the cold killer who feeds stray cats, the warm father whose jokes land like knives. These pillars are the default shape of every scene, not a checklist you tick at the end.`;
-  }
-  return `## 代入感六支柱
-
-读者代入感靠六根支柱支撑。每一个场景的前几页都要把六根柱子立起来——静默地立，不要点名、不要报告。
-
-基础信息标签化：一百字内让读者知道谁在场、在哪儿、发生什么，读者脑里才能搭出这个房间。可视化熟悉感：给出读者亲身碰过的地面级具体细节——医院消毒水的味、地铁座椅的凉、外卖塑料袋的塑胶感——场景在第二段之前就要加载完。共鸣分两层：认知共鸣（"这种情况下我也会这么选"）+ 情绪共鸣（亲情、被欺压时的愤怒、不公、隐忍的骄傲）。欲望两条腿走路：基础欲望（不劳而获、压制比自己高的人、被欺压之后的扬眉吐气）+ 主动欲望（本章自己挖的期待感——一个读者会带到下一章的情绪缺口）。五感钩子：每个场景除视觉外放 1-2 种感官细节（听/嗅/触/味），顺手带过，绝不写成大段天气描写。人设要"核心标签 + 一个反差细节"才活——冷面杀手偷偷喂流浪猫、和善父亲开的玩笑像刀子。这六根柱子是场景的默认形状，不是章末打勾的清单。`;
+  const filename = language === "en" ? "writer_immersion_pillars_en.md" : "writer_immersion_pillars_zh.md";
+  return PromptLoader.loadRequiredPrompt(filename);
 }
 
 // ---------------------------------------------------------------------------
@@ -527,19 +421,9 @@ export function buildGoldenOpeningDiscipline(
 ): string {
   if (chapterNumber === undefined || chapterNumber > 3) return "";
 
-  if (language === "en") {
-    return `## Golden Opening Discipline — Chapter ${chapterNumber}
-
-This is chapter ${chapterNumber} of the opening three — your prose directly decides whether the reader stays. The Golden Three Chapters rule from new.txt is a hard constraint on your sentences, not advice. Chapter 1: within the first 800 words the protagonist must trip the main-line conflict (chase, dead-end, dispossession, transmigration-as-crisis); long background paragraphs are forbidden, and worldbuilding rides on the protagonist's actions instead of being explained in a block. **The last sentence of the first 300 words (the reader's first phone screen) must land a dramatic / reversal / striking beat — "Officer, I transmigrated"-level, "I'll probably die tomorrow"-level, "I'm attending my own funeral"-level — not background or scene-setting. When the reader scrolls to the bottom of the first screen they must feel pulled into the next line.** Chapter 2: the edge — power, system, rebirth-memory, information advantage — must be **performed** (one concrete event of using it, with a visible consequence), not **announced** (a narrator paragraph saying it exists). Chapter 3: somewhere in this chapter the protagonist's next quantifiable short-term goal must surface, so the reader can name what comes next when they close the page.
-
-The discipline that runs across all three opening chapters: paragraphs of three to five lines (mobile reading), verbs over adjectives, and every chapter ends on a small hook — a cliff, an unresolved question, or an emotional gap. **At most two scenes and at most two named characters who actually clash in the chapter (protagonist + one trigger/opponent; walk-on roles get a role label only, no name, no expansion). Editor Cong Yue's rule tightens the cap from 3 to 2 — readers already mix up 3.** Information is layered into action: basic facts (looks, status, situation) emerge from what the protagonist does; key world rules (system mechanics, the deeper logic) attach to plot triggers; a paragraph of pure exposition is forbidden.`;
-  }
-
-  return `## 黄金三章写作纪律 — 第 ${chapterNumber} 章
-
-这是开篇三章中的第 ${chapterNumber} 章——你写出的每一句话都直接决定读者是否留下来。new.txt 的黄金三章法则对你不是建议，是对句子的硬约束。第 1 章：主角出场 800 字以内必须触发主线冲突（追杀、死局、被夺权、穿越即危机），禁止长段背景铺垫，世界观要通过主角的行动自然带出，不要整段解释。**第 1 章正文前 300 字（手机屏第一页）的最后一句必须是带戏剧性/反差/反转的收尾——警察叔叔我穿越了这类、我大概明天就要死了这类、我躺在自己的葬礼上这类——而不是介绍背景或交代环境。读者第一屏刷到页尾时必须产生"下一句是什么"的拉力。** 第 2 章：金手指/能力/系统/重生记忆/信息差必须"做出来"——一次具体使用的事件、一个看得见的后果——而不是"说出来"——旁白介绍它存在。第 3 章：本章中段必须让主角下一个可量化的短期目标浮上水面，读者合上页面要能说出"接下来他要干什么"。
-
-贯穿开篇三章的纪律：段落 3-5 行（手机阅读节奏），动词压过形容词，每一章结尾必有小钩子——小悬念、未解之问、情绪缺口。**本章场景 ≤ 2 个、有名有姓参与正面冲突的人物 ≤ 2 个（主角 + 1 个触发者或对手；路人甲乙只报身份不给名字，不展开）。番茄老师丛月把开篇人物上限从 3 收紧到 2——3 个已经够读者记混，2 个最稳。** 信息分层植入到动作里：基础信息（外貌、身份、处境）通过主角行动自然带出；关键设定（系统规则、世界底层）结合剧情节点揭示；禁止整段 exposition。`;
+  const filename = language === "en" ? "writer_golden_opening_en.md" : "writer_golden_opening_zh.md";
+  const loadedTemplate = PromptLoader.loadRequiredPrompt(filename);
+  return loadedTemplate.replaceAll("{{chapterNumber}}", String(chapterNumber));
 }
 
 // ---------------------------------------------------------------------------

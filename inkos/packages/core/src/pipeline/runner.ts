@@ -18,6 +18,7 @@ import { StateValidatorAgent, type ValidationResult, type ValidationWarning } fr
 import { RadarAgent } from "../agents/radar.js";
 import type { RadarSource } from "../agents/radar-source.js";
 import { readGenreProfile } from "../agents/rules-reader.js";
+import { PromptLoader } from "../prompts/prompt-loader.js";
 import { analyzeAITells } from "../agents/ai-tells.js";
 import { analyzeSensitiveWords } from "../agents/sensitive-words.js";
 import { StateManager } from "../state/manager.js";
@@ -2179,37 +2180,11 @@ export class PipelineRunner {
     } else {
       try {
         // LLM qualitative extraction
+        const systemPrompt = PromptLoader.loadRequiredPrompt("style_guide_extractor_system.md");
         const response = await chatCompletion(this.config.client, this.config.model, [
           {
             role: "system",
-            content: `你是一位文学风格分析专家。分析参考文本的写作风格，提取可供模仿的定性特征。
-
-输出格式（Markdown）：
-## 叙事声音与语气
-（冷峻/热烈/讽刺/温情/...，附1-2个原文例句）
-
-## 对话风格
-（角色说话的共性特征：句子长短、口头禅倾向、方言痕迹、对话节奏）
-
-## 场景描写特征
-（五感偏好、意象选择、描写密度、环境与情绪的关联方式）
-
-## 转折与衔接手法
-（场景如何切换、时间跳跃的处理方式、段落间的过渡特征）
-
-## 节奏特征
-（长短句分布、段落长度偏好、高潮/舒缓的交替方式）
-
-## 词汇偏好
-（高频特色用词、比喻/修辞倾向、口语化程度）
-
-## 情绪表达方式
-（直白抒情 vs 动作外化、内心独白的频率和风格）
-
-## 独特习惯
-（任何值得模仿的个人写作习惯）
-
-分析必须基于原文实际特征，不要泛泛而谈。每个部分用1-2个原文例句佐证。`,
+            content: systemPrompt,
           },
           {
             role: "user",
@@ -2339,55 +2314,11 @@ export class PipelineRunner {
         readSafe(join(parentDir, "story/character_matrix.md")),
       ]);
 
+    const systemPrompt = PromptLoader.loadRequiredPrompt("canon_reference_extractor_system.md");
     const response = await chatCompletion(this.config.client, this.config.model, [
       {
         role: "system",
-        content: `你是一位网络小说架构师。基于正传的全部设定和状态文件，生成一份完整的"正传正典参照"文档，供番外写作和审计使用。
-
-输出格式（Markdown）：
-# 正传正典（《{正传书名}》）
-
-## 世界规则（完整，来自正传设定）
-（力量体系、地理设定、阵营关系、核心规则——完整复制，不压缩）
-
-## 正典约束（不可违反的事实）
-| 约束ID | 类型 | 约束内容 | 严重性 |
-|---|---|---|---|
-| C01 | 人物存亡 | ... | critical |
-（列出所有硬性约束：谁活着、谁死了、什么事件已经发生、什么规则不可违反）
-
-## 角色快照
-| 角色 | 当前状态 | 性格底色 | 对话特征 | 已知信息 | 未知信息 |
-|---|---|---|---|---|---|
-（从状态卡和角色矩阵中提取每个重要角色的完整快照）
-
-## 角色双态处理原则
-- 未来会变强的角色：写潜力暗示
-- 未来会黑化的角色：写微小裂痕
-- 未来会死的角色：写导致死亡的性格底色
-
-## 关键事件时间线
-| 章节 | 事件 | 涉及角色 | 对番外的约束 |
-|---|---|---|---|
-（从章节摘要中提取关键事件）
-
-## 伏笔状态
-| Hook ID | 类型 | 状态 | 内容 | 预期回收 |
-|---|---|---|---|---|
-
-## 资源账本快照
-（当前资源状态）
-
----
-meta:
-  parentBookId: "{parentBookId}"
-  parentTitle: "{正传书名}"
-  generatedAt: "{ISO timestamp}"
-
-要求：
-1. 世界规则完整复制，不压缩——准确性优先
-2. 正典约束必须穷尽，遗漏会导致番外与正传矛盾
-3. 角色快照必须包含信息边界（已知/未知），防止番外中角色引用不该知道的信息`,
+        content: systemPrompt,
       },
       {
         role: "user",

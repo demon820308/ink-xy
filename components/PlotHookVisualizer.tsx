@@ -145,7 +145,12 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
     // 1. The actual chapter count passed from the book index (most reliable)
     // 2. The highest startChapter or lastAdvanced seen in the hooks table
     const hooksDerivedChapter = hooks.length > 0
-      ? Math.max(...hooks.map(h => Math.max(h.startChapter, h.lastAdvanced)))
+      ? Math.max(...hooks
+          .filter(h => {
+            const s = h.status.trim();
+            return s !== "待种" && s !== "未开启" && s !== "未种" && s !== "未启动" && s !== "未开始";
+          })
+          .map(h => Math.max(h.startChapter, h.lastAdvanced)), 0)
       : 0;
     const currentChapter = Math.max(1, totalChapters ?? 0, hooksDerivedChapter);
 

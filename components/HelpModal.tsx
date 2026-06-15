@@ -93,6 +93,22 @@ export function HelpModal({ onClose }: HelpModalProps) {
             </div>
           ),
         },
+        {
+          title: "4. AI 质量审计与检测指令配置 (Audit Prompt Config)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                点击右上角顶栏的 <strong>【AI 审计与检测指令】</strong> 按钮（盾牌图标），可调出底层 Agent 指令模版配置面板：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li>支持实时查看、编辑和一键恢复默认的<strong>质量审计指令 (Auditor)</strong>、<strong>AI味检测指令 (Detector)</strong> 及 <strong>状态真理校验指令 (State Validator)</strong>，支持中/英双语。</li>
+                  <li><em>重要警告：编辑自定义指令时，请务必保留双大括号插值占位符（如 <code>{"{{genre}}"}</code>、<code>{"{{dimList}}"}</code>、<code>{"{{content}}"}</code> 等）。如果误删这些占位符，可能会导致大模型审计或检测分析时因缺少数据上下文而运行失败。</em></li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
       ],
     },
     {
@@ -133,6 +149,9 @@ export function HelpModal({ onClose }: HelpModalProps) {
               <div>
                 <strong>💡 极速架构合入与继承机制</strong>：
                 如果在新建书籍前，你已在项目工作区目录下存有由 AI 写作伴侣起草保存的 <code>架构.md</code>（或 <code>novel_framework.md</code>）和 <code>人设.md</code>（或 <code>character_profiles.md</code>），系统会在建书时<strong>自动识别并读取</strong>它们，将人设与境界体系合入底层 Truth 数据库（<code>story/</code> 目录）。
+              </div>
+              <div>
+                <em>提示：如果您后续需要调整书籍核心属性，可直接在文件树中点击打开 <code>book.json</code> 并启用【可视化视图】，即可在图形化表单中修改书籍标题、首发平台、写作状态、目标字数等参数。</em>
               </div>
             </div>
           ),
@@ -182,6 +201,26 @@ export function HelpModal({ onClose }: HelpModalProps) {
                   <li><strong>粘贴文本/文件智能解析</strong>：您可以直接粘贴大段散乱的草稿设定，或者上传 TXT/MD 文件，点击 <strong style={{ color: "var(--accent)" }}>【🪄 开始 AI 自动解析与提取】</strong>，AI 将自动分析提取人物的姓名、主要/次要级别（Tier）、核心标签（Core Tags）、矛盾反差（Contrast）以及人际关系网（Relationships）。</li>
                   <li style={{ marginTop: 6 }}><strong>自动冲突检测与去重</strong>：解析成功后，转换器会自动对比已存在的人物角色，直观标出哪些是“新角色”，哪些是“已重名角色（将自动跳过）”，保障库文件整洁。</li>
                   <li style={{ marginTop: 6 }}><strong>一键批量生成与索引重构</strong>：确认后，系统会一键为所有独特新角色建立标准卡片（写入 <code>story/roles/</code>），并自动刷新同步 <code>character_matrix.md</code> 兼容指针，免去手动建档、贴格式的繁琐工序。</li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
+        {
+          title: "6. 角色人设与书籍参数可视化表单编辑器 (Form Editors)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                为了降低作者管理底册（大纲与角色）的门槛，系统为 <code>book.json</code> 和角色卡 Markdown 文件提供了<strong>可视化表单编辑视图</strong>：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li><strong>角色卡表单编辑 (Character Card Editor)</strong>：
+                    打开 <code>story/roles/</code> 目录下的任何角色卡文件，并在顶部状态栏旁切换为【可视化视图】。您可以直接在结构化表单中修改角色姓名、主次级别、核心标签、矛盾细节、人物小传和人际关系网，系统保存时会自动生成规范的 Markdown 格式与 YAML 前置信息，防止手动修改格式出错。
+                  </li>
+                  <li style={{ marginTop: 8 }}><strong>书籍核心参数编辑 (Book Settings Editor)</strong>：
+                    打开任何书籍目录下的 <code>book.json</code> 配置文件并切换为【可视化视图】，即可在图形化表单中调整书籍的标题、首发平台、题材、写作状态以及目标字数指标，系统还会自动从 Inkos 引擎读取当前可用的题材列表供您选择。
+                  </li>
                 </ul>
               </div>
             </div>
@@ -331,7 +370,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
           ),
         },
         {
-          title: "2. 三大核心对账单与可视化剧情伏笔",
+          title: "2. 四种核心账本与可视化剧情伏笔",
           content: (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
@@ -341,6 +380,9 @@ export function HelpModal({ onClose }: HelpModalProps) {
                   </li>
                   <li style={{ marginTop: 6 }}><strong>资源数值账本 (<code>particle_ledger.md</code>)</strong>：
                     对于升级流或具有严密数值系统的网络小说（如修仙的灵力、网游的经验值、财富等），同步设定会自动对账并更新数值。若正文中主角购买法宝消耗了 100 灵石，账本中灵石会自动扣除，避免“主角的灵石花不完”等贬值硬伤。
+                  </li>
+                  <li style={{ marginTop: 6 }}><strong>角色情感关系与弧线 (<code>emotional_arcs.md</code>)</strong>：
+                    记录在不同章节节点中，各个角色的情绪状态（例如：愤怒、悲伤、欣喜）、情绪触发事件、情感波动强度以及情感走势方向（如：上升、下降、波动）。这为 AI 在后续情节中把握角色行为逻辑和心路历程提供关键的记忆线索。
                   </li>
                   <li style={{ marginTop: 6 }}><strong>未兑现伏笔池 (<code>pending_hooks.md</code>)</strong>：
                     自动检索本章正文。如果主角在正文中埋下了伏笔（如“在角落种下了隐形种子”），伏笔池会自动记录该 Hook；若主角击杀了埋伏已久的强敌，伏笔池会自动将该伏笔标记为“已兑现并闭环”，防止烂尾。同步完成后，右侧面板会展示 <strong>可视化伏笔看板 (Hook Dashboard)</strong>，以色彩标签卡片形式展示所有待兑现 (pending)、已兑现 (resolved) 和已过期 (expired) 的伏笔。
@@ -376,6 +418,22 @@ export function HelpModal({ onClose }: HelpModalProps) {
                 <li><strong>预览未来章节</strong>：章节滑块最大值为当前最新章 +1，允许您预览下一章同步后的预期状态快照。</li>
                 <li><strong>全局显示开关</strong>：开启 <strong>【显示全部 (Show All)】</strong> 后，时光机将展示所有章节的完整设定演变历史，而非仅显示当前章节的增量变化。</li>
               </ul>
+            </div>
+          ),
+        },
+        {
+          title: "5. 角色情感曲线可视化 (Emotional Arc Visualizer)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                为了让作者对人物情绪起伏一目了然，系统支持将 <code>emotional_arcs.md</code> 中的表格数据自动转化为交互式图表：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li><strong>SVG 情绪波动折线图</strong>：直接在编辑器中点击打开 <code>emotional_arcs.md</code> 并开启顶部状态栏旁的【可视化视图】。系统会自动生成一张精美的 SVG 折线图表，将情感强度（1-10）和章节（Ch.X）分别映射为 Y 轴和 X 轴。</li>
+                  <li><strong>角色聚焦过滤</strong>：您可以在图表顶部的下拉菜单中选择“全部角色”以综合观察所有角色在各章节的情感张力走向，也可以选择特定的主角，查看其个人专属的完整心路历程折线。</li>
+                </ul>
+              </div>
             </div>
           ),
         },
@@ -616,6 +674,82 @@ export function HelpModal({ onClose }: HelpModalProps) {
                 <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
                   <li><strong>输出格式</strong>：支持合并为单一的 <code>.txt</code>、<code>.md</code>，或导出为格式精美的 <code>.epub</code> 电子书格式。</li>
                   <li><strong>审核态过滤</strong>：勾选 <strong>“仅导出已审核通过章节”</strong>，系统会自动过滤掉尚未完成或被标记为审计失败的草稿，保障发布版本绝对合规安全。</li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
+      ],
+    },
+    {
+      id: "hooks",
+      icon: "🪝",
+      title: "剧情伏笔",
+      subtitle: "伏笔生命周期、债务防坍塌与预警解除机制",
+      steps: [
+        {
+          title: "1. 伏笔账本与核心指标 (The Hook Ledger)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                剧情伏笔是贯穿小说创作周期的核心线索。系统在每次【对账同步】时，会自动在底层 Truth 数据库生成并同步 <code>story/pending_hooks.md</code> 文件。
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <strong>账本核心字段定义：</strong>
+                <ul style={{ paddingLeft: 18, margin: "6px 0", lineHeight: "1.7" }}>
+                  <li><code>起始章节 (Start Chapter)</code>：伏笔首次被埋下或登记的章节。</li>
+                  <li><code>最近推进 (Last Advanced)</code>：该伏笔最近一次在正文中取得实质进展的章节。</li>
+                  <li><code>回收节奏 (Payoff Timing)</code>：预期的回收时序，例如：<em>立即</em>（本章/下章）、<em>近期</em>（短线）、<em>中程</em>（卷中）、<em>慢烧</em>（长线）、<em>终局</em>（大结局）。它决定了系统对伏笔的超时判定阈值。</li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
+        {
+          title: "2. 活跃上限与伏笔债务警报 (Active Limit & Hook Debt)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                为了防止长篇网络小说因线索冗余或“光挖坑不填坑”导致大模型上下文对账超载，系统对活跃伏笔设置了严格的监控：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li><strong>活跃伏笔上限</strong>：系统建议上限为 <strong>12</strong> 个。若当前处于 <code>open</code> (未解决) 或 <code>progressing</code> (推进中) 状态的伏笔数超过 12 个，章节看板将触发“伏笔债务过高”警告。</li>
+                  <li style={{ marginTop: 6 }}><strong>规避手段</strong>：新开伏笔时，尽量搭配回收旧伏笔。若部分伏笔已被解决，在 <code>pending_hooks.md</code> 表格中将其状态更新为 <code>resolved</code> 即可快速清减活跃债务。</li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
+        {
+          title: "3. 推进/回收压力区判定 (Payoff Pressure)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                当伏笔由于故事章节推移而满足特定条件时，系统会亮起“回收/推进压力”警报：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li><strong>逾期 (Overdue)</strong>：超出了回收节奏指定的章节间隔。例如“近期”回收的伏笔，其跨度超过 5 章仍未回收即为逾期。</li>
+                  <li><strong>陈旧 (Stale)</strong>：非延后伏笔在连续 10 章内没有发生任何实质进展或提及。</li>
+                  <li><strong>可回收 (Ready to Resolve)</strong>：伏笔生存时间已满足最早回收要求且具备推进活力，进入了可闭环状态。</li>
+                </ul>
+              </div>
+            </div>
+          ),
+        },
+        {
+          title: "4. 如何实质性消除伏笔警告 (Resolving Warnings)",
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                仅仅在章节正文中口头“提到（mention）”压力区伏笔是无法消除警告的。创作者必须采取以下三种方式之一真正进行处置（Disposition）：
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
+                  <li><strong>回收 (Resolve)</strong>：在正文中将事件交代闭环，同步后系统会将账本状态记为 <code>resolved</code>（已回收），该伏笔自动退出活跃统计。</li>
+                  <li><strong>推进 (Advance)</strong>：在正文中推动线索发生重大改变，同步后更新伏笔的 <code>最近推进</code> 为当前章节。</li>
+                  <li><strong>延后 (Defer)</strong>：若决定推迟解决，可手动在 <code>pending_hooks.md</code> 表格中将其状态改为 <code>deferred</code>（延后），或将其 <code>回收节奏</code> 调低（如从“近期”调为“中程”），系统会自动解除警告。</li>
                 </ul>
               </div>
             </div>

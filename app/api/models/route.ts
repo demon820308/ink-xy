@@ -111,7 +111,7 @@ export async function GET() {
       }
     }
 
-    const settings = SettingsManager.create(process.cwd(), agentDir);
+    const settings = SettingsManager.create(process.env.APP_ROOT || process.cwd(), agentDir);
     const provider = settings.getDefaultProvider();
     const modelId = settings.getDefaultModel();
     if (provider) {

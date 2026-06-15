@@ -210,14 +210,14 @@ export class MemoryDB {
   }
 
   replaceCurrentFacts(facts: ReadonlyArray<Omit<Fact, "id">>): void {
-    this.db.exec("DELETE FROM facts WHERE valid_until_chapter IS NULL");
+    this.db.exec("DELETE FROM facts WHERE valid_until_chapter IS NULL AND (source_chapter >= 0 OR source_chapter IS NULL)");
     for (const fact of facts) {
       this.addFact(fact);
     }
   }
 
   resetFacts(): void {
-    this.db.exec("DELETE FROM facts");
+    this.db.exec("DELETE FROM facts WHERE source_chapter >= 0 OR source_chapter IS NULL");
   }
 
   // ---------------------------------------------------------------------------

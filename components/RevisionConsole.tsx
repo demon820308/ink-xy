@@ -576,7 +576,7 @@ export function RevisionConsole({
                           <span style={{ width: 40, textAlign: "right", color: "var(--text-dim)", fontSize: 10, paddingRight: 8, userSelect: "none", fontFamily: "var(--font-mono)", borderRight: "1px solid var(--border)", marginRight: 8, background: "rgba(0,0,0,0.05)" }}>
                             {line.lineNo || ""}
                           </span>
-                          <span style={{ color: isAdded ? "#4ade80" : "var(--text)", fontWeight: isAdded ? 600 : 400, whiteSpace: "pre-wrap", flex: 1 }}>
+                          <span style={{ color: "var(--text)", fontWeight: isAdded ? 600 : 400, whiteSpace: "pre-wrap", flex: 1 }}>
                             {line.text}
                           </span>
                         </div>
