@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /* ------------------------------------------------------------------ */
 
 const PROMPTS_ROOT = path.resolve(
-  process.cwd(),
+  process.env.APP_ROOT || process.cwd(),
   "inkos",
   "skills",
   "genres",
