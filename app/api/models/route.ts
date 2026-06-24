@@ -84,7 +84,7 @@ export async function GET() {
     const mimoProviders = Array.from(new Set(modelList.filter(m => m.provider.includes("xiaomi-token-plan") || m.provider.includes("mimo")).map(m => m.provider)));
 
     const exactMimoModels = [
-      { id: "mimo-v2.5-pro", name: "MiMo-V2.5-Pro", supportsVision: true },
+      { id: "mimo-v2.5-pro", name: "MiMo-V2.5-Pro", supportsVision: false },
       { id: "mimo-v2.5", name: "MiMo-V2.5", supportsVision: false },
       { id: "mimo-v2.5-asr", name: "MiMo-V2.5-ASR", supportsVision: false },
       { id: "mimo-v2.5-tts-voiceclone", name: "MiMo-V2.5-TTS-VoiceClone", supportsVision: false },

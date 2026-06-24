@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Outfit:wght@100..900&display=swap');
 
 @theme {
   --color-bg: var(--bg);
@@ -17,7 +16,7 @@
   --color-tool-bg: var(--tool-bg);
   --color-bg-subtle: var(--bg-subtle);
   --font-mono-font: var(--font-mono);
-  --font-serif: "Lora", "Outfit", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "STSong", "SimSun", "KaiTi", serif;
+  --font-serif: var(--font-lora), var(--font-outfit), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "STSong", "SimSun", "KaiTi", serif;
 }
 
 :root {
