@@ -280,6 +280,7 @@ export default function GemEditorModal({ isOpen, onClose, gemId, onSave, modelLi
                       justifyContent: "center",
                       fontSize: 24,
                       flexShrink: 0,
+                      fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                     }}
                   >
                     {avatar}
@@ -308,6 +309,7 @@ export default function GemEditorModal({ isOpen, onClose, gemId, onSave, modelLi
                           alignItems: "center",
                           justifyContent: "center",
                           transition: "all 0.1s",
+                          fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                         }}
                       >
                         {emoji}

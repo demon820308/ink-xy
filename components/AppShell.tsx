@@ -867,6 +867,7 @@ export function AppShell() {
                                 marginRight: 4,
                                 display: "inline-block",
                                 animation: "spin 1s linear infinite",
+                                fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                               }}>⏳</span>
                               <span>{globalWriteMode === "normal" ? `正在续写${suffix}...` : `正在起草${suffix}...`}</span>
                             </>
@@ -874,7 +875,7 @@ export function AppShell() {
                         }
                         return (
                           <>
-                            <span style={{ marginRight: 4 }}>{globalWriteMode === "normal" ? "✍️" : "⚡"}</span>
+                            <span style={{ marginRight: 4, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{globalWriteMode === "normal" ? "✍️" : "⚡"}</span>
                             <span>{globalWriteMode === "normal" ? `智能续写${suffix}` : `极速草稿${suffix}`}</span>
                           </>
                         );
@@ -975,7 +976,7 @@ export function AppShell() {
                                     if (globalWriteMode !== "normal") e.currentTarget.style.background = "none";
                                   }}
                                 >
-                                  <span>✍️</span>
+                                  <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</span>
                                   <span>智能续写 {nextCh !== null ? `第${nextCh}章` : "(标准)"}</span>
                                 </button>
                                 <button
@@ -1005,7 +1006,7 @@ export function AppShell() {
                                     if (globalWriteMode !== "draft") e.currentTarget.style.background = "none";
                                   }}
                                 >
-                                  <span>⚡</span>
+                                  <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>⚡</span>
                                   <span>极速草稿 {nextCh !== null ? `第${nextCh}章` : "(快跑)"}</span>
                                 </button>
                               </>
@@ -1043,7 +1044,7 @@ export function AppShell() {
                   onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
                 >
-                  <span style={{ fontSize: 12 }}>📊</span>
+                  <span style={{ fontSize: 12, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📊</span>
                   <span>章节管控看板</span>
                 </button>
               )}
@@ -1228,7 +1229,7 @@ export function AppShell() {
             gap: "12px"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "14px" }}>✒️</span>
+              <span style={{ fontSize: "14px", fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✒️</span>
               <span style={{ color: "var(--text-muted)" }}>
                 您当前处于免费试用模式。续写第二章及以上章节需录入授权。
               </span>
@@ -1316,7 +1317,7 @@ export function AppShell() {
             )
           ) : (
             <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", padding: 32, textAlign: "center" }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>✍️</div>
+                <div style={{ fontSize: 48, marginBottom: 16, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
                 开始您的文学创作之旅
               </div>
@@ -1640,7 +1641,8 @@ export function AppShell() {
               justifyContent: "center",
               fontSize: 16,
               border: `1px solid #818cf833`,
-              boxShadow: `0 2px 8px rgba(99, 102, 241, 0.15)`
+              boxShadow: `0 2px 8px rgba(99, 102, 241, 0.15)`,
+              fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
             }}>
               🎭
             </div>
@@ -1670,7 +1672,10 @@ export function AppShell() {
               color: "var(--text-muted)",
               lineHeight: "1.7",
             }}>
-              <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 6 }}>⚠️ 注意事项：</span>
+              <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 6 }}>
+                <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 4 }}>⚠️</span>
+                <span>注意事项：</span>
+              </span>
               此操作将使用该文风模板自动覆盖当前书籍的活动文风指南（`story/style_guide.md`）与统计特征库（`style_profile.json`）。历史章节正文不会被修改。
             </div>
 
@@ -1682,7 +1687,10 @@ export function AppShell() {
               color: "var(--text-muted)",
               lineHeight: "1.6",
             }}>
-              <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 4 }}>💡 后续操作指引：</span>
+              <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 4 }}>
+                <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 4 }}>💡</span>
+                <span>后续操作指引：</span>
+              </span>
               切换成功后，接下来的「智能续写」、「极速草稿」、「文本润色」和「剧情重写」等 AI 生成动作，都将自动采用该风格进行写作。
             </div>
           </div>
@@ -1787,7 +1795,7 @@ export function AppShell() {
             borderBottom: "1px solid var(--border)",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: "16px" }}>🔑</span>
+              <span style={{ fontSize: "16px", fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔑</span>
               <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>输入授权激活码</span>
             </div>
             <button
@@ -1902,7 +1910,7 @@ export function AppShell() {
                 alignItems: "center",
                 gap: "4px"
               }}>
-                <span>⚠️</span>
+                <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>⚠️</span>
                 <span>{activationError}</span>
               </div>
             )}

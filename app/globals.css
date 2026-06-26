@@ -1,5 +1,57 @@
 @import "tailwindcss";
 
+/* ── Universal macOS/Windows Color Emoji System Fallback Overrides ─────────── */
+@font-face {
+  font-family: 'Times';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'Times New Roman';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'Georgia';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'serif';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'sans-serif';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'monospace';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'ui-monospace';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'system-ui';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: '-apple-system';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+@font-face {
+  font-family: 'BlinkMacSystemFont';
+  src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+  unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+}
+
 @theme {
   --color-bg: var(--bg);
   --color-bg-panel: var(--bg-panel);
@@ -16,7 +68,7 @@
   --color-tool-bg: var(--tool-bg);
   --color-bg-subtle: var(--bg-subtle);
   --font-mono-font: var(--font-mono);
-  --font-serif: var(--font-lora), var(--font-outfit), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "STSong", "SimSun", "KaiTi", serif;
+  --font-serif: var(--font-serif-stack);
 }
 
 :root {
@@ -34,6 +86,7 @@
   --assistant-bg: #fcf8f2;
   --tool-bg: #f4ead1;
   --bg-subtle: rgba(63, 47, 31, 0.04);
+  --font-serif-stack: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", var(--font-lora), var(--font-outfit), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "STSong", "SimSun", "KaiTi", serif;
 }
 
 html.dark {
@@ -68,8 +121,9 @@ html.dark {
   z-index: 2;
 }
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
+  font-variant-emoji: emoji;
 }
 
 html, body {
@@ -104,7 +158,7 @@ body {
 }
 
 :root {
-  --font-mono: var(--font-noto-mono), 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', 'PingFang SC', 'Microsoft YaHei', monospace;
+  --font-mono: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", var(--font-noto-mono), 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, "PingFang SC", "Microsoft YaHei", monospace;
 }
 
 pre, code {

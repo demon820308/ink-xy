@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { SessionInfo, GemProfile } from "@/lib/types";
+import { StatusIcon } from "./StatusIcon";
 
 interface Genre {
   id: string;
@@ -2007,7 +2008,7 @@ export function SessionSidebar({
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                        <span style={{ fontSize: 14, flexShrink: 0 }}>{gem.avatar || "🔮"}</span>
+                        <span style={{ fontSize: 14, flexShrink: 0, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{gem.avatar || "🔮"}</span>
                         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                           <span style={{
                             color: isSelected ? "var(--accent)" : "var(--text)",
@@ -2455,7 +2456,7 @@ export function SessionSidebar({
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          🔍 离线审稿与设定审计结果
+                          <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🔍</span>离线审稿与设定审计结果
                         </div>
                         <div style={{
                           padding: "10px 14px", borderRadius: 8,
@@ -2465,7 +2466,17 @@ export function SessionSidebar({
                           fontSize: 12, fontWeight: 600,
                           color: isPassed ? "#4ade80" : "#fbbf24",
                         }}>
-                          {isPassed ? "✅ 审计通过 — 无明显 logic 矛盾或角色人设崩塌风险" : "⚠️ 审计未完全通过 — 检测到一些 logic 或人设风险："}
+                          {isPassed ? (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              <StatusIcon type="check" size={12} />
+                              <span>审计通过 — 无明显 logic 矛盾或角色人设崩塌风险</span>
+                            </span>
+                          ) : (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              <StatusIcon type="warning" size={12} />
+                              <span>审计未完全通过 — 检测到一些 logic 或人设风险：</span>
+                            </span>
+                          )}
                         </div>
 
                         {issues.length > 0 && (
@@ -2474,10 +2485,10 @@ export function SessionSidebar({
                               const sev = String(issue.severity || "info").toLowerCase();
                               const cfg =
                                 sev === "error" || sev === "critical"
-                                  ? { color: "#f87171", bg: "rgba(248,113,113,0.06)", border: "#f87171", emoji: "❌", label: "严重" }
+                                  ? { color: "#f87171", bg: "rgba(248,113,113,0.06)", border: "#f87171", iconType: "error" as const, label: "严重" }
                                   : sev === "warning"
-                                  ? { color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "#fbbf24", emoji: "⚠️", label: "警告" }
-                                  : { color: "#60a5fa", bg: "rgba(96,165,250,0.06)", border: "#60a5fa", emoji: "ℹ️", label: "提示" };
+                                  ? { color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "#fbbf24", iconType: "warning" as const, label: "警告" }
+                                  : { color: "#60a5fa", bg: "rgba(96,165,250,0.06)", border: "#60a5fa", iconType: "info" as const, label: "提示" };
                               return (
                                 <div key={i} style={{
                                   padding: "12px 14px", background: cfg.bg,
@@ -2485,7 +2496,7 @@ export function SessionSidebar({
                                   borderRadius: 8, display: "flex", flexDirection: "column", gap: 6,
                                 }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ fontSize: 13 }}>{cfg.emoji}</span>
+                                    <StatusIcon type={cfg.iconType} size={13} />
                                     <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{cfg.label}</span>
                                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--bg-hover)", padding: "1px 8px", borderRadius: 4 }}>
                                       {issue.category || "未分类"}
@@ -2495,7 +2506,7 @@ export function SessionSidebar({
                                     {issue.description}
                                   </div>
                                   <div style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text-muted)", fontStyle: "italic", marginTop: 1 }}>
-                                    💡 建议: {issue.suggestion}
+                                    <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 4 }}>💡</span>建议: {issue.suggestion}
                                   </div>
                                 </div>
                               );

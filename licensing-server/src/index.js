@@ -167,6 +167,29 @@ function getLoginHtml() {
   <title>管理员登录 - Novel Studio 授权系统</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    @font-face {
+      font-family: 'Times';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    @font-face {
+      font-family: 'Times New Roman';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    @font-face {
+      font-family: 'serif';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    @font-face {
+      font-family: 'sans-serif';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    * {
+      font-variant-emoji: emoji;
+    }
     body {
       background-color: #0b0f19;
       color: #f3f4f6;
@@ -239,6 +262,29 @@ function getAdminHtml() {
   <title>Novel Studio 授权管理控制台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    @font-face {
+      font-family: 'Times';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    @font-face {
+      font-family: 'Times New Roman';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    @font-face {
+      font-family: 'serif';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    @font-face {
+      font-family: 'sans-serif';
+      src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji');
+      unicode-range: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F1E6-1F1FF, U+2300-23FF, U+2B50, U+2B06, U+2194, U+203C, U+2049, U+2B00-2BFF, U+1F000-1F0AF;
+    }
+    * {
+      font-variant-emoji: emoji;
+    }
     body {
       background-color: #0b0f19;
       color: #f3f4f6;

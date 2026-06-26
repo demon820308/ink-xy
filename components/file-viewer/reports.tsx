@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusIcon } from "../StatusIcon";
+
 // ── Types & Interfaces ────────────────────────────────────────────────────────
 
 export interface DetectReportData {
@@ -87,7 +89,7 @@ export function DetectReport({ data }: { data: DetectReportData }) {
         border: `1px solid ${status.border}`,
         borderRadius: "8px",
       }}>
-        <span style={{ fontSize: 20 }}>{status.emoji}</span>
+        <StatusIcon type={isPassed ? "pass" : "fail"} size={20} />
         <div>
           <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 500 }}>AIGC 风格合规评定</div>
           <div style={{ fontSize: "14px", fontWeight: 700, color: status.text, marginTop: "2px" }}>
@@ -189,10 +191,10 @@ export function AuditReport({ data }: { data: AuditReportData }) {
   const severityConfig = (severity: string) => {
     const s = (severity || "info").toLowerCase();
     if (s === "error" || s === "critical")
-      return { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", label: "严重", emoji: "❌" };
+      return { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", label: "严重", iconType: "error" as const };
     if (s === "warning")
-      return { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", label: "警告", emoji: "⚠️" };
-    return { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", label: "提示", emoji: "ℹ️" };
+      return { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", label: "警告", iconType: "warning" as const };
+    return { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", label: "提示", iconType: "info" as const };
   };
 
   return (
@@ -202,7 +204,7 @@ export function AuditReport({ data }: { data: AuditReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28 }}>🔍</div>
+        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔍</div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>人设防崩与一致性审计报告</div>
           {data.chapterNumber != null && (
@@ -220,7 +222,17 @@ export function AuditReport({ data }: { data: AuditReportData }) {
             color: isPassed ? "#4ade80" : "#fbbf24",
             border: `1px solid ${isPassed ? "rgba(74,222,128,0.3)" : "rgba(251,191,36,0.3)"}`,
           }}>
-            {isPassed ? "✅ 审计通过" : "⚠️ 发现风险"}
+            {isPassed ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <StatusIcon type="check" size={12} />
+                <span>审计通过</span>
+              </span>
+            ) : (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <StatusIcon type="warning" size={12} />
+                <span>发现风险</span>
+              </span>
+            )}
           </span>
         </div>
       </div>
@@ -229,7 +241,7 @@ export function AuditReport({ data }: { data: AuditReportData }) {
       {data.summary && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            📝 本章内容总结
+            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>📝</span>本章内容总结
           </div>
           <div style={{
             padding: "14px 18px",
@@ -249,7 +261,7 @@ export function AuditReport({ data }: { data: AuditReportData }) {
       {/* Issues */}
       <div>
         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-          🛠️ 审计诊断条目 ({issues.length})
+          <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🛠️</span>审计诊断条目 ({issues.length})
         </div>
         {issues.length === 0 ? (
           <div style={{
@@ -260,8 +272,12 @@ export function AuditReport({ data }: { data: AuditReportData }) {
             borderRadius: 8,
             fontSize: 13,
             color: "#4ade80",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
           }}>
-            ✅ 未检测到任何明显的角色设定矛盾或世界观冲突风险。
+            <StatusIcon type="check" size={14} />
+            <span>未检测到任何明显的角色设定矛盾或世界观冲突风险。</span>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -279,7 +295,7 @@ export function AuditReport({ data }: { data: AuditReportData }) {
                   gap: 8,
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14 }}>{cfg.emoji}</span>
+                    <StatusIcon type={cfg.iconType} size={14} />
                     <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       {cfg.label}
                     </span>
@@ -327,7 +343,7 @@ export function WriteReport({ data }: { data: WriteReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28 }}>{isDraft ? "🚀" : "✍️"}</div>
+        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{isDraft ? "🚀" : "✍️"}</div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
             {isDraft ? "极速草稿起草完成" : "智能续写完成"}
@@ -374,7 +390,7 @@ export function WriteReport({ data }: { data: WriteReportData }) {
       {audit && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            🔍 离线审稿审计
+            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🔍</span>离线审稿审计
           </div>
           <div style={{
             padding: "10px 16px",
@@ -386,7 +402,17 @@ export function WriteReport({ data }: { data: WriteReportData }) {
             color: isPassed ? "#4ade80" : "#fbbf24",
             marginBottom: issues.length > 0 ? 10 : 0,
           }}>
-            {isPassed ? "✅ 审计通过 — 无明显逻辑矛盾或人设崩塌风险" : "⚠️ 审计未完全通过 — 检测到以下风险条目："}
+            {isPassed ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <StatusIcon type="check" size={13} />
+                <span>审计通过 — 无明显逻辑矛盾或人设崩塌风险</span>
+              </span>
+            ) : (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <StatusIcon type="warning" size={13} />
+                <span>审计未完全通过 — 检测到以下风险条目：</span>
+              </span>
+            )}
           </div>
 
           {issues.length > 0 && (
@@ -395,10 +421,10 @@ export function WriteReport({ data }: { data: WriteReportData }) {
                 const sev = (issue.severity || "info").toLowerCase();
                 const cfg =
                   sev === "error" || sev === "critical"
-                    ? { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", emoji: "❌", label: "严重" }
+                    ? { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", iconType: "error" as const, label: "严重" }
                     : sev === "warning"
-                    ? { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", emoji: "⚠️", label: "警告" }
-                    : { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", emoji: "ℹ️", label: "提示" };
+                    ? { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", iconType: "warning" as const, label: "警告" }
+                    : { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", iconType: "info" as const, label: "提示" };
                 return (
                   <div key={i} style={{
                     padding: "12px 16px", background: cfg.bg,
@@ -407,7 +433,7 @@ export function WriteReport({ data }: { data: WriteReportData }) {
                     borderRadius: 8, display: "flex", flexDirection: "column", gap: 6,
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 13 }}>{cfg.emoji}</span>
+                      <StatusIcon type={cfg.iconType} size={13} />
                       <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{cfg.label}</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--bg-hover)", padding: "1px 8px", borderRadius: 4 }}>
                         {issue.category || "未分类"}
@@ -489,7 +515,7 @@ export function ReviseReport({ data, compact = false }: { data: ReviseReportData
           display: "flex", alignItems: "center", gap: 12,
           paddingBottom: 16, borderBottom: "1px solid var(--border)"
         }}>
-          <div style={{ fontSize: 28 }}>🪄</div>
+          <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🪄</div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>局部定点修复成功应用</div>
           </div>
@@ -500,7 +526,12 @@ export function ReviseReport({ data, compact = false }: { data: ReviseReportData
               fontSize: 12, fontWeight: 600,
               background: "rgba(74,222,128,0.12)", color: "#4ade80",
               border: "1px solid rgba(74,222,128,0.3)",
-            }}>✅ 已修正</span>
+            }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <StatusIcon type="check" size={12} />
+                <span>已修正</span>
+              </span>
+            </span>
           </div>
         </div>
       )}
@@ -515,8 +546,12 @@ export function ReviseReport({ data, compact = false }: { data: ReviseReportData
               borderLeft: "3px solid #4ade80",
               borderRadius: 8,
               fontSize: 13, color: "var(--text)", lineHeight: 1.6,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
             }}>
-              ✅ {f}
+              <StatusIcon type="check" size={12} style={{ flexShrink: 0 }} />
+              <span>{f}</span>
             </div>
           ))}
         </div>
@@ -562,7 +597,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28 }}>🔁</div>
+        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔁</div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>同步设定成功</div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
@@ -576,7 +611,12 @@ export function SyncReport({ data }: { data: SyncReportData }) {
             fontSize: 12, fontWeight: 600,
             background: "rgba(52,211,153,0.12)", color: "#34d399",
             border: "1px solid rgba(52,211,153,0.3)",
-          }}>🔁 已同步</span>
+          }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔁</span>
+              <span>已同步</span>
+            </span>
+          </span>
         </div>
       </div>
 
@@ -584,7 +624,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
       {audit && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            🔍 同步后审计结果
+            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🔍</span>同步后审计结果
           </div>
           <div style={{
             padding: "10px 16px", borderRadius: 8,
@@ -595,7 +635,17 @@ export function SyncReport({ data }: { data: SyncReportData }) {
             color: isPassed ? "#4ade80" : "#fbbf24",
             marginBottom: issues.length > 0 ? 10 : 0,
           }}>
-            {isPassed ? "✅ 审计通过 — 无逻辑矛盾或角色人设崩塌问题" : "⚠️ 检测到部分人设或逻辑风险 — 建议处理以下条目："}
+            {isPassed ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <StatusIcon type="check" size={13} />
+                <span>审计通过 — 无逻辑矛盾或角色人设崩塌问题</span>
+              </span>
+            ) : (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <StatusIcon type="warning" size={13} />
+                <span>检测到部分人设或逻辑风险 — 建议处理以下条目：</span>
+              </span>
+            )}
           </div>
 
           {issues.length > 0 && (
@@ -604,10 +654,10 @@ export function SyncReport({ data }: { data: SyncReportData }) {
                 const sev = (issue.severity || "info").toLowerCase();
                 const cfg =
                   sev === "error" || sev === "critical"
-                    ? { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", emoji: "❌", label: "严重" }
+                    ? { color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "#f87171", iconType: "error" as const, label: "严重" }
                     : sev === "warning"
-                    ? { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", emoji: "⚠️", label: "警告" }
-                    : { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", emoji: "ℹ️", label: "提示" };
+                    ? { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "#fbbf24", iconType: "warning" as const, label: "警告" }
+                    : { color: "#60a5fa", bg: "rgba(96,165,250,0.08)", border: "#60a5fa", iconType: "info" as const, label: "提示" };
                 return (
                   <div key={i} style={{
                     padding: "12px 16px", background: cfg.bg,
@@ -616,7 +666,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
                     borderRadius: 8, display: "flex", flexDirection: "column", gap: 6,
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 13 }}>{cfg.emoji}</span>
+                      <StatusIcon type={cfg.iconType} size={13} />
                       <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{cfg.label}</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--bg-hover)", padding: "1px 8px", borderRadius: 4 }}>
                         {issue.category || "未分类"}
@@ -639,7 +689,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
       )}
 
       <div style={{ padding: "12px 16px", background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-        💡 如发现残留的人设警告，可点击 <strong style={{ color: "var(--text)" }}>「🪄 局部定点修复」</strong> 运行自动局部修缮，或根据审计描述手动微调相关情节.
+        <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>💡</span>如发现残留的人设警告，可点击 <strong style={{ color: "var(--text)" }}>「<span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🪄</span> 局部定点修复」</strong> 运行自动局部修缮，或根据审计描述手动微调相关情节.
       </div>
     </div>
   );
@@ -655,7 +705,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
           display: "flex", alignItems: "center", gap: 12,
           paddingBottom: 16, borderBottom: "1px solid var(--border)"
         }}>
-          <div style={{ fontSize: 28 }}>📝</div>
+          <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📝</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>本章意图规划完成</div>
         </div>
         <div style={{
@@ -669,7 +719,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
           {data.raw}
         </div>
         <div style={{ padding: "12px 16px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-          💡 剧情意图与备忘账本已成功保存。点击 <strong style={{ color: "var(--text)" }}>「✍️ 智能续写」</strong> 时，AI 会以此为核心基准进行剧情铺陈与细节扩写。
+          <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>💡</span>剧情意图与备忘账本已成功保存。点击 <strong style={{ color: "var(--text)" }}>「<span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</span> 智能续写」</strong> 时，AI 会以此为核心基准进行剧情铺陈与细节扩写。
         </div>
       </div>
     );
@@ -682,7 +732,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28 }}>📝</div>
+        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📝</div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>本章意图与剧情大纲规划</div>
           {data.bookTitle && (
@@ -698,7 +748,12 @@ export function PlanReport({ data }: { data: PlanReportData }) {
             fontSize: 12, fontWeight: 600,
             background: "rgba(139,92,246,0.12)", color: "#a78bfa",
             border: "1px solid rgba(139,92,246,0.3)",
-          }}>📝 已规划</span>
+          }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📝</span>
+              <span>已规划</span>
+            </span>
+          </span>
         </div>
       </div>
 
@@ -706,7 +761,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
       {data.goal && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            🎯 核心写作目标 (Goal)
+            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🎯</span>核心写作目标 (Goal)
           </div>
           <div style={{
             padding: "14px 18px",
@@ -725,7 +780,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
       {data.intentFile && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            📂 关联意图文件 (Intent)
+            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>📂</span>关联意图文件 (Intent)
           </div>
           <div style={{
             padding: "10px 16px",
@@ -740,7 +795,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
       )}
 
       <div style={{ padding: "12px 16px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-        💡 剧情意图与备忘账本已保存。点击 <strong style={{ color: "var(--text)" }}>「✍️ 智能续写」</strong> 时，AI 会以此目标为核心进行剧情铺陈与细节扩写，确保故事节奏与伏笔完美对齐。
+        <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>💡</span>剧情意图与备忘账本已保存。点击 <strong style={{ color: "var(--text)" }}>「<span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</span> 智能续写」</strong> 时，AI 会以此目标为核心进行剧情铺陈与细节扩写，确保故事节奏与伏笔完美对齐。
       </div>
     </div>
   );
