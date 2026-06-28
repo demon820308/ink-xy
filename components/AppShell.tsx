@@ -1373,6 +1373,7 @@ export function AppShell() {
           flexDirection: "column",
           borderLeft: "1px solid var(--border)",
           background: "var(--bg)",
+          height: "100vh",
         }}
       >
         {/* Right panel header */}
@@ -1386,7 +1387,7 @@ export function AppShell() {
         </div>
 
         {/* AI Co-writer chat window */}
-        <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+        <div style={{ flex: 1, height: "calc(100vh - 36px)", overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
           {showChat ? (
             <ChatWindow
               session={selectedSession}
@@ -1428,8 +1429,13 @@ export function AppShell() {
 
     <ExpandableTabs
       tabs={appTabs as any}
-      activeColor="text-accent"
-      className="fixed top-[3.5px] right-[76px] z-[300] h-[29px] !p-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] shadow-sm flex items-center justify-center"
+      style={{
+        position: "fixed",
+        top: "3.5px",
+        right: "76px",
+        zIndex: 300,
+        height: "29px",
+      }}
       onAction={handleAppTabAction}
     />
     {/* Theme toggle (Moon/Sun) — fixed at right: 36 */}

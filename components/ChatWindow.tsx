@@ -196,7 +196,16 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   return (
     <div
-      className="relative flex h-full flex-col overflow-hidden"
+      style={{
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        height: "100%",
+        width: "100%",
+        flex: 1,
+        minHeight: 0,
+      }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -235,7 +244,20 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       )}
 
       {isEmptyNew ? (
-        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
+        <div 
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+            minHeight: 0,
+            height: "100%",
+            width: "100%",
+            overflowY: "auto",
+            padding: "32px 16px",
+          }}
+        >
           <div className="w-full max-w-[820px]">
             <div
               className="mb-3"

@@ -23,6 +23,7 @@ type TabItem = Tab | Separator;
 interface ExpandableTabsProps {
   tabs: TabItem[];
   className?: string;
+  style?: React.CSSProperties;
   activeColor?: string;
   onChange?: (index: number | null) => void;
   onAction?: (index: number) => void;
@@ -52,7 +53,8 @@ const transition = { delay: 0.1, type: "spring", bounce: 0, duration: 0.6 } as c
 export function ExpandableTabs({
   tabs,
   className,
-  activeColor = "text-primary",
+  style,
+  activeColor,
   onChange,
   onAction,
 }: ExpandableTabsProps) {
@@ -74,16 +76,33 @@ export function ExpandableTabs({
   };
 
   const Separator = () => (
-    <div className="mx-1 h-[24px] w-[1.2px] bg-border" aria-hidden="true" />
+    <div 
+      style={{
+        marginLeft: "4px",
+        marginRight: "4px",
+        height: "18px",
+        width: "1.2px",
+        background: "var(--border)",
+      }} 
+      aria-hidden="true" 
+    />
   );
 
   return (
     <div
       ref={outsideClickRef}
-      className={cn(
-        "flex flex-wrap items-center gap-2 rounded-2xl border bg-background p-1 shadow-sm",
-        className
-      )}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+        borderRadius: "8px",
+        border: "1px solid var(--border)",
+        background: "var(--bg-panel)",
+        padding: "2px",
+        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+        ...style
+      }}
+      className={cn(className)}
     >
       {tabs.map((tab, index) => {
         if (tab.type === "separator") {
@@ -91,32 +110,61 @@ export function ExpandableTabs({
         }
 
         const Icon = tab.icon;
+        const isSelected = selected === index;
         return (
           <motion.button
             key={tab.title}
             variants={buttonVariants}
             initial={false}
             animate="animate"
-            custom={selected === index}
+            custom={isSelected}
             onClick={() => handleSelect(index)}
             transition={transition}
-            className={cn(
-              "relative flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors duration-300",
-              selected === index
-                ? cn("bg-[var(--bg-selected)]", activeColor)
-                : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-            )}
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "6px",
+              border: "none",
+              background: isSelected ? "var(--bg-selected)" : "transparent",
+              color: isSelected ? (activeColor || "var(--accent)") : "var(--text-muted)",
+              cursor: "pointer",
+              fontFamily: "var(--font-serif)",
+              fontWeight: 600,
+              fontSize: "11px",
+              outline: "none",
+              transition: "all 0.3s ease",
+              height: "24px",
+            }}
+            onMouseEnter={(e) => {
+              if (!isSelected) {
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSelected) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--text-muted)";
+              }
+            }}
           >
-            <Icon size={16} />
+            <Icon size={14} style={{ flexShrink: 0 }} />
             <AnimatePresence initial={false}>
-              {selected === index && (
+              {isSelected && (
                 <motion.span
                   variants={spanVariants}
                   initial="initial"
                   animate="animate"
                   exit="exit"
                   transition={transition}
-                  className="inline-block overflow-hidden whitespace-nowrap"
+                  style={{
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    display: "inline-block",
+                    fontFamily: "var(--font-serif)",
+                  }}
                 >
                   {tab.title}
                 </motion.span>

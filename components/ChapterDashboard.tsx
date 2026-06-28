@@ -793,8 +793,9 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <ExpandableTabs
             tabs={dashboardTabs as any}
-            activeColor="text-accent"
-            className="h-[29px] !p-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] shadow-sm flex items-center justify-center"
+            style={{
+              height: "29px",
+            }}
             onAction={handleDashboardTabAction}
           />
 
