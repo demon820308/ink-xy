@@ -29,26 +29,13 @@ interface ExpandableTabsProps {
   onAction?: (index: number) => void;
 }
 
-const buttonVariants = {
-  initial: {
-    gap: 0,
-    paddingLeft: "0.625rem",
-    paddingRight: "0.625rem",
-  },
-  animate: (isSelected: boolean) => ({
-    gap: isSelected ? "0.375rem" : 0,
-    paddingLeft: isSelected ? "0.75rem" : "0.625rem",
-    paddingRight: isSelected ? "0.75rem" : "0.625rem",
-  }),
-};
-
 const spanVariants = {
-  initial: { width: 0, opacity: 0 },
-  animate: { width: "auto", opacity: 1 },
-  exit: { width: 0, opacity: 0 },
+  initial: { width: 0, opacity: 0, marginLeft: 0 },
+  animate: { width: "auto", opacity: 1, marginLeft: 6 },
+  exit: { width: 0, opacity: 0, marginLeft: 0 },
 };
 
-const transition = { delay: 0.1, type: "spring", bounce: 0, duration: 0.6 } as const;
+const transition = { type: "tween", ease: "easeOut", duration: 0.2 } as const;
 
 export function ExpandableTabs({
   tabs,
@@ -114,10 +101,6 @@ export function ExpandableTabs({
         return (
           <motion.button
             key={tab.title}
-            variants={buttonVariants}
-            initial={false}
-            animate="animate"
-            custom={isSelected}
             onClick={() => handleSelect(index)}
             transition={transition}
             style={{
@@ -136,6 +119,8 @@ export function ExpandableTabs({
               outline: "none",
               transition: "all 0.3s ease",
               height: "24px",
+              paddingLeft: "0.625rem",
+              paddingRight: "0.625rem",
             }}
             onMouseEnter={(e) => {
               if (!isSelected) {
