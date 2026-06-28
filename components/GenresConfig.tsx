@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { encodeFilePathForApi } from "@/lib/file-paths";
+import { Emoji } from "./Emoji";
 
 interface Genre {
   id: string;
@@ -705,7 +707,7 @@ export function GenresConfig({
                   marginBottom: "20px",
                 }}
               >
-                ⚠️ {error}
+                <Emoji char="⚠️" /> {error}
               </div>
             )}
 

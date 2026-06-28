@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Emoji } from "./Emoji";
 
 interface StreamResult {
   success: boolean;
@@ -192,7 +193,7 @@ export default function ConsolidationModal({
           background: "var(--bg)",
         }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-            <span>🗜️</span> 大纲摘要压缩归档
+            <Emoji char="🗜️" /> 大纲摘要压缩归档
           </span>
           <button
             onClick={() => { if (!isConsolidating) onClose(); }}
@@ -257,7 +258,7 @@ export default function ConsolidationModal({
               gap: 6
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#10b981", fontSize: "12px" }}>
-                <span>✨</span> 压缩归档完成
+                <Emoji char="✨" /> 压缩归档完成
               </div>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6 }}>
                 <div style={{ marginBottom: 4 }}>
@@ -285,7 +286,7 @@ export default function ConsolidationModal({
               gap: 4
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#ef4444", fontSize: "12px" }}>
-                <span>⚠️</span> 执行出错
+                <Emoji char="⚠️" /> 执行出错
               </div>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
                 {consolidationError}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
+import { Emoji } from "./Emoji";
 
 function getCleanCharacterName(target: string): string {
   return target
@@ -1003,7 +1004,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>👤</span> 角色一览
+              <Emoji char="👤" /> 角色一览
             </h2>
             <div style={{ display: "flex", gap: 8 }}>
               <button
@@ -1030,7 +1031,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   fontWeight: 600
                 }}
               >
-                <span>➕</span> 创建
+                <Emoji char="➕" /> 创建
               </button>
               <button
                 onClick={loadGraphData}
@@ -1048,7 +1049,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   gap: 3
                 }}
               >
-                <span>🔁</span> 刷新
+                <Emoji char="🔁" /> 刷新
               </button>
             </div>
           </div>
@@ -1074,7 +1075,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
               onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
             />
             <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-dim)" }}>
-              🔍
+              <Emoji char="🔍" />
             </span>
             {searchQuery && (
               <button
@@ -1229,7 +1230,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
               flexShrink: 0
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 14 }}>⏳</span>
+                <Emoji char="⏳" style={{ fontSize: 14 }} />
                 <span style={{ fontSize: 12, fontWeight: 700 }}>设定时光机 (Lore Timeline)</span>
               </div>
               <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, maxWidth: 360 }}>
@@ -1281,7 +1282,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                     transition: "all 0.15s"
                   }}
                 >
-                  {showAllFacts ? "📅 按章节过滤" : "🌐 显示全部设定"}
+                  {showAllFacts ? <><Emoji char="📅" /> 按章节过滤</> : <><Emoji char="🌐" /> 显示全部设定</>}
                 </button>
                 <button
                   onClick={() => setShowTemporalLedger(!showTemporalLedger)}
@@ -1298,7 +1299,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                     transition: "all 0.15s"
                   }}
                 >
-                  {showTemporalLedger ? "📖 返回设定卡" : "⏳ 时序设定账本"}
+                  {showTemporalLedger ? <><Emoji char="📖" /> 返回设定卡</> : <><Emoji char="⏳" /> 时序设定账本</>}
                 </button>
               </div>
             </div>
@@ -1312,7 +1313,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                 <div style={{ maxWidth: 800, margin: "0 auto" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 20 }}>
                     <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>⏳</span> {activeNode.name} · {showAllFacts ? "全部" : `第 ${currentChapterFilter || maxChapter || 1} 章`} 时序设定事实
+                      <Emoji char="⏳" /> {activeNode.name} · {showAllFacts ? "全部" : `第 ${currentChapterFilter || maxChapter || 1} 章`} 时序设定事实
                     </h2>
                     <button
                       onClick={() => {
@@ -1334,7 +1335,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                         cursor: "pointer"
                       }}
                     >
-                      ➕ 新增设定事实
+                      <Emoji char="➕" /> 新增设定事实
                     </button>
                   </div>
 
@@ -1386,7 +1387,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                   {isConf && (
                                     <span style={{ fontSize: 9, padding: "1px 4px", background: "rgba(239,68,68,0.1)", color: "#ef4444", borderRadius: 3, fontWeight: 700 }}>
-                                      ⚠️ 设定冲突
+                                      <Emoji char="⚠️" /> 设定冲突
                                     </span>
                                   )}
                                   <span style={{ fontSize: 9, padding: "1px 5px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
@@ -1482,7 +1483,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                       }}
                     >
                       <strong style={{ display: "block", color: "#f59e0b", marginBottom: 6, fontSize: "11px", letterSpacing: "0.03em" }}>
-                        🎭 立体反差维度设计 (Contrast Detail)
+                        <Emoji char="🎭" /> 立体反差维度设计 (Contrast Detail)
                       </strong>
                       {activeNode.contrast}
                     </div>
@@ -1491,7 +1492,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   {/* Biography & Settings */}
                   <div style={{ marginBottom: 28 }}>
                     <h3 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)", paddingBottom: 6, margin: "0 0 12px 0" }}>
-                      📖 经历设定与背景 (Biography)
+                      <Emoji char="📖" /> 经历设定与背景 (Biography)
                     </h3>
                     <div className="markdown-preview" style={{ fontSize: "13px", color: "var(--text)", lineHeight: 1.7 }}>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -1504,7 +1505,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   {activeNode.relationships.length > 0 && (
                     <div style={{ marginTop: 28, marginBottom: 40 }}>
                       <h3 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)", paddingBottom: 6, margin: "0 0 12px 0" }}>
-                        🔗 关联人际网络 (Relationships)
+                        <Emoji char="🔗" /> 关联人际网络 (Relationships)
                       </h3>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
                         {activeNode.relationships.map((rel, i: number) => {
@@ -1581,7 +1582,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                   {isConflict && (
                                     <span style={{ fontSize: 8, padding: "1px 4px", background: "rgba(239,68,68,0.1)", color: "#ef4444", borderRadius: 3, fontWeight: 700 }}>
-                                      ⚠️ 设定冲突
+                                      <Emoji char="⚠️" /> 设定冲突
                                     </span>
                                   )}
                                   <button
@@ -1621,7 +1622,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                                     onMouseLeave={(ev) => ev.currentTarget.style.background = "none"}
                                     title="点击编辑有效范围"
                                   >
-                                    ✏️
+                                    <Emoji char="✏️" />
                                   </button>
                                 </div>
                               </div>
@@ -1676,7 +1677,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-selected)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg)"; }}
               >
-                <span>✏️</span> 编辑人设文件
+                <Emoji char="✏️" /> 编辑人设文件
               </button>
             </div>
           </div>
@@ -1694,7 +1695,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
               gap: 8
             }}
           >
-            <span style={{ fontSize: 36 }}>👤</span>
+            <Emoji char="👤" style={{ fontSize: 36 }} />
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>请选择一个人物</div>
             <p style={{ fontSize: 11, color: "var(--text-dim)", margin: 0, maxWidth: 240, lineHeight: 1.6 }}>
               点击左侧列表中的人物，即可在此处查看该角色的具体设定、核心标签及矛盾维度。
@@ -1738,7 +1739,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
           >
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-                ➕ 创建新角色人设卡
+                <Emoji char="➕" /> 创建新角色人设卡
               </h3>
               <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "4px 0 0 0" }}>
                 可通过手动填写，或上传 MD/TXT 文件由 AI 自动解析并导入角色设定。
@@ -1747,7 +1748,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
 
             {formError && (
               <div style={{ padding: "8px 12px", background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.25)", borderRadius: 6, color: "#ef4444", fontSize: 11 }}>
-                ⚠️ {formError}
+                <Emoji char="⚠️" /> {formError}
               </div>
             )}
 
@@ -1769,7 +1770,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                     cursor: "pointer"
                   }}
                 >
-                  📋 粘贴文本导入
+                  <Emoji char="📋" /> 粘贴文本导入
                 </button>
                 <button
                   type="button"
@@ -1786,7 +1787,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                     cursor: "pointer"
                   }}
                 >
-                  📁 上传文件导入
+                  <Emoji char="📁" /> 上传文件导入
                 </button>
               </div>
             )}
@@ -1823,7 +1824,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                         onMouseEnter={(e) => { if (!isParsing && !submitting) { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text)"; } }}
                         onMouseLeave={(e) => { if (!isParsing && !submitting) { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; } }}
                       >
-                        {uploadedFileName ? `📄 ${uploadedFileName}` : "选择或拖入包含角色的人设文件..."}
+                        {uploadedFileName ? <><Emoji char="📄" /> {uploadedFileName}</> : "选择或拖入包含角色的人设文件..."}
                       </label>
                       {uploadedFileName && (
                         <button
@@ -1903,7 +1904,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
-                      🎉 AI 解析成功！共 {batchCharacters.length} 个角色：
+                      <Emoji char="🎉" /> AI 解析成功！共 {batchCharacters.length} 个角色：
                     </span>
                     <button
                       type="button"
@@ -1962,7 +1963,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   </div>
 
                   <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>
-                    ⚠️ 提示：系统将自动跳过重名角色。点击下方“确认创建”开始导入 <strong>{batchUniques.length}</strong> 个新角色设定文件。
+                    <Emoji char="⚠️" /> 提示：系统将自动跳过重名角色。点击下方“确认创建”开始导入 <strong>{batchUniques.length}</strong> 个新角色设定文件。
                   </p>
                 </div>
               ) : (
@@ -2175,7 +2176,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
           >
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-                ➕ 新增设定事实 (Add Fact)
+                <Emoji char="➕" /> 新增设定事实 (Add Fact)
               </h3>
             </div>
             <form onSubmit={handleAddFact} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -2326,7 +2327,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
           >
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-                📝 编辑设定事实 (Edit Fact)
+                <Emoji char="📝" /> 编辑设定事实 (Edit Fact)
               </h3>
               <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "4px 0 0 0" }}>
                 主体: {editingFact.subject} | 属性: {editingFact.predicate}
@@ -2434,7 +2435,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   onClick={handleDeleteFact}
                   style={{ padding: "6px 14px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 6, fontSize: 12, color: "#ef4444", fontWeight: 600, cursor: "pointer" }}
                 >
-                  🗑️ 删除
+                  <Emoji char="🗑️" /> 删除
                 </button>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Emoji } from "./Emoji";
 
 interface Props {
   isOpen: boolean;
@@ -75,7 +76,7 @@ export default function BookDeleteModal({ isOpen, onClose, cwd, bookId, onDelete
           borderBottom: "1px solid var(--border)",
           paddingBottom: "10px",
         }}>
-          <span>⚠️</span>
+          <Emoji char="⚠️" />
           <span>删除书籍确认 (Delete Book)</span>
         </h3>
 
@@ -107,7 +108,7 @@ export default function BookDeleteModal({ isOpen, onClose, cwd, bookId, onDelete
                 marginBottom: "16px",
                 lineHeight: 1.5,
               }}>
-                ⚠️ {error}
+                <Emoji char="⚠️" /> {error}
               </div>
             )}
             

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { Emoji } from "./Emoji";
 
 interface Props {
   isOpen: boolean;
@@ -28,7 +29,7 @@ export default function ImportModal({
   const [isImporting, setIsImporting] = useState(false);
   const [importLogs, setImportLogs] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importSuccessText, setImportSuccessText] = useState<string | null>(null);
+  const [importSuccessText, setImportSuccessText] = useState<React.ReactNode>(null);
   const [importBookSelection, setImportBookSelection] = useState<"active" | "new">("active");
   const [newBookId, setNewBookId] = useState("");
   const [newBookTitle, setNewBookTitle] = useState("");
@@ -235,9 +236,9 @@ export default function ImportModal({
         }
         const imported = resultData?.importedCount ?? "部分";
         const words = resultData?.totalWords ?? 0;
-        setImportSuccessText(`🎉 成功导入章节！共处理了 ${imported} 章节，约 ${words} 字。逆向工程设定提取成功！`);
+        setImportSuccessText(<><Emoji char="🎉" /> 成功导入章节！共处理了 {imported} 章节，约 {words} 字。逆向工程设定提取成功！</>);
       } else {
-        setImportSuccessText(`🎉 成功导入前作设定！世界观与人物正典已同步成功。`);
+        setImportSuccessText(<><Emoji char="🎉" /> 成功导入前作设定！世界观与人物正典已同步成功。</>);
       }
 
       onImportSuccess(targetBookId);
@@ -276,7 +277,7 @@ export default function ImportModal({
           background: "var(--bg)",
         }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-            📥 InkOS 导入向导 ({activeBookId})
+            <Emoji char="📥" /> InkOS 导入向导 ({activeBookId})
           </span>
           <button
             onClick={() => { if (!isImporting) onClose(); }}
@@ -313,7 +314,7 @@ export default function ImportModal({
               transition: "all 0.15s",
             }}
           >
-            📥 导入旧章原稿
+            <Emoji char="📥" /> 导入旧章原稿
           </button>
           <button
             type="button"
@@ -332,7 +333,7 @@ export default function ImportModal({
               transition: "all 0.15s",
             }}
           >
-            📖 导入前作设定 (Canon)
+            <Emoji char="📖" /> 导入前作设定 (Canon)
           </button>
         </div>
 
@@ -368,13 +369,13 @@ export default function ImportModal({
                           disabled={isImporting}
                           style={{ accentColor: "var(--accent)" }}
                         />
-                        <span>➕ 导入并创建新书籍</span>
+                        <span><Emoji char="➕" /> 导入并创建新书籍</span>
                       </label>
                     </div>
                   </div>
                 ) : (
                   <span style={{ fontSize: 10, color: "var(--text-dim)" }}>
-                    ⚠️ 当前小说宇宙内尚无书籍，将自动创建新书籍进行导入。
+                    <Emoji char="⚠️" /> 当前小说宇宙内尚无书籍，将自动创建新书籍进行导入。
                   </span>
                 )}
               </div>
@@ -564,7 +565,7 @@ export default function ImportModal({
             }}>
               {importError && (
                 <div style={{ color: "#ef4444", fontWeight: 600 }}>
-                  ⚠️ 导入失败: {importError}
+                  <Emoji char="⚠️" /> 导入失败: {importError}
                 </div>
               )}
               {importSuccessText && (

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Emoji } from "./Emoji";
 
 interface RadarRecommendation {
   title: string;
@@ -181,7 +182,7 @@ export default function RadarModal({ isOpen, onClose, cwd }: Props) {
           justifyContent: "space-between"
         }}>
           <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>📡</span>
+            <Emoji char="📡" />
             <span>智能市场分析雷达 (Radar Market Scanner)</span>
           </h3>
           {!isScanningRadar && (
@@ -197,7 +198,7 @@ export default function RadarModal({ isOpen, onClose, cwd }: Props) {
         <div style={{ padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
           {radarError && (
             <div style={{ padding: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 11 }}>
-              ⚠️ 扫描失败: {radarError}
+               <Emoji char="⚠️" /> 扫描失败: {radarError}
             </div>
           )}
 
@@ -249,7 +250,7 @@ export default function RadarModal({ isOpen, onClose, cwd }: Props) {
                 lineHeight: "1.6"
               }}>
                 <div style={{ fontWeight: 600, color: "#10b981", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>📊</span> 市场概况总结 (Global Trend Summary)
+                  <Emoji char="📊" /> 市场概况总结 (Global Trend Summary)
                 </div>
                 <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{radarResult.marketSummary}</ReactMarkdown>
@@ -258,9 +259,7 @@ export default function RadarModal({ isOpen, onClose, cwd }: Props) {
 
               {/* Recommendations Cards */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontWeight: 600, fontSize: "12px", color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>🎯</span> AI 潜力选题方向推荐 (AIGC Concept Prompts)
-                </div>
+                  <Emoji char="🎯" /> AI 潜力选题方向推荐 (AIGC Concept Prompts)
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {radarResult.recommendations?.map((rec: RadarRecommendation, idx: number) => {
@@ -306,7 +305,7 @@ export default function RadarModal({ isOpen, onClose, cwd }: Props) {
                         </div>
                         {(rec.benchmarkTitles?.length ?? 0) > 0 && (
                           <div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
-                            <span>🏷️ 对标书目:</span>
+                             <span><Emoji char="🏷️" /> 对标书目:</span>
                             {(rec.benchmarkTitles ?? []).map((b: string, i: number) => (
                               <span key={i} style={{ background: "var(--bg-hover)", padding: "1px 6px", borderRadius: 4 }}>《{b}》</span>
                             ))}
@@ -323,7 +322,7 @@ export default function RadarModal({ isOpen, onClose, cwd }: Props) {
           {/* Start Scan view */}
           {!isScanningRadar && !radarResult && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "30px 10px", gap: 14, textAlign: "center" }}>
-              <span style={{ fontSize: "40px" }}>📡</span>
+              <Emoji char="📡" style={{ fontSize: "40px" }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>扫描当前网文市场热点</div>
                 <div style={{ fontSize: "11px", color: "var(--text-muted)", maxWidth: 360, lineHeight: 1.6 }}>
@@ -340,7 +339,7 @@ export default function RadarModal({ isOpen, onClose, cwd }: Props) {
                   transition: "opacity 0.15s"
                 }}
               >
-                <span>📡</span> 启动雷达行情扫描
+                <Emoji char="📡" /> 启动雷达行情扫描
               </button>
             </div>
           )}

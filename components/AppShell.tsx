@@ -18,7 +18,10 @@ import { SettingsModal } from "./SettingsModal";
 import { HelpModal } from "./HelpModal";
 import { useTheme } from "@/hooks/useTheme";
 import { ChapterDashboard } from "./ChapterDashboard";
+import { Emoji } from "./Emoji";
 import { CharacterRelationDashboard } from "./CharacterRelationDashboard";
+import { Shield, Pencil, Layers, Cpu, Settings, HelpCircle } from "lucide-react";
+import { ExpandableTabs } from "./ui/expandable-tabs";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
@@ -56,6 +59,38 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
+
+  const appTabs = [
+    { title: "智能审计", icon: Shield },
+    { title: "风格管理", icon: Pencil },
+    { title: "题材管理", icon: Layers },
+    { title: "模型配置", icon: Cpu },
+    { title: "系统设置", icon: Settings },
+    { title: "使用帮助", icon: HelpCircle },
+  ] as const;
+
+  const handleAppTabAction = (index: number) => {
+    switch (index) {
+      case 0:
+        setAuditPromptConfigOpen(true);
+        break;
+      case 1:
+        setStyleGuidesConfigOpen(true);
+        break;
+      case 2:
+        setGenresConfigOpen(true);
+        break;
+      case 3:
+        setModelsConfigOpen(true);
+        break;
+      case 4:
+        setSettingsOpen(true);
+        break;
+      case 5:
+        setHelpOpen(true);
+        break;
+    }
+  };
 
   // Licensing states
   const [isLicensed, setIsLicensed] = useState<boolean | null>(null);
@@ -863,19 +898,20 @@ export function AppShell() {
                         if (globalWriteLoading) {
                           return (
                             <>
-                              <span style={{
-                                marginRight: 4,
-                                display: "inline-block",
-                                animation: "spin 1s linear infinite",
-                                fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
-                              }}>⏳</span>
+                              <Emoji
+                                char="⏳"
+                                style={{
+                                  marginRight: 4,
+                                  animation: "spin 1s linear infinite",
+                                }}
+                              />
                               <span>{globalWriteMode === "normal" ? `正在续写${suffix}...` : `正在起草${suffix}...`}</span>
                             </>
                           );
                         }
                         return (
                           <>
-                            <span style={{ marginRight: 4, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{globalWriteMode === "normal" ? "✍️" : "⚡"}</span>
+                            <Emoji char={globalWriteMode === "normal" ? "✍️" : "⚡"} style={{ marginRight: 4 }} />
                             <span>{globalWriteMode === "normal" ? `智能续写${suffix}` : `极速草稿${suffix}`}</span>
                           </>
                         );
@@ -976,7 +1012,7 @@ export function AppShell() {
                                     if (globalWriteMode !== "normal") e.currentTarget.style.background = "none";
                                   }}
                                 >
-                                  <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</span>
+                                  <Emoji char="✍️" />
                                   <span>智能续写 {nextCh !== null ? `第${nextCh}章` : "(标准)"}</span>
                                 </button>
                                 <button
@@ -1006,7 +1042,7 @@ export function AppShell() {
                                     if (globalWriteMode !== "draft") e.currentTarget.style.background = "none";
                                   }}
                                 >
-                                  <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>⚡</span>
+                                  <Emoji char="⚡" />
                                   <span>极速草稿 {nextCh !== null ? `第${nextCh}章` : "(快跑)"}</span>
                                 </button>
                               </>
@@ -1044,7 +1080,7 @@ export function AppShell() {
                   onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "none"; }}
                 >
-                  <span style={{ fontSize: 12, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📊</span>
+                  <Emoji char="📊" style={{ fontSize: 12 }} />
                   <span>章节管控看板</span>
                 </button>
               )}
@@ -1229,7 +1265,7 @@ export function AppShell() {
             gap: "12px"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "14px", fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✒️</span>
+              <Emoji char="✒️" style={{ fontSize: "14px" }} />
               <span style={{ color: "var(--text-muted)" }}>
                 您当前处于免费试用模式。续写第二章及以上章节需录入授权。
               </span>
@@ -1317,7 +1353,7 @@ export function AppShell() {
             )
           ) : (
             <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", padding: 32, textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 16, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</div>
+                <Emoji char="✍️" style={{ fontSize: 48, marginBottom: 16, display: "block" }} />
               <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
                 开始您的文学创作之旅
               </div>
@@ -1390,128 +1426,12 @@ export function AppShell() {
       </div>
     </div>
 
-    {/* AI Audit & Detection Prompts toggle — placed left of Style Guides Config button */}
-    <button
-      onClick={() => setAuditPromptConfigOpen(true)}
-      title="AI 审计与检测指令"
-      style={{
-        position: "fixed", top: 0, right: 252, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      </svg>
-    </button>
-
-    {/* Style Guides Config toggle — placed left of Genres Config button */}
-    <button
-      onClick={() => setStyleGuidesConfigOpen(true)}
-      title="风格管理"
-      style={{
-        position: "fixed", top: 0, right: 216, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-      </svg>
-    </button>
-    {/* Genres Config toggle — placed left of Models Config button */}
-    <button
-      onClick={() => setGenresConfigOpen(true)}
-      title="题材管理"
-      style={{
-        position: "fixed", top: 0, right: 180, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-      </svg>
-    </button>
-    {/* Models Config toggle — always visible at top-right, left of the settings toggle */}
-    <button
-      onClick={() => setModelsConfigOpen(true)}
-      title="配置模型"
-      style={{
-        position: "fixed", top: 0, right: 144, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
-        <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-        <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-        <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-        <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-      </svg>
-    </button>
-    {/* Global Settings toggle — placed between Models Config and Help buttons */}
-    <button
-      onClick={() => setSettingsOpen(true)}
-      title="全局设置"
-      style={{
-        position: "fixed", top: 0, right: 108, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-    </button>
-    {/* Novel Writing Guide Help toggle — placed between Settings and Theme buttons */}
-    <button
-      onClick={() => setHelpOpen(true)}
-      title="小说创作实战手册"
-      style={{
-        position: "fixed", top: 0, right: 72, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-        <line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3" />
-      </svg>
-    </button>
+    <ExpandableTabs
+      tabs={appTabs as any}
+      activeColor="text-accent"
+      className="fixed top-[3.5px] right-[76px] z-[300] h-[29px] !p-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] shadow-sm flex items-center justify-center"
+      onAction={handleAppTabAction}
+    />
     {/* Theme toggle (Moon/Sun) — fixed at right: 36 */}
     <button
       onClick={(e) => {
@@ -1642,9 +1562,8 @@ export function AppShell() {
               fontSize: 16,
               border: `1px solid #818cf833`,
               boxShadow: `0 2px 8px rgba(99, 102, 241, 0.15)`,
-              fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
             }}>
-              🎭
+              <Emoji char="🎭" />
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>确认更换写作文风</span>
@@ -1673,7 +1592,7 @@ export function AppShell() {
               lineHeight: "1.7",
             }}>
               <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 6 }}>
-                <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 4 }}>⚠️</span>
+                <Emoji char="⚠️" style={{ marginRight: 4 }} />
                 <span>注意事项：</span>
               </span>
               此操作将使用该文风模板自动覆盖当前书籍的活动文风指南（`story/style_guide.md`）与统计特征库（`style_profile.json`）。历史章节正文不会被修改。
@@ -1688,7 +1607,7 @@ export function AppShell() {
               lineHeight: "1.6",
             }}>
               <span style={{ fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 4 }}>
-                <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 4 }}>💡</span>
+                <Emoji char="💡" style={{ marginRight: 4 }} />
                 <span>后续操作指引：</span>
               </span>
               切换成功后，接下来的「智能续写」、「极速草稿」、「文本润色」和「剧情重写」等 AI 生成动作，都将自动采用该风格进行写作。
@@ -1795,7 +1714,7 @@ export function AppShell() {
             borderBottom: "1px solid var(--border)",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: "16px", fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔑</span>
+              <Emoji char="🔑" style={{ fontSize: "16px" }} />
               <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>输入授权激活码</span>
             </div>
             <button
@@ -1910,7 +1829,7 @@ export function AppShell() {
                 alignItems: "center",
                 gap: "4px"
               }}>
-                <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>⚠️</span>
+                <Emoji char="⚠️" />
                 <span>{activationError}</span>
               </div>
             )}

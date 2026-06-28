@@ -1,6 +1,7 @@
 "use client";
 
 import { StatusIcon } from "../StatusIcon";
+import { Emoji } from "../Emoji";
 
 // ── Types & Interfaces ────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export function DetectReport({ data }: { data: DetectReportData }) {
         fontSize: "12px",
         lineHeight: "1.6"
       }}>
-        <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>💡 创作者润色建议：</div>
+        <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 6 }}><Emoji char="💡" /> 创作者润色建议：</div>
         <div style={{ color: "var(--text-muted)" }}>
           {isPassed ? (
             "本章文风特征自然，符合人类作家的遣词造句习惯。如果希望精益求精，可以继续保持目前的创作风格，或者使用「防崩审计」排查角色一致性。"
@@ -204,7 +205,7 @@ export function AuditReport({ data }: { data: AuditReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔍</div>
+        <div style={{ fontSize: 28 }}><Emoji char="🔍" /></div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>人设防崩与一致性审计报告</div>
           {data.chapterNumber != null && (
@@ -241,7 +242,7 @@ export function AuditReport({ data }: { data: AuditReportData }) {
       {data.summary && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>📝</span>本章内容总结
+            <Emoji char="📝" style={{ marginRight: 6 }} />本章内容总结
           </div>
           <div style={{
             padding: "14px 18px",
@@ -261,7 +262,7 @@ export function AuditReport({ data }: { data: AuditReportData }) {
       {/* Issues */}
       <div>
         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-          <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🛠️</span>审计诊断条目 ({issues.length})
+          <Emoji char="🛠️" style={{ marginRight: 6 }} />审计诊断条目 ({issues.length})
         </div>
         {issues.length === 0 ? (
           <div style={{
@@ -343,7 +344,7 @@ export function WriteReport({ data }: { data: WriteReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{isDraft ? "🚀" : "✍️"}</div>
+        <div style={{ fontSize: 28 }}><Emoji char={isDraft ? "🚀" : "✍️"} /></div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
             {isDraft ? "极速草稿起草完成" : "智能续写完成"}
@@ -361,7 +362,7 @@ export function WriteReport({ data }: { data: WriteReportData }) {
             color: isDraft ? "#ff903f" : "#a78bfa",
             border: isDraft ? "1px solid rgba(249,115,22,0.3)" : "1px solid rgba(139,92,246,0.3)",
           }}>
-            {isDraft ? "🚀 极速草稿" : "✨ 已生成"}
+            {isDraft ? <><Emoji char="🚀" /> 极速草稿</> : <><Emoji char="✨" /> 已生成</>}
           </span>
         </div>
       </div>
@@ -390,7 +391,7 @@ export function WriteReport({ data }: { data: WriteReportData }) {
       {audit && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🔍</span>离线审稿审计
+            <Emoji char="🔍" style={{ marginRight: 6 }} />离线审稿审计
           </div>
           <div style={{
             padding: "10px 16px",
@@ -475,7 +476,7 @@ export function WriteReport({ data }: { data: WriteReportData }) {
           color: "var(--text-muted)",
           lineHeight: 1.7,
         }}>
-          💡 <strong style={{ color: "var(--text)" }}>建议</strong>：点击编辑器底部工具栏的 <strong>「🪄 局部定点修复」</strong> 对以上风险条目进行自动局部修缮，或手动微调相关情节后点击 <strong>「🔁 同步设定」</strong> 重新对齐故事数据库。
+          <Emoji char="💡" /> <strong style={{ color: "var(--text)" }}>建议</strong>：点击编辑器底部工具栏的 <strong>「<Emoji char="🪄" /> 局部定点修复」</strong> 对以上风险条目进行自动局部修缮，或手动微调相关情节后点击 <strong>「<Emoji char="🔁" /> 同步设定」</strong> 重新对齐故事数据库。
         </div>
       )}
     </div>
@@ -497,11 +498,11 @@ export function ReviseReport({ data, compact = false }: { data: ReviseReportData
         borderRadius: 8,
         fontSize: 13, lineHeight: 1.75, color: "var(--text)",
       }}>
-        <div style={{ fontWeight: 600, color: "#60a5fa", marginBottom: 4 }}>💡 未应用修改</div>
+        <div style={{ fontWeight: 600, color: "#60a5fa", marginBottom: 4 }}><Emoji char="💡" /> 未应用修改</div>
         <div style={{ color: "var(--text-muted)" }}>{data.skippedReason || "未发现明显的改善机会，当前文本已达到较好的一致性水平。"}</div>
         {!compact && (
           <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-dim)" }}>
-            建议手动微调相关段落后，点击 <strong>「🔁 同步设定」</strong> 重新对齐故事数据库。
+            建议手动微调相关段落后，点击 <strong>「<Emoji char="🔁" /> 同步设定」</strong> 重新对齐故事数据库。
           </div>
         )}
       </div>
@@ -515,7 +516,7 @@ export function ReviseReport({ data, compact = false }: { data: ReviseReportData
           display: "flex", alignItems: "center", gap: 12,
           paddingBottom: 16, borderBottom: "1px solid var(--border)"
         }}>
-          <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🪄</div>
+          <div style={{ fontSize: 28 }}><Emoji char="🪄" /></div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>局部定点修复成功应用</div>
           </div>
@@ -576,7 +577,7 @@ export function ReviseReport({ data, compact = false }: { data: ReviseReportData
 
       {!compact && (
         <div style={{ padding: "12px 16px", background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-          💡 正文已自动更新。建议点击 <strong style={{ color: "var(--text)" }}>「🔍 防崩审计」</strong> 重新运行审查，确认修改后是否完全绿灯。
+          <Emoji char="💡" /> 正文已自动更新。建议点击 <strong style={{ color: "var(--text)" }}>「<Emoji char="🔍" /> 防崩审计」</strong> 重新运行审查，确认修改后是否完全绿灯。
         </div>
       )}
     </div>
@@ -597,7 +598,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔁</div>
+        <div style={{ fontSize: 28 }}><Emoji char="🔁" /></div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>同步设定成功</div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
@@ -613,7 +614,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
             border: "1px solid rgba(52,211,153,0.3)",
           }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🔁</span>
+              <Emoji char="🔁" />
               <span>已同步</span>
             </span>
           </span>
@@ -624,7 +625,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
       {audit && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🔍</span>同步后审计结果
+            <Emoji char="🔍" style={{ marginRight: 6 }} />同步后审计结果
           </div>
           <div style={{
             padding: "10px 16px", borderRadius: 8,
@@ -689,7 +690,7 @@ export function SyncReport({ data }: { data: SyncReportData }) {
       )}
 
       <div style={{ padding: "12px 16px", background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-        <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>💡</span>如发现残留的人设警告，可点击 <strong style={{ color: "var(--text)" }}>「<span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>🪄</span> 局部定点修复」</strong> 运行自动局部修缮，或根据审计描述手动微调相关情节.
+        <Emoji char="💡" style={{ marginRight: 6 }} />如发现残留的人设警告，可点击 <strong style={{ color: "var(--text)" }}>「<Emoji char="🪄" /> 局部定点修复」</strong> 运行自动局部修缮，或根据审计描述手动微调相关情节.
       </div>
     </div>
   );
@@ -705,7 +706,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
           display: "flex", alignItems: "center", gap: 12,
           paddingBottom: 16, borderBottom: "1px solid var(--border)"
         }}>
-          <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📝</div>
+          <div style={{ fontSize: 28 }}><Emoji char="📝" /></div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>本章意图规划完成</div>
         </div>
         <div style={{
@@ -719,7 +720,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
           {data.raw}
         </div>
         <div style={{ padding: "12px 16px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-          <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>💡</span>剧情意图与备忘账本已成功保存。点击 <strong style={{ color: "var(--text)" }}>「<span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</span> 智能续写」</strong> 时，AI 会以此为核心基准进行剧情铺陈与细节扩写。
+          <Emoji char="💡" style={{ marginRight: 6 }} />剧情意图与备忘账本已成功保存。点击 <strong style={{ color: "var(--text)" }}>「<Emoji char="✍️" /> 智能续写」</strong> 时，AI 会以此为核心基准进行剧情铺陈与细节扩写。
         </div>
       </div>
     );
@@ -750,7 +751,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
             border: "1px solid rgba(139,92,246,0.3)",
           }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📝</span>
+              <Emoji char="📝" />
               <span>已规划</span>
             </span>
           </span>
@@ -761,7 +762,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
       {data.goal && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🎯</span>核心写作目标 (Goal)
+            <Emoji char="🎯" style={{ marginRight: 6 }} />核心写作目标 (Goal)
           </div>
           <div style={{
             padding: "14px 18px",
@@ -780,7 +781,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
       {data.intentFile && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>📂</span>关联意图文件 (Intent)
+            <Emoji char="📂" style={{ marginRight: 6 }} />关联意图文件 (Intent)
           </div>
           <div style={{
             padding: "10px 16px",
@@ -795,7 +796,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
       )}
 
       <div style={{ padding: "12px 16px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>
-        <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>💡</span>剧情意图与备忘账本已保存。点击 <strong style={{ color: "var(--text)" }}>「<span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>✍️</span> 智能续写」</strong> 时，AI 会以此目标为核心进行剧情铺陈与细节扩写，确保故事节奏与伏笔完美对齐。
+        <Emoji char="💡" style={{ marginRight: 6 }} />剧情意图与备忘账本已保存。点击 <strong style={{ color: "var(--text)" }}>「<Emoji char="✍️" /> 智能续写」</strong> 时，AI 会以此目标为核心进行剧情铺陈与细节扩写，确保故事节奏与伏笔完美对齐。
       </div>
     </div>
   );

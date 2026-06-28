@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { GemProfile } from "@/lib/types";
+import { Emoji } from "./Emoji";
 
 interface GemEditorModalProps {
   isOpen: boolean;
@@ -273,17 +274,16 @@ export default function GemEditorModal({ isOpen, onClose, gemId, onSave, modelLi
                       width: 44,
                       height: 44,
                       borderRadius: 8,
-                      background: "var(--bg)",
                       border: "1px solid var(--border)",
+                      background: "var(--bg-hover)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 24,
                       flexShrink: 0,
-                      fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                     }}
                   >
-                    {avatar}
+                    <Emoji char={avatar} />
                   </div>
                   <div
                     style={{
@@ -309,10 +309,9 @@ export default function GemEditorModal({ isOpen, onClose, gemId, onSave, modelLi
                           alignItems: "center",
                           justifyContent: "center",
                           transition: "all 0.1s",
-                          fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                         }}
                       >
-                        {emoji}
+                        <Emoji char={emoji} />
                       </button>
                     ))}
                   </div>

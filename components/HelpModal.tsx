@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Emoji } from "./Emoji";
 
 interface HelpModalProps {
   onClose: () => void;
@@ -129,8 +130,8 @@ export function HelpModal({ onClose }: HelpModalProps) {
               </div>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
                 <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li><strong>大纲策划师 (📖)</strong>：共同脑暴、梳理剧情冲突与主线节奏，策划结果将在本地工作区生成 <code>架构.md</code>。</li>
-                  <li><strong>人设雕琢师 (🔮)</strong>：设定角色姓名、背景性格、专属对话口吻等，结果生成为 <code>人设.md</code>。</li>
+                  <li><strong>大纲策划师 (<Emoji char="📖" />)</strong>：共同脑暴、梳理剧情冲突与主线节奏，策划结果将在本地工作区生成 <code>架构.md</code>。</li>
+                  <li><strong>人设雕琢师 (<Emoji char="🔮" />)</strong>：设定角色姓名、背景性格、专属对话口吻等，结果生成为 <code>人设.md</code>。</li>
                 </ul>
               </div>
               <div>
@@ -147,7 +148,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
                 在左侧栏选择 <strong>【创建新书】</strong>，你需要配置书籍标题、风格题材、以及创意简报。
               </div>
               <div>
-                <strong>💡 极速架构合入与继承机制</strong>：
+                <strong><Emoji char="💡" /> 极速架构合入与继承机制</strong>：
                 如果在新建书籍前，你已在项目工作区目录下存有由 AI 写作伴侣起草保存的 <code>架构.md</code>（或 <code>novel_framework.md</code>）和 <code>人设.md</code>（或 <code>character_profiles.md</code>），系统会在建书时<strong>自动识别并读取</strong>它们，将人设与境界体系合入底层 Truth 数据库（<code>story/</code> 目录）。
               </div>
               <div>
@@ -193,10 +194,10 @@ export function HelpModal({ onClose }: HelpModalProps) {
           content: (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                在 <strong>【角色人设】</strong> 面板中，点击右上角的 <strong>【➕ 创建】</strong> 按钮，即可唤起角色人设卡转换器。
+                在 <strong>【角色人设】</strong> 面板中，点击右上角的 <strong>【<Emoji char="➕" /> 创建】</strong> 按钮，即可唤起角色人设卡转换器。
               </div>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
-                <strong>💡 核心功能与用处：</strong>
+                <strong><Emoji char="💡" /> 核心功能与用处：</strong>
                 <ul style={{ paddingLeft: 18, margin: "6px 0 0 0", lineHeight: "1.7" }}>
                   <li><strong>粘贴文本/文件智能解析</strong>：您可以直接粘贴大段散乱的草稿设定，或者上传 TXT/MD 文件，点击 <strong style={{ color: "var(--accent)" }}>【🪄 开始 AI 自动解析与提取】</strong>，AI 将自动分析提取人物的姓名、主要/次要级别（Tier）、核心标签（Core Tags）、矛盾反差（Contrast）以及人际关系网（Relationships）。</li>
                   <li style={{ marginTop: 6 }}><strong>自动冲突检测与去重</strong>：解析成功后，转换器会自动对比已存在的人物角色，直观标出哪些是“新角色”，哪些是“已重名角色（将自动跳过）”，保障库文件整洁。</li>
@@ -547,16 +548,16 @@ export function HelpModal({ onClose }: HelpModalProps) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
                 <ul style={{ paddingLeft: 18, margin: 0, lineHeight: "1.7" }}>
-                  <li><strong>✨ 润色抛光 (Polish)</strong>：
+                  <li><strong><Emoji char="✨" /> 润色抛光 (Polish)</strong>：
                     只改行文措辞和病句修饰，<strong>绝对不改变任何剧情事实与结论</strong>。适合成稿后的最后一轮语言精修。
                   </li>
-                  <li style={{ marginTop: 6 }}><strong>⚠️ 定点纠偏 (Spot-Fix)</strong>：
+                  <li style={{ marginTop: 6 }}><strong><Emoji char="⚠️" /> 定点纠偏 (Spot-Fix)</strong>：
                     专为纠错设计，系统会自动读取上一阶段「防崩审计」检出的剧情或人设冲突列表，并针对性生成局部替换补丁，未受影响的其余 99% 的文本原封不动保留，安全度极高。
                   </li>
-                  <li style={{ marginTop: 6 }}><strong>🛡️ 祛AI腔 (Anti-Detect)</strong>：
+                  <li style={{ marginTop: 6 }}><strong><Emoji char="🛡️" /> 祛AI腔 (Anti-Detect)</strong>：
                     针对网文机器味过浓的痛点，进行口语化重组与自然化重构，打破均等对称的长句段，清洗“仿佛、不禁、嘴角微微上扬”等高频 AI 疲劳词，让句式呼吸感更自然。
                   </li>
-                  <li style={{ marginTop: 6 }}><strong>✍️ 剧情重写 (Rework)</strong>：
+                  <li style={{ marginTop: 6 }}><strong><Emoji char="✍️" /> 剧情重写 (Rework)</strong>：
                     允许推倒整章的场景顺序和矛盾冲突进行重写。但依然受到 <code>story/</code> Truth 数据库大纲的刚性制约，无法违反已发生的历史设定。
                   </li>
                 </ul>
@@ -643,7 +644,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
                 </ul>
               </div>
               <div>
-                <strong>🎬 刷新同人设定</strong>：
+                <strong><Emoji char="🎬" /> 刷新同人设定</strong>：
                 在左侧栏点击“刷新设定”，填入原著的小说文本或人物百科绝对路径。AI会重新提炼原作的语癖（如标志性口头禅、句尾助词）以及人物特征，重新计算以供写作时随时使用。
               </div>
             </div>
@@ -801,7 +802,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
           }}
         >
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 18 }}>📚</span> ink-xY小说实战创作手册
+            <Emoji char="📚" style={{ fontSize: 18 }} /> ink-xY小说实战创作手册
           </span>
           <button
             onClick={onClose}
@@ -878,7 +879,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
                   if (!isSelected) e.currentTarget.style.background = "transparent";
                 }}
               >
-                <span>{sec.icon}</span>
+                <span><Emoji char={sec.icon} /></span>
                 <span>{sec.title.split("：")[0]}</span>
               </button>
             );
@@ -974,7 +975,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
           }}
         >
           <span style={{ fontSize: 10, color: "var(--text-dim)" }}>
-            💡 提示：侧边栏支持导入旧稿、导出书稿、一键全自动生成短篇和设定归档。
+            <Emoji char="💡" /> 提示：侧边栏支持导入旧稿、导出书稿、一键全自动生成短篇和设定归档。
           </span>
           <button
             onClick={onClose}

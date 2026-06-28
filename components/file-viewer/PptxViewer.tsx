@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/file-paths";
+import { Emoji } from "../Emoji";
 
 const PPTX_EXTS = new Set(["pptx", "ppt"]);
 
@@ -372,7 +373,7 @@ function LocalPptxViewer({ src }: LocalPptxViewerProps) {
               opacity: (loading || totalSlides === 0) ? 0.5 : 1,
             }}
           >
-            🔍 Zoom
+            <Emoji char="🔍" /> Zoom
           </button>
           <a
             href={src}
@@ -390,7 +391,7 @@ function LocalPptxViewer({ src }: LocalPptxViewerProps) {
               marginLeft: 6
             }}
           >
-            ⬇️ Download
+            <Emoji char="⬇️" /> Download
           </a>
         </div>
       </div>
@@ -441,7 +442,7 @@ function LocalPptxViewer({ src }: LocalPptxViewerProps) {
               textAlign: "center",
               maxWidth: 400
             }}>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
+              <Emoji char="⚠️" style={{ fontSize: 36, marginBottom: 12, display: "block" }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: "#f87171", marginBottom: 8 }}>
                 Local Preview Failed
               </div>
@@ -462,7 +463,7 @@ function LocalPptxViewer({ src }: LocalPptxViewerProps) {
                   display: "inline-block"
                 }}
               >
-                ⬇️ Download File
+                <Emoji char="⬇️" /> Download File
               </a>
             </div>
           </div>

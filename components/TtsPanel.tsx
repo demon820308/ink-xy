@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { isBaseTtsModel, isVoiceDesignModel, isVoiceCloneModel, isTtsModel } from "@/lib/tts-utils";
+import { Emoji } from "./Emoji";
 
 export interface TtsPanelProps {
   model: { provider: string; modelId: string } | null | undefined;
@@ -156,7 +157,9 @@ export function TtsPanel({
         borderRadius: 8,
         border: "1px solid var(--border)"
       }}>
-        <span style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>💨 音频标签助手：</span>
+        <span style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>
+          <Emoji char="💨" /> 音频标签助手：
+        </span>
         {[
           { label: "吸气", tag: "inhale", icon: "💨" },
           { label: "大笑", tag: "laughter", icon: "😂" },
@@ -184,7 +187,7 @@ export function TtsPanel({
             onMouseEnter={e => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-panel)"; e.currentTarget.style.color = "var(--text-muted)"; }}
           >
-            <span>{t.icon}</span>
+            <Emoji char={t.icon} />
             <span>{t.label}</span>
           </button>
         ))}
@@ -210,7 +213,7 @@ export function TtsPanel({
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-              🎙️ AI 声音工坊
+              <Emoji char="🎙️" /> AI 声音工坊
               <span style={{ fontSize: 11, fontWeight: 400, color: "var(--accent)", background: "rgba(var(--accent-rgb), 0.1)", padding: "1px 6px", borderRadius: 4 }}>
                 {isBaseTts && "标准朗读模式"}
                 {isVoiceDesign && "自定义声线塑造"}
@@ -256,7 +259,8 @@ export function TtsPanel({
                         color: isActive ? "var(--text)" : "var(--text-muted)",
                         cursor: "pointer",
                         fontWeight: isActive ? 600 : 400,
-                        transition: "all 0.12s"
+                        transition: "all 0.12s",
+                        fontFamily: 'var(--font-serif), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
                       }}
                       onMouseEnter={e => { if(!isActive) e.currentTarget.style.background = "var(--bg-hover)"; }}
                       onMouseLeave={e => { if(!isActive) e.currentTarget.style.background = "none"; }}
@@ -275,7 +279,9 @@ export function TtsPanel({
               {/* Template Library */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                  <span>👑 我的声线库：</span>
+                  <span>
+                    <Emoji char="👑" /> 我的声线库：
+                  </span>
                   {isSavingTimbre ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <input
@@ -376,7 +382,8 @@ export function TtsPanel({
                           background: isActive ? "var(--bg-selected)" : "none",
                           color: isActive ? "var(--text)" : "var(--text-muted)",
                           cursor: "pointer",
-                          transition: "all 0.12s"
+                          transition: "all 0.12s",
+                          fontFamily: 'var(--font-serif), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
                         }}
                       >
                         <span>{item.name}</span>
@@ -397,7 +404,9 @@ export function TtsPanel({
 
               {/* Timbre Matrix Constructor */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px dashed var(--border)", paddingTop: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>🧩 声线塑造魔方（自由勾选实时拼装）：</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                  <Emoji char="🧩" /> 声线塑造魔方（自由勾选实时拼装）：
+                </span>
                 
                 {[
                   {
@@ -446,7 +455,8 @@ export function TtsPanel({
                               background: isSelected ? "var(--bg-selected)" : "none",
                               color: isSelected ? "var(--text)" : "var(--text-muted)",
                               cursor: "pointer",
-                              transition: "all 0.12s"
+                              transition: "all 0.12s",
+                              fontFamily: 'var(--font-serif), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
                             }}
                           >
                             {chip}
@@ -485,7 +495,9 @@ export function TtsPanel({
           {/* 3. Voice Clone Reference Selection */}
           {isVoiceClone && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>🔊 声线克隆提取器 (Voice Clone Source)：</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                <Emoji char="🔊" /> 声线克隆提取器 (Voice Clone Source)：
+              </span>
               {(() => {
                 const audioFiles = attachedFiles.filter(f => 
                   f.name.endsWith(".wav") || 
@@ -505,7 +517,7 @@ export function TtsPanel({
                       textAlign: "center",
                       lineHeight: "1.6"
                     }}>
-                      💡 请先在左下角点击麦克风 🎤 录制您的声音，或点击别针 📎 上传一段录音（WAV/MP3），然后在此选中它以提取克隆声线！
+                      <Emoji char="💡" /> 请先在左下角点击麦克风 <Emoji char="🎤" /> 录制您的声音，或点击别针 <Emoji char="📎" /> 上传一段录音（WAV/MP3），然后在此选中它以提取克隆声线！
                     </div>
                   );
                 }

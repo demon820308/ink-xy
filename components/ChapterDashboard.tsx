@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
+import { BookOpen, User, Link, MapPin } from "lucide-react";
+import { ExpandableTabs } from "./ui/expandable-tabs";
+import { Emoji } from "./Emoji";
 
 // Helper to check if a markdown table or file has only headers/titles without actual rows
 function isMarkdownTableEmpty(content: string): boolean {
@@ -78,6 +81,30 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const dashboardTabs = [
+    { title: "大纲", icon: BookOpen },
+    { title: "角色", icon: User },
+    { title: "伏笔", icon: Link },
+    { title: "现状", icon: MapPin },
+  ] as const;
+
+  const handleDashboardTabAction = (index: number) => {
+    switch (index) {
+      case 0:
+        handleOpenOutline();
+        break;
+      case 1:
+        handleOpenCharacters();
+        break;
+      case 2:
+        handleOpenHooks();
+        break;
+      case 3:
+        handleOpenCurrentState();
+        break;
+    }
+  };
 
   // Map of chapterNumber -> actionType (e.g. "audit" | "sync" | "plan" | "review-approve" | "review-reject")
   const [runningActions, setRunningActions] = useState<Record<number, string>>({});
@@ -732,7 +759,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       >
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>📊</span>
+            <Emoji char="📊" />
             <span>《{bookId}》 章节管控中心</span>
             <button
               onClick={handleOpenSettings}
@@ -759,126 +786,17 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                 e.currentTarget.style.background = "transparent";
               }}
             >
-              ⚙️
+              <Emoji char="⚙️" />
             </button>
           </h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* 大纲 */}
-          <button
-            onClick={handleOpenOutline}
-            style={{
-              padding: "6px 12px",
-              background: "rgba(99, 102, 241, 0.08)",
-              border: "1px solid rgba(99, 102, 241, 0.3)",
-              borderRadius: 6,
-              color: "#818cf8",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(99, 102, 241, 0.15)";
-              e.currentTarget.style.borderColor = "#818cf8";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(99, 102, 241, 0.08)";
-              e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.3)";
-            }}
-          >
-            <span>📖</span> 大纲
-          </button>
- 
-          {/* 角色 */}
-          <button
-            onClick={handleOpenCharacters}
-            style={{
-              padding: "6px 12px",
-              background: "rgba(139, 92, 246, 0.08)",
-              border: "1px solid rgba(139, 92, 246, 0.3)",
-              borderRadius: 6,
-              color: "#a78bfa",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(139, 92, 246, 0.15)";
-              e.currentTarget.style.borderColor = "#a78bfa";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(139, 92, 246, 0.08)";
-              e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.3)";
-            }}
-          >
-            <span>👤</span> 角色
-          </button>
- 
-          {/* 伏笔 */}
-          <button
-            onClick={handleOpenHooks}
-            style={{
-              padding: "6px 12px",
-              background: "rgba(249, 115, 22, 0.08)",
-              border: "1px solid rgba(249, 115, 22, 0.3)",
-              borderRadius: 6,
-              color: "#f97316",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(249, 115, 22, 0.15)";
-              e.currentTarget.style.borderColor = "#f97316";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(249, 115, 22, 0.08)";
-              e.currentTarget.style.borderColor = "rgba(249, 115, 22, 0.3)";
-            }}
-          >
-            <span>🔗</span> 伏笔
-          </button>
-
-          {/* 现状 */}
-          <button
-            onClick={handleOpenCurrentState}
-            style={{
-              padding: "6px 12px",
-              background: "rgba(20, 184, 166, 0.08)",
-              border: "1px solid rgba(20, 184, 166, 0.3)",
-              borderRadius: 6,
-              color: "#2dd4bf",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(20, 184, 166, 0.15)";
-              e.currentTarget.style.borderColor = "#2dd4bf";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(20, 184, 166, 0.08)";
-              e.currentTarget.style.borderColor = "rgba(20, 184, 166, 0.3)";
-            }}
-          >
-            <span>📍</span> 现状
-          </button>
+          <ExpandableTabs
+            tabs={dashboardTabs as any}
+            activeColor="text-accent"
+            className="h-[29px] !p-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] shadow-sm flex items-center justify-center"
+            onAction={handleDashboardTabAction}
+          />
 
 
           <input
@@ -912,7 +830,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
       {error && !loading && (
         <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
           <div style={{ padding: "16px 20px", background: "rgba(239, 68, 68, 0.06)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 8, color: "#ef4444" }}>
-            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>⚠️ 加载失败</h3>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}><Emoji char="⚠️" /> 加载失败</h3>
             <p style={{ fontSize: 13, margin: 0 }}>{error}</p>
             <p style={{ fontSize: 12, margin: "12px 0 0 0", color: "var(--text-muted)" }}>
               请确保您当前的工作区已初始化。可以在侧边栏点击「一键开启创作宇宙」进行初始化检测。
@@ -972,7 +890,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14 }}>📈</span>
+                  <Emoji char="📈" style={{ fontSize: 14 }} />
                   <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>叙事波折与情感基调走势 (Plot Curves)</span>
                   <svg 
                     width="12" 
@@ -1021,7 +939,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                       e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.3)";
                     }}
                   >
-                    📊 情感走向
+                    <Emoji char="📊" /> 情感走向
                   </button>
                 </div>
                 <div style={{ 
@@ -1173,8 +1091,8 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                     >
                       <span style={{ fontWeight: 700, color: "var(--accent)" }}>第{hoveredChartPoint.chNum}章</span>
                       <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: 120, color: "var(--text-muted)" }}>{hoveredChartPoint.title}</span>
-                      <span style={{ color: "#c084fc" }}>🎭 {hoveredChartPoint.mood}</span>
-                      <span style={{ color: "#34d399" }}>✍️ {hoveredChartPoint.wordCount.toLocaleString()}字</span>
+                      <span style={{ color: "#c084fc" }}><Emoji char="🎭" /> {hoveredChartPoint.mood}</span>
+                      <span style={{ color: "#34d399" }}><Emoji char="✍️" /> {hoveredChartPoint.wordCount.toLocaleString()}字</span>
                     </div>
                   );
                 })()}
@@ -1341,7 +1259,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                   }}
                                   title="切换日志显示"
                                 >
-                                  <span>🖥️</span>
+                                  <Emoji char="🖥️" />
                                   <span>{isConsoleOpen ? "收起日志" : "查看日志"}</span>
                                 </button>
                               )}
@@ -1459,7 +1377,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                   : "点击执行设定同步"
                               }
                             >
-                              {ch.status === "state-degraded" ? "⚠️ 设定失步" : (ch.hasSnapshot ? "已同步" : "⚪ 未同步")}
+                              {ch.status === "state-degraded" ? <><Emoji char="⚠️" /> 设定失步</> : (ch.hasSnapshot ? "已同步" : <><Emoji char="⚪" /> 未同步</>)}
                             </span>
                           </div>
 
@@ -1504,7 +1422,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                   : "点击生成写作蓝图"
                               }
                             >
-                              {ch.hasPlan ? "🟢 已规划" : "⚪ 未规划"}
+                              {ch.hasPlan ? <><Emoji char="🟢" /> 已规划</> : <><Emoji char="⚪" /> 未规划</>}
                             </span>
                           </div>
 
@@ -1627,7 +1545,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                                   fontWeight: 600
                                 }}
                               >
-                                收起日志 [✕]
+                                 收起日志 [<Emoji char="✕" />]
                               </button>
                             </div>
                             <div
@@ -1674,13 +1592,13 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 16 }}>📖</span>
+                    <Emoji char="📖" style={{ fontSize: 16 }} />
                     <div>
                       <strong style={{ color: "var(--text)" }}>下一章节写作规划：第 {nextChapter.number} 章</strong>
                       <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 10 }}>
                         {nextChapter.hasPlan 
-                          ? "🟢 写作蓝图已就绪。" 
-                          : "🔴 当前无规划蓝图"}
+                          ? <><Emoji char="🟢" /> 写作蓝图已就绪。</> 
+                          : <><Emoji char="🔴" /> 当前无规划蓝图</>}
                       </span>
                     </div>
                   </div>
@@ -1702,7 +1620,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                           fontWeight: 600,
                         }}
                       >
-                        👁️ 查看第 {nextChapter.number} 章蓝图
+                        <Emoji char="👁️" /> 查看第 {nextChapter.number} 章蓝图
                       </button>
                     )}
                     <button
@@ -1730,7 +1648,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                         gap: 6
                       }}
                     >
-                      {runningActions[nextChapter.number] === "plan" ? "⏳ 规划中..." : `规划第 ${nextChapter.number} 章蓝图`}
+                      {runningActions[nextChapter.number] === "plan" ? <><Emoji char="⏳" /> 规划中...</> : `规划第 ${nextChapter.number} 章蓝图`}
                     </button>
                   </div>
                 </div>
@@ -1761,7 +1679,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             padding: "20px 24px",
           }}>
             <h3 style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 700, color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
-              <span>⚠️</span> 确定驳回并执行回滚吗？
+              <Emoji char="⚠️" /> 确定驳回并执行回滚吗？
             </h3>
             
             <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 16 }}>
@@ -1831,7 +1749,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                   fontSize: 12
                 }}
               >
-                {isRejecting ? "正在回滚..." : "🚨 确定驳回并删除后续"}
+                {isRejecting ? "正在回滚..." : <><Emoji char="🚨" /> 确定驳回并删除后续</>}
               </button>
             </div>
           </div>
@@ -1859,7 +1777,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             padding: "20px 24px",
           }}>
             <h3 style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 700, color: "#eab308", display: "flex", alignItems: "center", gap: 8 }}>
-              <span>⚠️</span> 确定重新规划章节蓝图吗？
+              <Emoji char="⚠️" /> 确定重新规划章节蓝图吗？
             </h3>
             
             <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 20 }}>
@@ -1944,7 +1862,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}>
-                <span>📖</span> 第 {planningProgressNum} 章大纲蓝图规划进度
+                <Emoji char="📖" /> 第 {planningProgressNum} 章大纲蓝图规划进度
               </h3>
               <button
                 onClick={() => setPlanningProgressNum(null)}
@@ -1994,11 +1912,11 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                     logStr.includes("❌")
                   ) {
                     return (
-                      <span style={{ color: "#ef4444" }}>❌ 规划执行失败，请检查下方日志错误</span>
+                      <span style={{ color: "#ef4444" }}><Emoji char="❌" /> 规划执行失败，请检查下方日志错误</span>
                     );
                   } else if (hasPlanFile || logStr.includes("执行完成") || logStr.includes("🎉")) {
                     return (
-                      <span style={{ color: "#10b981" }}>✅ 规划已成功完成！大纲蓝图就绪。</span>
+                      <span style={{ color: "#10b981" }}><Emoji char="✅" /> 规划已成功完成！大纲蓝图就绪。</span>
                     );
                   } else {
                     return (
@@ -2077,7 +1995,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                         fontWeight: 600,
                       }}
                     >
-                      👁️ 查看生成蓝图
+                      <Emoji char="👁️" /> 查看生成蓝图
                     </button>
                   );
                 }
@@ -2118,7 +2036,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexShrink: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>📂</span> 第 {explorerChapterNum} 章 快照与蓝图浏览器
+                  <Emoji char="📂" /> 第 {explorerChapterNum} 章 快照与蓝图浏览器
                 </h3>
                 <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "4px 0 0 0" }}>
                   预览与对比当前章节的历史同步设定快照，或查看写作大纲与蓝图。
@@ -2176,7 +2094,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                       transition: "all 0.2s"
                     }}
                   >
-                    🔁 同步快照
+                    <Emoji char="🔁" /> 同步快照
                   </button>
                   <button
                     onClick={() => setExplorerTab("blueprint")}
@@ -2239,7 +2157,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               }
                             }}
                           >
-                            <span style={{ fontSize: 16, marginRight: 8 }}>📄</span>
+                            <Emoji char="📄" style={{ fontSize: 16, marginRight: 8 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: isSelected ? "var(--accent)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.label}</div>
                               <div style={{ fontSize: 9, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{file.name}</div>
@@ -2291,7 +2209,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               }
                             }}
                           >
-                            <span style={{ fontSize: 16, marginRight: 8 }}>📖</span>
+                            <Emoji char="📖" style={{ fontSize: 16, marginRight: 8 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: isSelected ? "#a855f7" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.label}</div>
                               <div style={{ fontSize: 9, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{file.name}</div>
@@ -2354,7 +2272,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                         }}
                         title="在主编辑器 Tab 中以全屏及编辑模式打开该文件"
                       >
-                        <span>✍️</span> 在编辑器中打开
+                        <Emoji char="✍️" /> 在编辑器中打开
                       </button>
                     </div>
 
@@ -2378,7 +2296,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                             fontSize: 12,
                             lineHeight: 1.6
                           }}>
-                            <h4 style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 700 }}>⚠️ 快照/蓝图文件不存在</h4>
+                            <h4 style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 700 }}><Emoji char="⚠️" /> 快照/蓝图文件不存在</h4>
                             <p style={{ margin: "0 0 12px 0" }}>{previewError}</p>
                             <div style={{ color: "var(--text-muted)", fontSize: 11 }}>
                               {explorerTab === "snapshot" ? (
@@ -2416,7 +2334,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               fontSize: 11,
                               lineHeight: 1.5
                             }}>
-                              💡 **系统提示**：`particle_ledger.md`（微观设定事物账本）为**非必选属性**。只有带有数值系统（如升级流玄幻、系统网游等题材）的书籍在初始化时才会开启并生成该文件。如果您的作品是非数值/常规题材，此文件不生成属于正常设计，无需担心功能缺失。
+                              <Emoji char="💡" /> **系统提示**：`particle_ledger.md`（微观设定事物账本）为**非必选属性**。只有带有数值系统（如升级流玄幻、系统网游等题材）的书籍在初始化时才会开启并生成该 file。如果您的作品是非数值/常规题材，此文件不生成属于正常设计，无需担心功能缺失。
                             </div>
                           )}
                           {selectedPreviewFile.name === "subplot_board.md" && (
@@ -2429,7 +2347,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               fontSize: 11,
                               lineHeight: 1.5
                             }}>
-                              💡 **系统提示**：`subplot_board.md`（支线进度看板）为**动态按需生成**。在小说开篇（如第 1 章）或剧情纯单主线发展时，AI 架构师不会预先初始化它。后续随着支线剧情的展开和多线故事的发展，写手引擎在后续章节中会自动按需生成并对其进行更新。
+                              <Emoji char="💡" /> **系统提示**：`subplot_board.md`（支线进度看板）为**动态按需生成**。在小说开篇（如第 1 章）或剧情纯单主线发展时，AI 架构师不会预先初始化它。后续随着支线剧情的展开和多线故事的发展，写手引擎在后续章节中会自动按需生成并对其进行更新。
                             </div>
                           )}
                           {selectedPreviewFile.name === "emotional_arcs.md" && (
@@ -2442,7 +2360,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               fontSize: 11,
                               lineHeight: 1.5
                             }}>
-                              💡 **系统提示**：`emotional_arcs.md`（角色情感关系与弧度）由系统在故事发展过程中**动态分析生成**。如果当前章节不涉及多角色复杂互动或剧烈情感波折起伏，该快照点可能会跳过生成，直到后续产生情感变化时才会生成并同步。
+                              <Emoji char="💡" /> **系统提示**：`emotional_arcs.md`（角色情感关系与弧度）由系统在故事发展过程中**动态分析生成**。如果当前章节不涉及多角色复杂互动或剧烈情感波折起伏，该快照点可能会跳过生成，直到后续产生情感变化时才会生成并同步。
                             </div>
                           )}
                         </div>
@@ -2464,7 +2382,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               lineHeight: 1.5,
                               marginTop: 8
                             }}>
-                              💡 **系统提示**：`emotional_arcs.md`（角色情感关系与弧度）目前仅包含表头模板。这是正常的。当您在后续章节的写作中，角色经历显著的情绪变化、多角色复杂互动或剧烈情感波折起伏时，写手引擎在完成该章节的「设定同步」后，会自动在此文件中追加并更新情感弧度数据记录。
+                              <Emoji char="💡" /> **系统提示**：`emotional_arcs.md`（角色情感关系与弧度）目前仅包含表头模板。这是正常的。当您在后续章节的写作中，角色经历显著的情绪变化、多角色复杂互动或剧烈情感波折起伏时，写手引擎在完成该章节的「设定同步」后，会自动在此文件中追加并更新情感弧度数据记录。
                             </div>
                           )}
                           {selectedPreviewFile.name === "subplot_board.md" && isMarkdownTableEmpty(previewContent) && (
@@ -2478,7 +2396,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               lineHeight: 1.5,
                               marginTop: 8
                             }}>
-                              💡 **系统提示**：`subplot_board.md`（支线进度看板）目前仅包含表头模板。这是正常的。当后续剧情中引入了支线故事或情感线索，并在章节管控中心执行「设定同步」后，写手引擎会自动在此生成并更新具体的支线与情感板块记录。
+                              <Emoji char="💡" /> **系统提示**：`subplot_board.md`（支线进度看板）目前仅包含表头模板。这是正常的。当后续剧情中引入了支线故事或情感线索，并在章节管控中心执行「设定同步」后，写手引擎会自动在此生成并更新具体的支线与情感板块记录。
                             </div>
                           )}
                           {selectedPreviewFile.name === "particle_ledger.md" && isMarkdownTableEmpty(previewContent) && (
@@ -2492,7 +2410,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                               lineHeight: 1.5,
                               marginTop: 8
                             }}>
-                              💡 **系统提示**：`particle_ledger.md`（微观设定事物账本）目前仅包含表头模板。这是正常的。当后续章节的写作中出现新物品、法宝或特殊术语，且该书属于有数值/升级流系统的题材时，系统会在「设定同步」后在此记录并追踪对应设定。
+                              <Emoji char="💡" /> **系统提示**：`particle_ledger.md`（微观设定事物账本）目前仅包含表头模板。这是正常的。当后续章节的写作中出现新物品、法宝或特殊术语，且该书属于有数值/升级流系统的题材时，系统会在「设定同步」后在此记录并追踪对应设定。
                             </div>
                           )}
                         </div>
@@ -2610,19 +2528,19 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               {/* Review notes if rejected */}
               {selectedChapter.reviewNote && (
                 <div style={{ padding: "12px 14px", background: "rgba(239,68,68,0.03)", border: "1px dashed rgba(239,68,68,0.25)", borderRadius: 8 }}>
-                  <h4 style={{ margin: "0 0 6px 0", fontSize: 12, color: "#ef4444" }}>🚩 历史驳回备注</h4>
+                  <h4 style={{ margin: "0 0 6px 0", fontSize: 12, color: "#ef4444" }}><Emoji char="🚩" /> 历史驳回备注</h4>
                   <p style={{ fontSize: 12, margin: 0, lineHeight: 1.5, color: "var(--text)" }}>{selectedChapter.reviewNote}</p>
                 </div>
               )}
 
               {/* Length Warnings */}
               <div>
-                <h4 style={{ margin: "0 0 10px 0", fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase" }}>📏 字数管控指标</h4>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase" }}><Emoji char="📏" /> 字数管控指标</h4>
                 {selectedChapter.lengthWarnings && selectedChapter.lengthWarnings.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {selectedChapter.lengthWarnings.map((warn, i) => (
                       <div key={i} style={{ padding: "10px 14px", background: "rgba(234,179,8,0.03)", borderLeft: "3px solid #eab308", border: "1px solid rgba(234,179,8,0.15)", borderRadius: 6, fontSize: 11, color: "var(--text)", lineHeight: 1.5 }}>
-                        ⚠️ {warn}
+                        <Emoji char="⚠️" /> {warn}
                       </div>
                     ))}
                   </div>
@@ -2636,7 +2554,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
               {/* Audit Issues */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <h4 style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase" }}>🛡️ 防崩一致性审计</h4>
+                  <h4 style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase" }}><Emoji char="🛡️" /> 防崩一致性审计</h4>
                   <button
                     onClick={() => {
                       setIsDrawerOpen(false);
@@ -2657,7 +2575,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                     }}
                     title="重新执行防崩一致性审计"
                   >
-                    <span>🔁</span> 重新审计
+                    <Emoji char="🔁" /> 重新审计
                   </button>
                   <button
                     onClick={() => {
@@ -2680,7 +2598,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                     }}
                     title="对本章执行 AIGC 痕迹检测"
                   >
-                    <span>🔍</span> AIGC 检测
+                    <Emoji char="🔍" /> AIGC 检测
                   </button>
                 </div>
                 {selectedChapter.auditIssues && selectedChapter.auditIssues.length > 0 ? (
@@ -2734,7 +2652,7 @@ export function ChapterDashboard({ bookId, cwd, onOpenFile }: Props) {
                   cursor: "pointer",
                 }}
               >
-                ✍️ 进入正文编辑器
+                <Emoji char="✍️" /> 进入正文编辑器
               </button>
             </div>
           </div>

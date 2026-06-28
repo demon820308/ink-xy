@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { Emoji } from "./Emoji";
 
 interface StreamResult {
   success: boolean;
@@ -158,7 +159,7 @@ export default function FanficRefreshModal({
           color: "#a78bfa",
         }}>
           <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>🔁</span>
+            <Emoji char="🔁" />
             <span>刷新同人原作设定 ({bookId})</span>
           </h3>
           {!isRefreshingCanon && (
@@ -174,12 +175,12 @@ export default function FanficRefreshModal({
         <form onSubmit={handleFanficRefresh} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
           {fanficRefreshError && (
             <div style={{ padding: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 11 }}>
-              ⚠️ {fanficRefreshError}
+              <Emoji char="⚠️" /> {fanficRefreshError}
             </div>
           )}
           {fanficRefreshSuccess && (
             <div style={{ padding: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 8, color: "#10b981", fontSize: 11 }}>
-              ✨ {fanficRefreshSuccess}
+              <Emoji char="✨" /> {fanficRefreshSuccess}
             </div>
           )}
 

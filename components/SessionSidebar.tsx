@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { SessionInfo, GemProfile } from "@/lib/types";
 import { StatusIcon } from "./StatusIcon";
+import { Emoji } from "./Emoji";
 
 interface Genre {
   id: string;
@@ -2008,7 +2009,7 @@ export function SessionSidebar({
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                        <span style={{ fontSize: 14, flexShrink: 0, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{gem.avatar || "🔮"}</span>
+                        <Emoji char={gem.avatar || "🔮"} style={{ fontSize: 14, flexShrink: 0 }} />
                         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                           <span style={{
                             color: isSelected ? "var(--accent)" : "var(--text)",
@@ -2456,7 +2457,7 @@ export function SessionSidebar({
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 6 }}>🔍</span>离线审稿与设定审计结果
+                          <Emoji char="🔍" style={{ marginRight: 6 }} />离线审稿与设定审计结果
                         </div>
                         <div style={{
                           padding: "10px 14px", borderRadius: 8,
@@ -2506,7 +2507,7 @@ export function SessionSidebar({
                                     {issue.description}
                                   </div>
                                   <div style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text-muted)", fontStyle: "italic", marginTop: 1 }}>
-                                    <span style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif', marginRight: 4 }}>💡</span>建议: {issue.suggestion}
+                                    <Emoji char="💡" style={{ marginRight: 4 }} />建议: {issue.suggestion}
                                   </div>
                                 </div>
                               );
@@ -2519,7 +2520,7 @@ export function SessionSidebar({
                 </div>
               ) : writeReportTitle === "首章蓝图规划完成" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "center", padding: "10px 0" }}>
-                  <div style={{ fontSize: "36px" }}>📖</div>
+                  <Emoji char="📖" style={{ fontSize: "36px", display: "block", margin: "0 auto" }} />
                   <h4 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text)", margin: 0 }}>首章写作蓝图规划成功！</h4>
                   <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.75, margin: 0 }}>
                     已成功规划首章大纲、正文起草焦点与意图设定栈。<br />

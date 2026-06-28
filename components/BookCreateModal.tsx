@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { encodeFilePathForApi } from "@/lib/file-paths";
+import { Emoji } from "./Emoji";
 
 interface Genre {
   id: string;
@@ -351,13 +352,13 @@ export default function BookCreateModal({
           borderBottom: "1px solid var(--border)",
           paddingBottom: "10px",
         }}>
-          <span>📚</span>
+          <Emoji char="📚" />
           <span>创建新小说书籍 (Create Book)</span>
         </h3>
         
         {createSuccessInfo ? (
           <div style={{ padding: "10px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: "36px", marginBottom: "12px" }}>🎉</div>
+            <Emoji char="🎉" style={{ fontSize: "36px", marginBottom: "12px", display: "block" }} />
             <h4 style={{
               fontSize: "14px",
               fontWeight: 600,
@@ -447,7 +448,7 @@ export default function BookCreateModal({
                 maxWidth: "400px",
                 display: "inline-block"
               }}>
-                🎯 {bookCreateProgressText}
+                <Emoji char="🎯" /> {bookCreateProgressText}
               </div>
             )}
 
@@ -494,7 +495,7 @@ export default function BookCreateModal({
                 marginBottom: "16px",
                 lineHeight: 1.5,
               }}>
-                ⚠️ {bookError}
+                <Emoji char="⚠️" /> {bookError}
               </div>
             )}
 
@@ -508,7 +509,7 @@ export default function BookCreateModal({
                 fontSize: "12px",
               }}>
                 <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: "8px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>🔍 检测到本地创作设定，请选择是否作为新书创建基础：</span>
+                  <span><Emoji char="🔍" /> 检测到本地创作设定，请选择是否作为新书创建基础：</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {detectedFramework && (
@@ -547,7 +548,7 @@ export default function BookCreateModal({
                 color: "var(--text-muted)",
               }}>
                 <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: "6px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>💡 创作建议与提示</span>
+                  <span><Emoji char="💡" /> 创作建议与提示</span>
                 </div>
                 当前未检测到本地的「小说框架」或「角色人设」设定文件。您可以：
                 <ul style={{ margin: "4px 0 0", paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -602,7 +603,7 @@ export default function BookCreateModal({
                       gap: "2px"
                     }}
                   >
-                    ⚙️ 题材管理
+                    <Emoji char="⚙️" /> 题材管理
                   </button>
                 </div>
                 <select

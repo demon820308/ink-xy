@@ -9,6 +9,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { useTheme } from "@/hooks/useTheme";
 import { useTts } from "@/hooks/useTts";
 import { isTtsModel, cleanSpeechText, isVoiceCloneModel, isVoiceDesignModel } from "@/lib/tts-utils";
+import { Emoji } from "./Emoji";
 import type {
   AgentMessage,
   UserMessage,
@@ -173,7 +174,7 @@ function FileMentionBadge({ path, cwd }: { path: string; cwd?: string | null }) 
         transform: hovered ? "translateY(-0.5px)" : "translateY(0)",
       }}
     >
-      <span style={{ fontSize: "1.1em", display: "flex", alignItems: "center" }}>📄</span>
+      <Emoji char="📄" style={{ fontSize: "1.1em", display: "flex", alignItems: "center" }} />
       <span style={{ textDecoration: hovered ? "underline" : "none" }}>{fileName}</span>
     </span>
   );
@@ -1007,7 +1008,7 @@ function AssistantMessageView({
             boxSizing: "border-box",
           }}>
             <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <span style={{ fontSize: 13 }}>⚠️</span>
+              <Emoji char="⚠️" style={{ fontSize: 13 }} />
               <span>协同写作服务发生错误 (API Error)</span>
             </div>
             <div style={{ opacity: 0.85, fontSize: 12 }}>{(message as AssistantMessage).errorMessage}</div>
@@ -1290,7 +1291,7 @@ function AssistantMessageView({
                     }}
                     title={label}
                   >
-                    <span>{icon}</span>
+                    <span><Emoji char={icon} /></span>
                     <span style={{ fontWeight: 500 }}>{label}</span>
                   </span>
                 </div>

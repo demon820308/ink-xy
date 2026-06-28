@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { encodeFilePathForApi } from "@/lib/file-paths";
+import { Emoji } from "./Emoji";
 
 interface HookItem {
   id: string;
@@ -305,7 +306,7 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-            <span>🔗</span> 剧情伏笔脉络墙
+            <Emoji char="🔗" /> 剧情伏笔脉络墙
           </h2>
           <span style={{ fontSize: 11, padding: "3px 10px", background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.15)", borderRadius: 12, color: "var(--accent)", fontWeight: 600 }}>
             当前章节: {currentChapter}
@@ -680,8 +681,8 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
                           >
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
                               {isRes && <span>✓</span>}
-                              {!isRes && diag.stale && <span>⚠️</span>}
-                              {!isRes && diag.blocked && <span>🔒</span>}
+                              {!isRes && diag.stale && <Emoji char="⚠️" />}
+                              {!isRes && diag.blocked && <Emoji char="🔒" />}
                               {statusLabel} (Ch {start} → {isRes ? last : hook.expectedPayoff})
                             </span>
                           </div>
@@ -726,10 +727,10 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
             >
               {[
                 { key: "all", label: "全部" },
-                { key: "progressing", label: "进行中 ⚡" },
-                { key: "open", label: "未开启 ⏳" },
-                { key: "deferred", label: "已延后 ↩️" },
-                { key: "resolved", label: "已闭环 🟢" },
+                { key: "progressing", label: <>进行中 <Emoji char="⚡" /></> },
+                { key: "open", label: <>未开启 <Emoji char="⏳" /></> },
+                { key: "deferred", label: <>已延后 <Emoji char="↩️" /></> },
+                { key: "resolved", label: <>已闭环 <Emoji char="🟢" /></> },
               ].map((filter) => (
                 <button
                   key={filter.key}
@@ -948,7 +949,7 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
                                     e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.3)";
                                   }}
                                 >
-                                  ✅ 标为已回收
+                                  <Emoji char="✅" /> 标为已回收
                                 </button>
                                 <button
                                   onClick={() => handleUpdateStatus(hook.id, getStatusType(hook.status) === "deferred" ? "未开启" : "已延后")}
@@ -1086,7 +1087,7 @@ export const PlotHookVisualizerWrapper: React.FC<{
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "var(--bg-panel)", color: "#ef4444", fontFamily: "var(--font-serif)", padding: 24, textAlign: "center" }}>
         <div>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+          <Emoji char="⚠️" style={{ fontSize: 32, marginBottom: 12, display: "block" }} />
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>加载伏笔数据失败</div>
           <div style={{ fontSize: 12, opacity: 0.8, maxWidth: 360, margin: "0 auto 16px", lineHeight: 1.5 }}>{error}</div>
           <button

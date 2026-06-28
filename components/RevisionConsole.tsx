@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { Emoji } from "./Emoji";
 
 interface RevisionConsoleProps {
   cwd: string;
@@ -386,10 +387,10 @@ export function RevisionConsole({
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>选择精修模式</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {[
-                    { id: "polish", name: "✨ 润色抛光", desc: "词藻修饰与病句修正" },
-                    { id: "spot-fix", name: "⚠️ 定点纠偏", desc: "微调逻辑及矛盾处" },
-                    { id: "rework", name: "✍️ 剧情重写", desc: "基于修改意见重构" },
-                    { id: "anti-detect", name: "🛡️ 祛AI腔", desc: "破除 LLM 句式痕迹" },
+                    { id: "polish", name: <><Emoji char="✨" /> 润色抛光</>, desc: "词藻修饰与病句修正" },
+                    { id: "spot-fix", name: <><Emoji char="⚠️" /> 定点纠偏</>, desc: "微调逻辑及矛盾处" },
+                    { id: "rework", name: <><Emoji char="✍️" /> 剧情重写</>, desc: "基于修改意见重构" },
+                    { id: "anti-detect", name: <><Emoji char="🛡️" /> 祛AI腔</>, desc: "破除 LLM 句式痕迹" },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -447,7 +448,7 @@ export function RevisionConsole({
 
               {errorMessage && (
                 <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 6, color: "#f87171", fontSize: 11 }}>
-                  ❌ {errorMessage}
+                  <Emoji char="❌" /> {errorMessage}
                 </div>
               )}
 
@@ -468,7 +469,7 @@ export function RevisionConsole({
                   boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
                 }}
               >
-                {status === "running" ? "⚡ AI 正在重构并审计章节..." : "🔮 开始 AI 智能精修"}
+                {status === "running" ? <><Emoji char="⚡" /> AI 正在重构并审计章节...</> : <><Emoji char="🔮" /> 开始 AI 智能精修</>}
               </button>
             </div>
           ) : null}
@@ -480,7 +481,7 @@ export function RevisionConsole({
               <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#080808", padding: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #222", paddingBottom: 10, marginBottom: 12 }}>
                   <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "#38bdf8", fontWeight: 700 }}>
-                    ⚡ INKOS AGENT REVISION EXECUTION LOG
+                    <Emoji char="⚡" /> INKOS AGENT REVISION EXECUTION LOG
                   </span>
                   <span style={{ fontSize: 10, color: "var(--accent)", display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", animation: "pulse 1s infinite" }} />
@@ -636,7 +637,7 @@ export function RevisionConsole({
             ) : (
               /* Idle state placeholder when not run yet */
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", gap: 12 }}>
-                <span style={{ fontSize: 48 }}>🔮</span>
+                <Emoji char="🔮" style={{ fontSize: 48 }} />
                 <span style={{ fontSize: 13 }}>配置精修模式和修改意图后，点击左侧按钮开始精修。</span>
               </div>
             )}

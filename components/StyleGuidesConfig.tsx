@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import ReactMarkdown from "react-markdown";
+import { Emoji } from "./Emoji";
 
 interface StyleGuidesConfigProps {
   cwd: string;
@@ -441,7 +442,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 16 }}>✒️</span>
+            <Emoji char="✒️" style={{ fontSize: 16 }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
               写作风格与文笔模仿管理 (Style Guides)
             </span>
@@ -520,7 +521,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
               onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--accent)"}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--border)"}
             >
-              <span>➕</span> 学习新文风样本
+              <Emoji char="➕" /> 学习新文风样本
             </button>
           </div>
 
@@ -561,7 +562,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                         cursor: "pointer",
                       }}
                     >
-                      ✍️ 粘贴文字
+                      <Emoji char="✍️" /> 粘贴文字
                     </button>
                     <button
                       type="button"
@@ -574,7 +575,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                         cursor: "pointer",
                       }}
                     >
-                      📁 上传文件
+                      <Emoji char="📁" /> 上传文件
                     </button>
                   </div>
                 </div>
@@ -615,7 +616,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                           transition: "all 0.15s", flex: 1, textAlign: "center",
                         }}
                       >
-                        {selectedFileName ? `📁 已选择: ${selectedFileName}` : "点击选择本地文本样本"}
+                        {selectedFileName ? <><Emoji char="📁" /> 已选择: {selectedFileName}</> : "点击选择本地文本样本"}
                       </label>
                     </div>
                   </div>
@@ -631,7 +632,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                     alignSelf: "flex-end",
                   }}
                 >
-                  {submitting ? "正在深度提取特征..." : "💡 开始反向提取"}
+                  {submitting ? "正在深度提取特征..." : <><Emoji char="💡" /> 开始反向提取</>}
                 </button>
               </form>
             ) : (
@@ -664,7 +665,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                             cursor: (switching || deleting || savingTuning) ? "not-allowed" : "pointer",
                           }}
                         >
-                          {switching ? "正在激活..." : "🎯 激活此风格"}
+                          {switching ? "正在激活..." : <><Emoji char="🎯" /> 激活此风格</>}
                         </button>
 
                         {selectedStyle !== "default" && (
@@ -681,7 +682,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                             onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
                             onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                           >
-                            {deleting ? "正在删除..." : "🗑️ 删除风格"}
+                            {deleting ? "正在删除..." : <><Emoji char="🗑️" /> 删除风格</>}
                           </button>
                         )}
                       </div>
@@ -701,7 +702,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                       onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-selected)"}
                       onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                     >
-                      {savingTuning ? "正在保存..." : "💾 保存微调"}
+                      {savingTuning ? "正在保存..." : <><Emoji char="💾" /> 保存微调</>}
                     </button>
                   </div>
                 </div>
@@ -775,7 +776,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
-                      📜 文风特征定性拆解指南
+                      <Emoji char="📜" /> 文风特征定性拆解指南
                     </span>
                     <button
                       type="button"
@@ -789,7 +790,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
                       onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"}
                       onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                     >
-                      {slidersExpanded ? "🔍 隐藏参数放大阅读 ↗" : "⚙️ 显示调谐参数 ↙"}
+                      {slidersExpanded ? <><Emoji char="🔍" /> 隐藏参数放大阅读 ↗</> : <><Emoji char="⚙️" /> 显示调谐参数 ↙</>}
                     </button>
                   </div>
                   <div
@@ -816,7 +817,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
             {/* Error / Success Alerts */}
             {error && (
               <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 6, color: "#f87171", fontSize: 11 }}>
-                ❌ {error}
+                <Emoji char="❌" /> {error}
               </div>
             )}
             {success && (
@@ -835,7 +836,7 @@ export function StyleGuidesConfig({ cwd, bookId, onClose }: StyleGuidesConfigPro
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#111", padding: "4px 8px", borderBottom: "1px solid #222" }}>
                   <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 700 }}>
-                    ⚡ InkOS 特征提取终端
+                    <Emoji char="⚡" /> InkOS 特征提取终端
                   </span>
                   {submitting && <span style={{ fontSize: 9, color: "var(--accent)" }}>分析中...</span>}
                 </div>

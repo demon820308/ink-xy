@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useTheme } from "@/hooks/useTheme";
 import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/file-paths";
+import { Emoji } from "../Emoji";
 import { PlotHookVisualizer } from "../PlotHookVisualizer";
 import { RevisionConsole } from "../RevisionConsole";
 import { DiffView } from "./DiffView";
@@ -2463,7 +2464,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 chapterStatus === "rejected" ? "已驳回" : chapterStatus
               }
               {auditIssues.length > 0 && (
-                <span style={{ marginLeft: 4, fontSize: 8 }}>🔍</span>
+                <Emoji char="🔍" style={{ marginLeft: 4, fontSize: 8 }} />
               )}
             </span>
 
@@ -2483,7 +2484,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                   }}
                   title="批准并提交该章节状态为已过审"
                 >
-                  {isReviewing ? "处理中..." : "✅ 批准章节"}
+                  {isReviewing ? "处理中..." : <><Emoji char="✅" /> 批准章节</>}
                 </button>
                 <button
                   onClick={() => setIsRejectDialogOpen(true)}
@@ -2499,7 +2500,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                   }}
                   title="驳回并回滚故事状态到该章之前"
                 >
-                  {isReviewing ? "处理中..." : "❌ 驳回重构"}
+                  {isReviewing ? "处理中..." : <><Emoji char="❌" /> 驳回重构</>}
                 </button>
               </div>
             )}
@@ -2534,7 +2535,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                       e.currentTarget.style.background = hookStatuses.every(h => h.isMatched) ? "rgba(16, 185, 129, 0.08)" : "rgba(245, 158, 11, 0.08)";
                     }}
                   >
-                    <span>🔗 伏笔</span>
+                    <Emoji char="🔗" /> 伏笔
                     <span style={{
                       fontSize: 9,
                       background: hookStatuses.every(h => h.isMatched) ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
@@ -2609,7 +2610,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                               </span>
                               {!h.isMatched && h.keywords.length > 0 && (
                                 <span style={{ fontSize: 11, color: "var(--accent)", fontStyle: "italic", marginTop: 2, fontWeight: 500 }}>
-                                  🔍 缺词: {h.keywords.join(", ")}
+                                  <Emoji char="🔍" /> 缺词: {h.keywords.join(", ")}
                                 </span>
                               )}
                             </div>
@@ -2657,7 +2658,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                                     e.currentTarget.style.color = "var(--text-muted)";
                                   }}
                                 >
-                                  🔁 延后
+                                  <Emoji char="🔁" /> 延后
                                 </button>
                               )}
                             </div>
@@ -2770,7 +2771,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                   fontWeight: 400,
                 }}
               >
-                🔍 Zoom
+                <Emoji char="🔍" /> Zoom
               </button>
             )}
           </div>
@@ -2894,7 +2895,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 fontWeight: useVisualView ? 600 : 400,
               }}
             >
-              👁️ 可视化编辑
+              <Emoji char="👁️" /> 可视化编辑
             </button>
             <button
               onClick={() => {
@@ -2908,7 +2909,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 fontWeight: !useVisualView ? 600 : 400,
               }}
             >
-              📝 源码模式
+              <Emoji char="📝" /> 源码模式
             </button>
           </div>
         )}
@@ -3250,7 +3251,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                       e.currentTarget.style.color = "var(--text-muted)";
                     }}
                   >
-                    <span>{isRunning ? "⏳" : "📋"}</span>
+                    <span>{isRunning ? <Emoji char="⏳" /> : <Emoji char="📋" />}</span>
                     {isRunning && <span>查看运行进度</span>}
                   </button>
                 )}
@@ -3280,7 +3281,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 )}
                 {saveStatus === "error" && (
                   <span style={{ color: "#ef4444" }}>
-                    ⚠️ 自动保存失败
+                    <Emoji char="⚠️" /> 自动保存失败
                   </span>
                 )}
               </div>
@@ -3581,7 +3582,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               fontWeight: 600,
               fontSize: 14
             }}>
-              <span style={{ fontSize: 16 }}>⚠️</span>
+              <Emoji char="⚠️" style={{ fontSize: 16 }} />
               <span>确认驳回并重构章节</span>
             </div>
 
@@ -3597,7 +3598,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 lineHeight: "1.6"
               }}>
                 <span style={{ color: "#ef4444", fontWeight: 600, display: "block", marginBottom: 4 }}>
-                  ⚠️ 毁灭性操作警告：
+                  <Emoji char="⚠️" /> 毁灭性操作警告：
                 </span>
                 驳回该章节将<strong>删除此章节及所有后续章节</strong>，并将书籍与AI系统的状态数据库回滚到前一章节（第 {chapterNumber ? chapterNumber - 1 : 0} 章）。此操作会丢弃当前章节的所有生成数据与文件，<strong>且无法撤销！</strong>
               </div>
@@ -3763,7 +3764,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               fontWeight: 600,
               fontSize: 14
             }}>
-              <span style={{ fontSize: 16 }}>🚀</span>
+               <Emoji char="🚀" style={{ fontSize: 16 }} />
               <span>极速起草模式配置</span>
             </div>
 
@@ -3779,7 +3780,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 color: "var(--text-muted)",
                 lineHeight: "1.5"
               }}>
-                <span style={{ color: "#ff903f", fontWeight: 600 }}>💡 极速起草说明：</span>
+                 <span style={{ color: "#ff903f", fontWeight: 600 }}><Emoji char="💡" /> 极速起草说明：</span>
                 此模式下，AI 将绕过复杂的设定同步、审计和 spot-fix 局部修正，直接根据大纲和以下创意引导快速生成首稿。这对于维持高涨的灵感和连贯的写作逻辑非常合适。
               </div>
 
@@ -3812,7 +3813,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               {availableStyles.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
-                    🎭 选择写作文风偏好：
+                    <Emoji char="🎭" /> 选择写作文风偏好：
                   </span>
                   
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -3838,7 +3839,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                             gap: 3,
                           }}
                         >
-                          <span>🎭</span>
+                          <Emoji char="🎭" />
                           <span>{style}</span>
                         </button>
                       );
@@ -4008,7 +4009,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
               fontSize: 14
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 16 }}>🛡️</span>
+                 <Emoji char="🛡️" style={{ fontSize: 16 }} />
                 <span>离线审计报告 - 第 {chapterNumber} 章</span>
               </div>
               <button
@@ -4253,7 +4254,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 whiteSpace: "pre-wrap"
               }}>
                 <span style={{ color: "#ef4444", fontWeight: 600, display: "block", marginBottom: 4 }}>
-                  ⚠️ {confirmDialog.warning || "操作警告："}
+                  <Emoji char="⚠️" /> {confirmDialog.warning || "操作警告："}
                 </span>
                 {confirmDialog.message}
               </div>
@@ -4516,7 +4517,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 color: "var(--text-muted)",
                 lineHeight: "1.5"
               }}>
-                📌 <strong>建议</strong>：优秀的网文写作通常先规划本章细纲与写作意图，这能确保大模型续写的方向完全符合您的预期。
+                <Emoji char="📌" /> <strong>建议</strong>：优秀的网文写作通常先规划本章细纲与写作意图，这能确保大模型续写的方向完全符合您的预期。
               </div>
             </div>
 
@@ -4664,7 +4665,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                   border: `1px solid ${meta.themeColor}33`,
                   boxShadow: `0 2px 8px ${meta.themeColor}15`
                 }}>
-                  {meta.icon}
+                   <Emoji char={meta.icon} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>确认执行此操作</span>
@@ -4699,7 +4700,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 {(execConfirm.actionType === "write-next" || execConfirm.actionType === "draft") && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
-                      💡 本章剧情走向与限制（可选）
+                      <Emoji char="💡" /> 本章剧情走向与限制（可选）
                     </label>
                     <textarea
                       placeholder="例如：在这章中增加主角跟女二在图书馆的偶遇，并发现了密室钥匙。"
@@ -4724,7 +4725,7 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
                 )}
 
                 <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                  💡 提示：您可以在顶部的“系统全局设置” ⚙️ 中关闭此确认弹窗。
+                  <Emoji char="💡" /> 提示：您可以在顶部的“系统全局设置” <Emoji char="⚙️" /> 中关闭此确认弹窗。
                 </div>
               </div>
 
