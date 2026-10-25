@@ -142,6 +142,31 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
+  // Intelligent auto-follow scroll tracking
+  const userScrolledUpRef = useRef(false);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 100;
+    userScrolledUpRef.current = !isAtBottom;
+  }, [scrollContainerRef]);
+
+  useEffect(() => {
+    if (agentRunning) {
+      userScrolledUpRef.current = false;
+    }
+  }, [agentRunning]);
+
+  useEffect(() => {
+    if (streamState.isStreaming && !userScrolledUpRef.current) {
+      const el = scrollContainerRef.current;
+      if (el) {
+        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      }
+    }
+  }, [streamState.streamingMessage, streamState.isStreaming, scrollContainerRef]);
+
   const availableThinkingLevels = displayModelValue
     ? (modelThinkingLevels[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
     : null;
@@ -285,8 +310,25 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       ) : (
       <>
       <div className="relative flex flex-1 overflow-hidden">
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]" style={{ overflowAnchor: "auto" }}>
-          <div className="mx-auto max-w-[820px] px-4">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto custom-chat-scrollbar"
+          style={{
+            overflowAnchor: "auto",
+            paddingTop: "28px",
+            paddingBottom: "36px",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "820px",
+              margin: "0 auto",
+              paddingLeft: "28px",
+              paddingRight: "28px",
+              boxSizing: "border-box",
+            }}
+          >
 
             {(() => {
               let lastUserIdx = -1;
@@ -383,7 +425,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             )}
 
             {agentRunning && (
-              <div style={{ height: scrollContainerRef.current ? scrollContainerRef.current.clientHeight : "80vh" }} />
+              <div style={{ height: "20px" }} />
             )}
 
             <div ref={messagesEndRef} />

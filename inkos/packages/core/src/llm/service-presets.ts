@@ -29,7 +29,7 @@ export const SERVICE_PRESETS: Record<string, ServicePreset> = {
     temperatureRange: [0, 2],
     defaultTemperature: 0.9,
     writingTemperature: 0.9,
-    knownModels: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed", "MiniMax-M2.1", "MiniMax-M2.1-highspeed", "MiniMax-M2"],
+    knownModels: ["MiniMax-M3.1-Flash", "MiniMax-M3.1", "MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed", "MiniMax-M2.1", "MiniMax-M2.1-highspeed", "MiniMax-M2"],
   },
   bailian:     {
     providerFamily: "anthropic",
@@ -112,6 +112,13 @@ export function getWritingTemperature(service: string): number {
 }
 
 export function guessServiceFromBaseUrl(baseUrl: string): string {
+  if (baseUrl.includes("/anthropic")) {
+    if (baseUrl.includes("minimaxi.com") || baseUrl.includes("minimax.io")) return "minimaxCodingPlan";
+    if (baseUrl.includes("moonshot.cn")) return "kimiCodingPlan";
+    if (baseUrl.includes("dashscope.aliyuncs.com")) return "bailianCodingPlan";
+    if (baseUrl.includes("bigmodel.cn")) return "glmCodingPlan";
+    if (baseUrl.includes("volces.com")) return "volcengineCodingPlan";
+  }
   for (const [key, preset] of Object.entries(SERVICE_PRESETS)) {
     if (key === "custom" || !preset.baseUrl) continue;
     try {

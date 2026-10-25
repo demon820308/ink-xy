@@ -461,7 +461,17 @@ function modelBelongsToService(service: string, model: string): boolean {
   if (serviceAllowsUnlistedModels(service)) return true;
   const endpoint = getEndpoint(service);
   if (!endpoint) return true;
-  return endpoint.models.some((knownModel) => knownModel.id.toLowerCase() === model.toLowerCase());
+  if (endpoint.models.some((knownModel) => knownModel.id.toLowerCase() === model.toLowerCase())) {
+    return true;
+  }
+  const lowerModel = model.toLowerCase();
+  if (
+    (service === "minimax" || service === "minimaxCodingPlan") &&
+    (lowerModel.startsWith("minimax") || lowerModel.startsWith("m2-") || lowerModel.startsWith("m3-"))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function serviceAllowsUnlistedModels(service: string): boolean {

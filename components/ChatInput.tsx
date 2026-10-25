@@ -802,8 +802,7 @@ function compressAndResizeImage(file: File, maxWidth = 1024, maxHeight = 1024, q
       style={{
         flexShrink: 0,
         background: "transparent",
-        padding: "0 16px 8px",
-        paddingRight: 34, // 16px base + 18px for ChatMinimap alignment
+        padding: "0 28px 10px",
       }}
     >
       {/* Hidden file input */}

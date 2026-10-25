@@ -265,8 +265,25 @@ export function resolveModelsEnv(): Record<string, string> {
           envs["INKOS_LLM_BASE_URL"] = activeModel.baseUrl;
         }
         envs["INKOS_LLM_MODEL"] = activeModel.id;
-        envs["INKOS_LLM_PROVIDER"] = "openai";
-        envs["INKOS_LLM_API_FORMAT"] = "chat";
+
+        const isAnthropicApi = (activeModel as any).api === "anthropic-messages" || (activeModel.baseUrl && activeModel.baseUrl.includes("/anthropic"));
+        if (isAnthropicApi) {
+          envs["INKOS_LLM_PROVIDER"] = "anthropic";
+          envs["INKOS_LLM_API_FORMAT"] = "chat";
+          if (activeModel.baseUrl && (activeModel.baseUrl.includes("minimaxi.com") || activeModel.baseUrl.includes("minimax.io"))) {
+            envs["INKOS_LLM_SERVICE"] = "minimaxCodingPlan";
+          } else if (activeModel.baseUrl && activeModel.baseUrl.includes("moonshot.cn")) {
+            envs["INKOS_LLM_SERVICE"] = "kimiCodingPlan";
+          } else if (activeModel.baseUrl && activeModel.baseUrl.includes("dashscope.aliyuncs.com")) {
+            envs["INKOS_LLM_SERVICE"] = "bailianCodingPlan";
+          }
+        } else {
+          envs["INKOS_LLM_PROVIDER"] = "openai";
+          envs["INKOS_LLM_API_FORMAT"] = "chat";
+          if (activeModel.baseUrl && (activeModel.baseUrl.includes("minimaxi.com") || activeModel.baseUrl.includes("minimax.io"))) {
+            envs["INKOS_LLM_SERVICE"] = "minimax";
+          }
+        }
         envs["INKOS_LLM_STREAM"] = "true";
       }
     }

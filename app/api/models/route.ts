@@ -61,22 +61,29 @@ export async function GET() {
       console.error("[api/models] Failed to load cached models:", e);
     }
     
-    // 1. Remove unusable MiniMax-M2.7-highspeed and add MiniMax-M3
+    // 1. Remove unusable MiniMax-M2.7-highspeed and add MiniMax-M3 / M3.1 series
     modelList = modelList.filter(m => !(m.provider.startsWith("minimax") && m.id === "MiniMax-M2.7-highspeed"));
     
     const minimaxProviders = Array.from(new Set(modelList.filter(m => m.provider.startsWith("minimax")).map(m => m.provider)));
+    const extraMinimaxModels = [
+      { id: "MiniMax-M3.1-Flash", name: "MiniMax-M3.1-Flash", supportsVision: true },
+      { id: "MiniMax-M3.1", name: "MiniMax-M3.1", supportsVision: true },
+      { id: "MiniMax-M3", name: "MiniMax-M3", supportsVision: true },
+    ];
     
     for (const provider of minimaxProviders) {
-      if (!modelList.some(m => m.provider === provider && m.id === "MiniMax-M3")) {
-        modelList.push({
-          id: "MiniMax-M3",
-          name: "MiniMax-M3",
-          provider: provider,
-          supportsVision: true
-        });
-        const key = `${provider}:MiniMax-M3`;
-        nameMap.set(key, "MiniMax-M3");
-        thinkingLevels[key] = ["off"];
+      for (const extra of extraMinimaxModels) {
+        if (!modelList.some(m => m.provider === provider && m.id === extra.id)) {
+          modelList.push({
+            id: extra.id,
+            name: extra.name,
+            provider: provider,
+            supportsVision: extra.supportsVision,
+          });
+          const key = `${provider}:${extra.id}`;
+          nameMap.set(key, extra.name);
+          thinkingLevels[key] = ["off"];
+        }
       }
     }
 

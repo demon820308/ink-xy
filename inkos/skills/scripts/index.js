@@ -79,7 +79,13 @@ function resolveModelsEnv(AuthStorage, ModelRegistry, getAgentDir) {
         }
       }
 
-      const activeModel = allModels.find(m => m.provider === resolvedProvider && m.id === defaultModel);
+      let activeModel = allModels.find(m => m.provider === resolvedProvider && m.id === defaultModel);
+      if (!activeModel) {
+        const base = allModels.find(m => m.provider === resolvedProvider);
+        if (base) {
+          activeModel = { ...base, id: defaultModel, name: defaultModel };
+        }
+      }
       if (activeModel) {
         const auth = authStorage.get(defaultProvider) || authStorage.get(resolvedProvider);
         if (auth && auth.key) {
@@ -89,8 +95,25 @@ function resolveModelsEnv(AuthStorage, ModelRegistry, getAgentDir) {
           envs["INKOS_LLM_BASE_URL"] = activeModel.baseUrl;
         }
         envs["INKOS_LLM_MODEL"] = activeModel.id;
-        envs["INKOS_LLM_PROVIDER"] = "openai";
-        envs["INKOS_LLM_API_FORMAT"] = "chat";
+
+        const isAnthropicApi = activeModel.api === "anthropic-messages" || (activeModel.baseUrl && activeModel.baseUrl.includes("/anthropic"));
+        if (isAnthropicApi) {
+          envs["INKOS_LLM_PROVIDER"] = "anthropic";
+          envs["INKOS_LLM_API_FORMAT"] = "chat";
+          if (activeModel.baseUrl && (activeModel.baseUrl.includes("minimaxi.com") || activeModel.baseUrl.includes("minimax.io"))) {
+            envs["INKOS_LLM_SERVICE"] = "minimaxCodingPlan";
+          } else if (activeModel.baseUrl && activeModel.baseUrl.includes("moonshot.cn")) {
+            envs["INKOS_LLM_SERVICE"] = "kimiCodingPlan";
+          } else if (activeModel.baseUrl && activeModel.baseUrl.includes("dashscope.aliyuncs.com")) {
+            envs["INKOS_LLM_SERVICE"] = "bailianCodingPlan";
+          }
+        } else {
+          envs["INKOS_LLM_PROVIDER"] = "openai";
+          envs["INKOS_LLM_API_FORMAT"] = "chat";
+          if (activeModel.baseUrl && (activeModel.baseUrl.includes("minimaxi.com") || activeModel.baseUrl.includes("minimax.io"))) {
+            envs["INKOS_LLM_SERVICE"] = "minimax";
+          }
+        }
         envs["INKOS_LLM_STREAM"] = "true";
       }
     }

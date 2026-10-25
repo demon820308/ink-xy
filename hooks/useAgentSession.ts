@@ -668,14 +668,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
-
-  const scrollUserMsgToTop = useCallback(() => {
-     const container = scrollContainerRef.current;
-     const el = lastUserMsgRef.current;
-     if (!container || !el) return;
-     const elAbsTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-     container.scrollTo({ top: elAbsTop - 16, behavior: "smooth" });
-   }, []);
  
    // Load session on session change
    useEffect(() => {
@@ -729,7 +721,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (pendingScrollToUserRef.current) {
         pendingScrollToUserRef.current = false;
         initialScrollDoneRef.current = true;
-        scrollUserMsgToTop();
+        scrollToBottom("smooth");
       } else if (!initialScrollDoneRef.current) {
         initialScrollDoneRef.current = true;
         scrollToBottom("instant");
@@ -737,7 +729,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         scrollToBottom("smooth");
       }
     }
-  }, [messages.length, agentRunning, scrollToBottom, scrollUserMsgToTop]);
+  }, [messages.length, agentRunning, scrollToBottom]);
 
   // Load model list
   useEffect(() => {

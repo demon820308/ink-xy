@@ -31,10 +31,12 @@ describe("service-presets regression", () => {
       expect(preset!.api).toBe("openai-completions");
     });
 
-    it("has knownModels with all 7 MiniMax models", () => {
+    it("has knownModels with all MiniMax models", () => {
       const preset = resolveServicePreset("minimax");
       expect(preset!.knownModels).toBeDefined();
-      expect(preset!.knownModels).toHaveLength(7);
+      expect(preset!.knownModels).toHaveLength(10);
+      expect(preset!.knownModels).toContain("MiniMax-M3.1-Flash");
+      expect(preset!.knownModels).toContain("MiniMax-M3");
       expect(preset!.knownModels).toContain("MiniMax-M2.7");
       expect(preset!.knownModels).toContain("MiniMax-M2.7-highspeed");
       expect(preset!.knownModels).toContain("MiniMax-M2.5");
@@ -68,6 +70,11 @@ describe("service-presets regression", () => {
     it("returns empty for custom service without apikey + baseUrl", async () => {
       const models = await listModelsForService("custom");
       expect(models).toEqual([]);
+    });
+
+    it("guesses minimaxCodingPlan for anthropic baseUrl on minimaxi", () => {
+      expect(guessServiceFromBaseUrl("https://api.minimaxi.com/anthropic")).toBe("minimaxCodingPlan");
+      expect(guessServiceFromBaseUrl("https://api.minimaxi.com/v1")).toBe("minimax");
     });
   });
 });

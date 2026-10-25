@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @theme {
   --color-bg: var(--bg);
   --color-bg-panel: var(--bg-panel);
@@ -133,6 +135,8 @@ pre, code {
 .markdown-body h1 { font-size: 1.15em; }
 .markdown-body h2 { font-size: 1.05em; }
 .markdown-body h3 { font-size: 0.95em; }
+.markdown-body ul { list-style: disc; }
+.markdown-body ol { list-style: decimal; }
 .markdown-body ul, .markdown-body ol {
   padding-left: 20px;
   margin: 4px 0 8px;
@@ -282,10 +286,10 @@ span.linenumber {
     min-width: 0;
     border-left: none !important;
   }
-  /* keep inner content at fixed width so it doesn't reflow during animation */
+  /* Keep inner content full-width so vertical scrollbar isn't clipped */
   .right-panel-container > * {
-    width: 33vw;
-    min-width: 300px;
+    width: 100%;
+    min-width: 0;
   }
 }
 
@@ -337,5 +341,41 @@ span.linenumber {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Custom chat scrollbar */
+.custom-chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 119, 89, 0.4) transparent;
+}
+
+html.dark .custom-chat-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(140, 119, 89, 0.4);
+  border-radius: 4px;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 119, 89, 0.7);
+}
+
+html.dark .custom-chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+html.dark .custom-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
 
 

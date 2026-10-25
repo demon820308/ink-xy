@@ -24,7 +24,10 @@ export const MINIMAX: InkosEndpoint = {
   defaultTemperature: 0.9,
   writingTemperature: 0.9,
   models: [
-    { id: "MiniMax-M2.7", maxOutput: 131072, contextWindowTokens: 204800, enabled: true, releasedAt: "2026-03-18" },
+    { id: "MiniMax-M3.1-Flash", maxOutput: 131072, contextWindowTokens: 1000000, enabled: true, releasedAt: "2026-04-01" },
+    { id: "MiniMax-M3.1", maxOutput: 131072, contextWindowTokens: 1000000, releasedAt: "2026-04-01" },
+    { id: "MiniMax-M3", maxOutput: 131072, contextWindowTokens: 1000000, releasedAt: "2026-03-25" },
+    { id: "MiniMax-M2.7", maxOutput: 131072, contextWindowTokens: 204800, releasedAt: "2026-03-18" },
     { id: "MiniMax-M2.7-highspeed", maxOutput: 131072, contextWindowTokens: 204800, releasedAt: "2026-03-18" },
     { id: "MiniMax-M2.5", maxOutput: 131072, contextWindowTokens: 204800, releasedAt: "2026-02-12" },
     { id: "MiniMax-M2.5-highspeed", maxOutput: 131072, contextWindowTokens: 204800, releasedAt: "2026-02-12" },

@@ -122,10 +122,13 @@ try {
 }
 
 // Global exception safety nets to prevent uncaught/unhandled errors from crashing the server/Electron process
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("[Global Safety Net] Unhandled Rejection at:", promise, "reason:", reason);
-});
+if (!(globalThis as any).__safetyNetRegistered) {
+  (globalThis as any).__safetyNetRegistered = true;
+  process.on("unhandledRejection", (reason, promise) => {
+    console.error("[Global Safety Net] Unhandled Rejection at:", promise, "reason:", reason);
+  });
 
-process.on("uncaughtException", (error, origin) => {
-  console.error("[Global Safety Net] Uncaught Exception:", error, "origin:", origin);
-});
+  process.on("uncaughtException", (error, origin) => {
+    console.error("[Global Safety Net] Uncaught Exception:", error, "origin:", origin);
+  });
+}

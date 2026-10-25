@@ -374,6 +374,27 @@ describe("resolveEffectiveLLMConfig", () => {
     })).rejects.toThrow(/模型.*kimi-k2\.5.*不属于.*google/);
   });
 
+  it("允许 minimax 服务使用 MiniMax-M3.1-Flash", async () => {
+    await writeProject({
+      configSource: "studio",
+      service: "minimax",
+      services: [{ service: "minimax" }],
+      defaultModel: "MiniMax-M2.7",
+    });
+    await writeSecrets({ minimax: { apiKey: "sk-minimax" } });
+
+    const result = await resolveEffectiveLLMConfig({
+      consumer: "cli",
+      projectRoot: root,
+      envLayers: {
+        global: {},
+        project: { INKOS_LLM_MODEL: "MiniMax-M3.1-Flash" },
+        process: {},
+      },
+    });
+    expect(result.llm.model).toBe("MiniMax-M3.1-Flash");
+  });
+
   it("CLI env 指向 Ollama 时允许用户本地安装的动态模型", async () => {
     await writeProject({
       configSource: "studio",
