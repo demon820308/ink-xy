@@ -1884,7 +1884,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                         textAlign: "center"
                       }}
                     >
-                      🪄 开始 AI 自动解析与提取
+                      <Emoji char="🪄" style={{ marginRight: 4 }} />开始 AI 自动解析与提取
                     </button>
                   </div>
                 )}
@@ -2219,7 +2219,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   <option value="当前限制">当前限制 (高优 - 剧情负面规避)</option>
                   <option value="当前位置">当前位置 (中优 - 场景地点)</option>
                   <option value="当前敌我">当前敌我 (中优 - 关系/阵营设定)</option>
-                  <option value="custom">✍️ 自定义输入 / 角色关系...</option>
+                  <option value="custom">自定义输入 / 角色关系...</option>
                 </select>
                 
                 {(!["当前冲突", "当前目标", "主角状态", "当前限制", "当前位置", "当前敌我"].includes(newFactPredicate)) && (
@@ -2373,7 +2373,7 @@ ${newRelationshipsText.trim() || "- 暂无关系线"}
                   <option value="当前限制">当前限制 (高优 - 剧情负面规避)</option>
                   <option value="当前位置">当前位置 (中优 - 场景地点)</option>
                   <option value="当前敌我">当前敌我 (中优 - 关系/阵营设定)</option>
-                  <option value="custom">✍️ 自定义输入 / 角色关系...</option>
+                  <option value="custom">自定义输入 / 角色关系...</option>
                 </select>
                 
                 {(!["当前冲突", "当前目标", "主角状态", "当前限制", "当前位置", "当前敌我"].includes(editFactPredicate)) && (

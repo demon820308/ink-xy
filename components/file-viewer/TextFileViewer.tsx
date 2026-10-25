@@ -1263,32 +1263,9 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
   const handleWriteNext = async (forceRewrite: any = false, bypassPlanCheck = false, context?: string) => {
     if (!cwd) return;
 
-    // Safety check for license if next chapter is >= 2
     const fileMatch = getFileName(filePath).match(/^(\d+)/);
     const activeChapter = fileMatch ? parseInt(fileMatch[1], 10) : undefined;
     const nextChapterNum = activeChapter !== undefined ? activeChapter + 1 : 1;
-
-    if (nextChapterNum >= 2) {
-      try {
-        const licRes = await fetch("/api/license");
-        const licData = await licRes.json();
-        if (!licData.active) {
-          window.dispatchEvent(new CustomEvent("trigger-activation-modal", {
-            detail: {
-              prompt: "🔒 续写第二章及以上章节是专业版专属功能，请录入授权码开启您的无限创作宇宙！",
-              onSuccess: () => {
-                setTimeout(() => {
-                  handleWriteNext(forceRewrite, bypassPlanCheck, context);
-                }, 100);
-              }
-            }
-          }));
-          return;
-        }
-      } catch (e) {
-        console.error("Failed to check license during write-next:", e);
-      }
-    }
 
     setAuditData(null);
     setDetectData(null);
@@ -1593,32 +1570,9 @@ export function TextFileViewer({ filePath, cwd, availableStyles = [], activeStyl
   const handleDraft = async (forceRewrite: any = false, bypassPlanCheck = false, context?: string) => {
     if (!cwd) return;
 
-    // Safety check for license if next chapter is >= 2
     const fileMatch = getFileName(filePath).match(/^(\d+)/);
     const activeChapter = fileMatch ? parseInt(fileMatch[1], 10) : undefined;
     const nextChapterNum = activeChapter !== undefined ? activeChapter + 1 : 1;
-
-    if (nextChapterNum >= 2) {
-      try {
-        const licRes = await fetch("/api/license");
-        const licData = await licRes.json();
-        if (!licData.active) {
-          window.dispatchEvent(new CustomEvent("trigger-activation-modal", {
-            detail: {
-              prompt: "🔒 续写第二章及以上章节是专业版专属功能，请录入授权码开启您的无限创作宇宙！",
-              onSuccess: () => {
-                setTimeout(() => {
-                  handleDraft(forceRewrite, bypassPlanCheck, context);
-                }, 100);
-              }
-            }
-          }));
-          return;
-        }
-      } catch (e) {
-        console.error("Failed to check license during draft:", e);
-      }
-    }
 
     setAuditData(null);
     setDetectData(null);

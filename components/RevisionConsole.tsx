@@ -341,7 +341,7 @@ export function RevisionConsole({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🪄</span>
+            <Emoji char="🪄" style={{ fontSize: 18 }} />
             <div>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
                 InkOS AI 智能精修控制台

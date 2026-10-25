@@ -733,7 +733,7 @@ export function PlanReport({ data }: { data: PlanReportData }) {
         display: "flex", alignItems: "center", gap: 12,
         paddingBottom: 16, borderBottom: "1px solid var(--border)"
       }}>
-        <div style={{ fontSize: 28, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>📝</div>
+        <div style={{ fontSize: 28 }}><Emoji char="📝" /></div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>本章意图与剧情大纲规划</div>
           {data.bookTitle && (

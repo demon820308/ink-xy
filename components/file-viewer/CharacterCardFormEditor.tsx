@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import yaml from "js-yaml";
+import { Emoji } from "../Emoji";
 
 interface CharacterData {
   name: string;
@@ -193,7 +194,7 @@ ${formData.relationshipNetwork.trim() || "- 暂无关系线"}
         paddingBottom: "12px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>👤 角色设定人设卡</span>
+          <span><Emoji char="👤" style={{ marginRight: 4 }} />角色设定人设卡</span>
           <span style={{
             fontSize: "10px",
             background: formData.tier === "major" ? "rgba(235,94,85,0.1)" : "rgba(var(--accent-rgb),0.1)",
@@ -388,7 +389,7 @@ ${formData.relationshipNetwork.trim() || "- 暂无关系线"}
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
             }}
           >
-            {saving ? "正在保存..." : "💾 保存设定"}
+            {saving ? "正在保存..." : <><Emoji char="💾" style={{ marginRight: 4 }} />保存设定</>}
           </button>
         </div>
       </form>

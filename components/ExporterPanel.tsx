@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
+import { Emoji } from "./Emoji";
 
 interface ExporterPanelProps {
   cwd: string;
@@ -314,7 +315,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 16 }}>📦</span>
+            <Emoji char="📦" style={{ fontSize: 16 }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
               分卷大纲规划与一键编译导出 (Exporter & Volume Planner)
             </span>
@@ -327,7 +328,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
               fontSize: 16, cursor: (exporting || !!consolidating) ? "not-allowed" : "pointer",
             }}
           >
-            ✕
+            <Emoji char="✕" />
           </button>
         </div>
 
@@ -343,7 +344,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
             }}
           >
             <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-              📂 分卷规划器 (Volume Planner)
+              <Emoji char="📂" /> 分卷规划器 (Volume Planner)
             </h4>
 
             {loading ? (
@@ -370,7 +371,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
                           style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 10 }}
                           title="删除此分卷"
                         >
-                          ✕
+                          <Emoji char="✕" />
                         </button>
                       </div>
                     </div>
@@ -380,7 +381,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
                       {vol.isConsolidated ? (
                         <span style={{ fontSize: 10, color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                          ✓ 设定库已归档压缩
+                          <Emoji char="✓" /> 设定库已归档压缩
                         </span>
                       ) : (
                         <button
@@ -395,7 +396,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
                           onMouseEnter={(e) => e.currentTarget.style.background = "rgba(16, 185, 129, 0.15)"}
                           onMouseLeave={(e) => e.currentTarget.style.background = "rgba(16, 185, 129, 0.08)"}
                         >
-                          {consolidating === vol.id ? "💾 正在归档..." : "💾 归档设定库 (Consolidate)"}
+                          <Emoji char="💾" style={{ marginRight: 4 }} />{consolidating === vol.id ? "正在归档..." : "归档设定库 (Consolidate)"}
                         </button>
                       )}
                     </div>
@@ -464,7 +465,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
                   cursor: "pointer", alignSelf: "flex-end"
                 }}
               >
-                ➕ 添加分卷
+                <Emoji char="➕" style={{ marginRight: 4 }} />添加分卷
               </button>
             </form>
           </div>
@@ -478,7 +479,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
             }}
           >
             <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-              🎨 电子书封与编译选项
+              <Emoji char="🎨" /> 电子书封与编译选项
             </h4>
 
             {/* Cover Generator Section */}
@@ -519,7 +520,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
                     fontWeight: 600, alignSelf: "flex-start"
                   }}
                 >
-                  {isGeneratingCover ? "正在渲染书封..." : "✨ 自动生成书封"}
+                  {isGeneratingCover ? "正在渲染书封..." : <><Emoji char="✨" style={{ marginRight: 4 }} />自动生成书封</>}
                 </button>
               </div>
             </div>
@@ -561,12 +562,12 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
 
             {error && (
               <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 6, color: "#f87171", fontSize: 11 }}>
-                ❌ {error}
+                <Emoji char="❌" style={{ marginRight: 4 }} />{error}
               </div>
             )}
             {success && (
               <div style={{ padding: "8px 12px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 6, color: "#34d399", fontSize: 11 }}>
-                ✓ {success}
+                <Emoji char="✓" style={{ marginRight: 4 }} />{success}
               </div>
             )}
 
@@ -580,7 +581,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
                 boxShadow: "0 4px 10px rgba(16, 185, 129, 0.15)"
               }}
             >
-              {exporting ? "正在一键编译排版全书..." : "🚀 开始全书一键编译导出"}
+              {exporting ? "正在一键编译排版全书..." : <><Emoji char="🚀" style={{ marginRight: 4 }} />开始全书一键编译导出</>}
             </button>
 
             {/* Terminal logs */}
@@ -593,7 +594,7 @@ export function ExporterPanel({ cwd, bookId, onClose }: ExporterPanelProps) {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#111", padding: "4px 8px", borderBottom: "1px solid #222" }}>
                   <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 700 }}>
-                    ⚡ InkOS 编译导出日志终端
+                    <Emoji char="⚡" style={{ marginRight: 4 }} />InkOS 编译导出日志终端
                   </span>
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", padding: "6px 10px", fontFamily: "var(--font-mono)", fontSize: 10, color: "#f43f5e", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>

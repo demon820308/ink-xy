@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Emoji } from "../Emoji";
 
 interface ArcRow {
   character: string;
@@ -200,12 +201,12 @@ export const EmotionalArcVisualizer: React.FC<EmotionalArcVisualizerProps> = ({ 
       fontFamily: "var(--font-sans)"
     }}>
       <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-        <span>📈 角色情感状态与心理弧线图</span>
+        <span><Emoji char="📈" style={{ marginRight: 6 }} />角色情感状态与心理弧线图</span>
       </h3>
 
       {data.length === 0 ? (
         <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-dim)", fontSize: "12px" }}>
-          💡 暂无情感弧度数据。写手引擎运行「同步设定」后，会根据章节情节在此处自动累计生成数据。
+          <Emoji char="💡" style={{ marginRight: 4 }} />暂无情感弧度数据。写手引擎运行「同步设定」后，会根据章节情节在此处自动累计生成数据。
         </div>
       ) : (
         <>

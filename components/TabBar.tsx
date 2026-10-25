@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getFileIcon } from "./FileIcons";
+import { Emoji } from "./Emoji";
 
 export interface Tab {
   id: string;
@@ -32,6 +33,8 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
     >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
+        const leadingEmoji = tab.label.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s*(.*)$/u);
+        const displayLabel = leadingEmoji ? leadingEmoji[2] : tab.label;
         return (
           <div
             key={tab.id}
@@ -57,7 +60,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
             }}
           >
             <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.7, display: "flex", alignItems: "center" }}>
-              {getFileIcon(tab.label, 13)}
+              {leadingEmoji ? <Emoji char={leadingEmoji[1]} style={{ fontSize: 13 }} /> : getFileIcon(tab.label, 13)}
             </span>
             <span
               style={{
@@ -68,7 +71,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
               }}
               title={tab.filePath}
             >
-              {tab.label}
+              {displayLabel}
             </span>
             <button
               onClick={(e) => { e.stopPropagation(); onCloseTab(tab.id); }}

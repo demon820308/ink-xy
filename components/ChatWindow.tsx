@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
 import { MessageView } from "./MessageView";
+import { Emoji } from "./Emoji";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
@@ -47,7 +48,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         .then((gems: import("@/lib/types").GemProfile[]) => {
           const gem = gems.find((g) => g.id === activeGemId);
           if (gem) {
-            setGemName(`${gem.avatar || "🤖"} ${gem.name}`);
+            setGemName(gem.name);
           }
         })
         .catch(() => {});
@@ -272,7 +273,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               }}
             >
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0, flex: 1, lineHeight: 1.4 }}>
-                <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>✒️</span>
+                <Emoji char="✒️" style={{ fontSize: 28 }} />
                 <span style={{ fontSize: 22, color: "var(--text)", fontWeight: 700, letterSpacing: "-0.01em" }}>
                   ink-xY Novel Studio{gemName ? ` [${gemName}]` : ""}
                 </span>

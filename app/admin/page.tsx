@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Emoji, renderWithEmoji } from "@/components/Emoji";
 
 /* ================================================================== */
 /*  Types & Description Map                                            */
@@ -199,7 +200,7 @@ function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
   if (oldText === newText) {
     return (
       <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: 13 }}>
-        ✅ 当前文件内容与系统内置出厂版本完全一致，未检测到任何修改差异。
+        <Emoji char="✅" style={{ marginRight: 4 }} />当前文件内容与系统内置出厂版本完全一致，未检测到任何修改差异。
       </div>
     );
   }
@@ -356,12 +357,12 @@ function PromptEditor({
           style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)" }}
         />
         <label htmlFor="safety-lock" style={{ fontSize: 13, cursor: "pointer", color: safetyChecked ? "var(--text)" : "#b45309", fontWeight: 600 }}>
-          ⚠️ 我已知晓修改 Prompt 的极高风险，承诺对修改后的指令正确性负责
+          <Emoji char="⚠️" style={{ marginRight: 4 }} />我已知晓修改 Prompt 的极高风险，承诺对修改后的指令正确性负责
         </label>
         <span style={{ flex: 1 }} />
         {statusLabel && (
           <span style={{ fontSize: 12, fontWeight: 600, color: statusLabel.color, transition: "color 0.15s" }}>
-            {statusLabel.text}
+            {renderWithEmoji(statusLabel.text)}
           </span>
         )}
       </div>
@@ -537,14 +538,14 @@ export default function AdminPromptsPage() {
           <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--accent)", textDecoration: "none", marginBottom: 10, fontWeight: 500 }}>
             ← 返回工作台
           </a>
-          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>⚙️ 提示词指令中心</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}><Emoji char="⚙️" style={{ marginRight: 6 }} />提示词指令中心</h1>
           <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "4px 0 0" }}>物理路径: prompts/ — 共 {prompts.length} 个模板</p>
         </div>
 
         <div style={{ padding: "10px 16px", flexShrink: 0 }}>
           <input
             type="text"
-            placeholder="🔍 搜索提示词名称或分类..."
+            placeholder="搜索提示词名称或分类..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13, outline: "none" }}
@@ -664,7 +665,7 @@ export default function AdminPromptsPage() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {!selected ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontSize: 48, opacity: 0.25 }}>📝</div>
+            <div style={{ fontSize: 48, opacity: 0.25 }}><Emoji char="📝" /></div>
             <div style={{ fontSize: 15, color: "var(--text-muted)" }}>请在左侧侧边栏选择一个 Agent 提示词指令模板进行操作。</div>
           </div>
         ) : detailLoading ? (
@@ -675,7 +676,7 @@ export default function AdminPromptsPage() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "var(--font-mono, monospace)", wordBreak: "break-all" }}>{selected}</div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                  {detail.isModified ? <span style={{ color: "#ea580c" }}>⚠️ 该模板已被自定义修改，覆盖了原出厂设置。</span> : <span>✅ 该模板与出厂内置默认配置完全一致。</span>}
+                  {detail.isModified ? <span style={{ color: "#ea580c" }}><Emoji char="⚠️" style={{ marginRight: 4 }} />该模板已被自定义修改，覆盖了原出厂设置。</span> : <span><Emoji char="✅" style={{ marginRight: 4 }} />该模板与出厂内置默认配置完全一致。</span>}
                 </div>
               </div>
               {detail.isModified && (
@@ -684,7 +685,7 @@ export default function AdminPromptsPage() {
                   disabled={restoring}
                   style={{ padding: "7px 14px", fontSize: 12, fontWeight: 600, border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "#dc2626", cursor: restoring ? "not-allowed" : "pointer", whiteSpace: "nowrap", opacity: restoring ? 0.5 : 1 }}
                 >
-                  {restoring ? "正在恢复..." : "↩️ 恢复系统默认"}
+                  {restoring ? "正在恢复..." : <><Emoji char="↩️" style={{ marginRight: 4 }} />恢复系统默认</>}
                 </button>
               )}
             </div>
@@ -693,13 +694,13 @@ export default function AdminPromptsPage() {
             {helpDoc && (
               <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>📘</span> {helpDoc.title}
+                  <Emoji char="📘" /> {helpDoc.title}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>
-                  <strong>🤖 角色与作用：</strong> {helpDoc.role}
+                  <strong><Emoji char="🤖" style={{ marginRight: 4 }} />角色与作用：</strong> {helpDoc.role}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                  <strong>🎬 触发场景：</strong> {helpDoc.scenario}
+                  <strong><Emoji char="🎬" style={{ marginRight: 4 }} />触发场景：</strong> {helpDoc.scenario}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono, monospace)" }}>
                   <strong>占位插值变量：</strong> <code style={{ background: "var(--bg-panel)", padding: "1px 4px", borderRadius: 3, border: "1px solid var(--border)" }}>{helpDoc.variables}</code>
@@ -727,7 +728,7 @@ export default function AdminPromptsPage() {
                     background: "transparent", border: "none", borderBottom: `2px solid ${tab === t.key ? "var(--accent)" : "transparent"}`, cursor: "pointer", transition: "color 0.15s, border-color 0.15s"
                   }}
                 >
-                  {t.label}
+                  {renderWithEmoji(t.label)}
                 </button>
               ))}
             </div>
@@ -748,7 +749,7 @@ export default function AdminPromptsPage() {
               {tab === "default" && (
                 <div>
                   <div style={{ padding: "8px 20px", fontSize: 12, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", background: "var(--bg-panel)" }}>
-                    📄 系统默认出厂只读备份（不可修改，用以作为自定义的比较基准）
+                    <Emoji char="📄" style={{ marginRight: 4 }} />系统默认出厂只读备份（不可修改，用以作为自定义的比较基准）
                   </div>
                   <pre style={{ margin: 0, padding: 16, fontFamily: "var(--font-mono, monospace)", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--text-muted)" }}>
                     {detail.defaultContent}

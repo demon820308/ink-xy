@@ -1621,13 +1621,13 @@ export function SessionSidebar({
                   border: "1px dashed var(--accent)", borderRadius: "8px", fontSize: "11px", fontFamily: "var(--font-serif)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13 }}>✒️</span>
+                    <Emoji char="✒️" style={{ fontSize: 13 }} />
                     <span>未初始化的创作空间</span>
                   </div>
                   <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
                     该目录尚未创建 InkOS 小说项目结构。一键初始化以启用自动章节规划、人设审计与快照防崩系统。
                   </div>
-                  {initError && <div style={{ color: "#ef4444", marginBottom: 8, fontSize: 10 }}>⚠️ {initError}</div>}
+                  {initError && <div style={{ color: "#ef4444", marginBottom: 8, fontSize: 10 }}><Emoji char="⚠️" style={{ marginRight: 4 }} />{initError}</div>}
                   <button
                     onClick={handleInitWorkspace}
                     disabled={isInitializing}
@@ -1648,7 +1648,7 @@ export function SessionSidebar({
                   border: "1px dashed var(--accent)", borderRadius: "8px", fontSize: "11px", fontFamily: "var(--font-serif)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13 }}>📚</span>
+                    <Emoji char="📚" style={{ fontSize: 13 }} />
                     <span>{hasBooks ? "创建新小说书籍" : "小说宇宙内尚无书籍"}</span>
                   </div>
                   <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
@@ -1664,7 +1664,7 @@ export function SessionSidebar({
                         color: "white", fontWeight: 600, cursor: "pointer", textAlign: "center", fontSize: "11px", transition: "opacity 0.15s",
                       }}
                     >
-                      {hasBooks ? "➕ 创建新书籍" : "✍️ 创建小说书籍"}
+                      {hasBooks ? <><Emoji char="➕" style={{ marginRight: 4 }} />创建新书籍</> : <><Emoji char="✍️" style={{ marginRight: 4 }} />创建小说书籍</>}
                     </button>
                     {!hasBooks && showImportDraft && (
                       <button
@@ -1674,7 +1674,7 @@ export function SessionSidebar({
                           color: "var(--text)", fontWeight: 600, cursor: "pointer", textAlign: "center", fontSize: "11px", transition: "opacity 0.15s",
                         }}
                       >
-                        📥 导入已有旧稿
+                        <Emoji char="📥" style={{ marginRight: 4 }} />导入已有旧稿
                       </button>
                     )}
                   </div>
@@ -1697,7 +1697,7 @@ export function SessionSidebar({
                         e.currentTarget.style.color = "#a78bfa";
                       }}
                     >
-                      🚀 一键全自动生成短篇
+                      <Emoji char="🚀" style={{ marginRight: 4 }} />一键全自动生成短篇
                     </button>
                   )}
                 </div>
@@ -1709,7 +1709,7 @@ export function SessionSidebar({
                   border: "1px dashed var(--accent)", borderRadius: "8px", fontSize: "11px", fontFamily: "var(--font-serif)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13 }}>✍️</span>
+                    <Emoji char="✍️" style={{ fontSize: 13 }} />
                     <span>书籍已创建，准备开始首章创作</span>
                   </div>
                   <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
@@ -1740,7 +1740,7 @@ export function SessionSidebar({
                           textAlign: "center", fontSize: "11px", transition: "opacity 0.15s",
                         }}
                       >
-                        ✍️ 智能写作
+                        <Emoji char="✍️" style={{ marginRight: 4 }} />智能写作
                       </button>
                     )}
                     {showImportDraft && (
@@ -1753,7 +1753,7 @@ export function SessionSidebar({
                           textAlign: "center", fontSize: "11px", transition: "opacity 0.15s",
                         }}
                       >
-                        📥 导入已有旧稿
+                        <Emoji char="📥" style={{ marginRight: 4 }} />导入已有旧稿
                       </button>
                     )}
                   </div>
@@ -1776,7 +1776,7 @@ export function SessionSidebar({
                         e.currentTarget.style.color = "#a78bfa";
                       }}
                     >
-                      🚀 一键全自动生成短篇
+                      <Emoji char="🚀" style={{ marginRight: 4 }} />一键全自动生成短篇
                     </button>
                   )}
                 </div>
@@ -1827,7 +1827,7 @@ export function SessionSidebar({
                           e.currentTarget.style.background = "none";
                         }}
                       >
-                        <span style={{ fontSize: 13 }}>🪝</span>
+                        <Emoji char="🪝" style={{ fontSize: 13 }} />
                       </button>
                     )}
                     
@@ -1864,7 +1864,7 @@ export function SessionSidebar({
                       fontFamily: "var(--font-serif)", boxShadow: "0 2px 8px rgba(249, 115, 22, 0.05)", flexShrink: 0,
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#e07a34", marginBottom: 4 }}>
-                        <span style={{ fontSize: 13 }}>🗜️</span>
+                        <Emoji char="🗜️" style={{ fontSize: 13 }} />
                         <span>建议进行大纲摘要压缩</span>
                       </div>
                       <div style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 8 }}>
@@ -1888,7 +1888,7 @@ export function SessionSidebar({
                           e.currentTarget.style.color = "#ff903f";
                         }}
                       >
-                        🗜️ 一键压缩归档
+                        <Emoji char="🗜️" style={{ marginRight: 4 }} />一键压缩归档
                       </button>
                     </div>
                   )}
@@ -1901,7 +1901,7 @@ export function SessionSidebar({
                       alignItems: "center", justifyContent: "space-between", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)" }}>
-                        <span style={{ fontSize: 13 }}>🎬</span>
+                        <Emoji char="🎬" style={{ fontSize: 13 }} />
                         <span>同人创作模式:</span>
                         <strong style={{ color: "var(--accent)", fontWeight: 600 }}>
                           {activeFanficMode === "canon" ? "正典延续" :
@@ -1920,7 +1920,7 @@ export function SessionSidebar({
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                       >
-                        🔁 刷新设定
+                        <Emoji char="🔁" style={{ marginRight: 4 }} />刷新设定
                       </button>
                     </div>
                   )}
@@ -2034,7 +2034,7 @@ export function SessionSidebar({
                             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
                           >
-                            ✎
+                            <Emoji char="✎" />
                           </button>
                           <button
                             onClick={(e) => handleDeleteGem(e, gem.id)}
@@ -2043,7 +2043,7 @@ export function SessionSidebar({
                             onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
                           >
-                            🗑
+                            <Emoji char="🗑️" />
                           </button>
                         </div>
                       )}
@@ -2270,7 +2270,7 @@ export function SessionSidebar({
                 margin: "0 auto 20px",
                 boxShadow: "0 0 15px rgba(239, 68, 68, 0.15)"
               }}>
-                ⚠️
+                <Emoji char="⚠️" />
               </div>
             )}
             <div style={{ fontWeight: 600, color: writeError ? "#ef4444" : "var(--text)", marginBottom: 8, fontSize: "14px" }}>
@@ -2415,7 +2415,7 @@ export function SessionSidebar({
                   color: "var(--text-muted)", cursor: "pointer", fontWeight: 600,
                 }}
               >
-                ✕ 关闭
+                <Emoji char="✕" style={{ marginRight: 4 }} />关闭
               </button>
             </div>
             <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", fontSize: "12px", color: "var(--text)" }}>
@@ -2426,7 +2426,7 @@ export function SessionSidebar({
                   borderRadius: 8, padding: "14px",
                   color: "#ef4444", fontSize: "12px", lineHeight: 1.6,
                 }}>
-                  ⚠️ 出错啦：{writeError}
+                  <Emoji char="⚠️" style={{ marginRight: 4 }} />出错啦：{writeError}
                 </div>
               ) : lastWriteResult ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

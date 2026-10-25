@@ -1,5 +1,6 @@
 "use client";
 
+import { Emoji } from "./Emoji";
 import { useState, useEffect, useCallback, useRef } from "react";
 // Color icons (have their own fill colors — no background needed)
 import AnthropicIcon from "@lobehub/icons/es/Anthropic/components/Mono";
@@ -57,6 +58,7 @@ const PROVIDER_ICONS: Record<string, { Icon: IconComponent; hasColor: boolean }>
   "github-copilot":         { Icon: GithubCopilotIcon,    hasColor: false },
   "amazon-bedrock":         { Icon: AwsColorIcon,         hasColor: true },
   "azure-openai-responses": { Icon: AzureColorIcon,       hasColor: true },
+  "azure":                  { Icon: AzureColorIcon,       hasColor: true },
   "kimi-coding":            { Icon: KimiColorIcon,        hasColor: true },
   "qwen":                   { Icon: QwenColorIcon,        hasColor: true },
   "zai":                    { Icon: ZhipuColorIcon,       hasColor: true },
@@ -507,7 +509,7 @@ function ModelDetail({
           {model.id && (
             isDefault ? (
               <span style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, background: "rgba(249,115,22,0.1)", padding: "2px 6px", borderRadius: 4 }}>
-                ✨ 全局默认 / Global Default
+                <Emoji char="✨" style={{ marginRight: 4 }} />全局默认 / Global Default
               </span>
             ) : (
               <button
@@ -901,7 +903,7 @@ function OAuthDetail({
 
                   {isDefault ? (
                     <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 9, color: "var(--accent)", fontWeight: 600, background: "rgba(249,115,22,0.1)", padding: "2px 5px", borderRadius: 4 }}>
-                      ✨ 全局默认
+                      <Emoji char="✨" style={{ marginRight: 4 }} />全局默认
                     </span>
                   ) : (
                     onSetDefault && (
@@ -1107,7 +1109,7 @@ function ApiKeyDetail({
 
                   {isDefault ? (
                     <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 9, color: "var(--accent)", fontWeight: 600, background: "rgba(249,115,22,0.1)", padding: "2px 5px", borderRadius: 4 }}>
-                      ✨ 全局默认
+                      <Emoji char="✨" style={{ marginRight: 4 }} />全局默认
                     </span>
                   ) : (
                     onSetDefault && (

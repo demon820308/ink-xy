@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { encodeFilePathForApi } from "@/lib/file-paths";
+import { Emoji } from "../Emoji";
 
 interface BookConfig {
   id: string;
@@ -138,7 +139,7 @@ export const BookSettingsEditor: React.FC<BookSettingsEditorProps> = ({
         borderBottom: "1px solid var(--border)",
         paddingBottom: "12px"
       }}>
-        <span>⚙️ 书籍核心参数设置</span>
+        <span><Emoji char="⚙️" style={{ marginRight: 4 }} />书籍核心参数设置</span>
         {config.id && (
           <code style={{
             fontSize: "11px",
@@ -397,7 +398,7 @@ export const BookSettingsEditor: React.FC<BookSettingsEditorProps> = ({
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
             }}
           >
-            {saving ? "正在保存..." : "💾 保存配置"}
+            {saving ? "正在保存..." : <><Emoji char="💾" style={{ marginRight: 4 }} />保存配置</>}
           </button>
         </div>
       </form>

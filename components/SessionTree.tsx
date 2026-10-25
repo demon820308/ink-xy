@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/session-utils";
 import type { SessionTreeNode } from "@/lib/session-utils";
+import { Emoji } from "./Emoji";
 
 export function SessionTreeItem({
   node,
@@ -288,7 +289,7 @@ export function SessionItem({
               title={title}
             >
               {lockedState && (
-                <span title="本会话已被锁定，无法删除。请先解锁！" style={{ display: "inline-flex", fontSize: 10, flexShrink: 0 }}>🔒</span>
+                <span title="本会话已被锁定，无法删除。请先解锁！" style={{ display: "inline-flex", fontSize: 10, flexShrink: 0 }}><Emoji char="🔒" /></span>
               )}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
             </div>

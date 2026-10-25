@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { Emoji } from "./Emoji";
 
 interface Props {
   isOpen: boolean;
@@ -125,11 +126,16 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
         throw new Error(finalResult?.error || `${stepStage === "outline" ? "大纲规划" : stepStage === "draft" ? "正文写作" : "封面与包装"} 阶段任务执行失败`);
       }
 
-      let parsed: { storyId?: string } | null = null;
-      try {
-        parsed = JSON.parse(finalResult.stdout || "");
-      } catch (error) {
-        console.error("Failed to parse short fiction result JSON:", error);
+      let parsed: { storyId?: string } | null =
+        typeof (finalResult as any)?.storyId === "string"
+          ? { storyId: (finalResult as any).storyId }
+          : null;
+      if (!parsed) {
+        try {
+          parsed = JSON.parse(finalResult.stdout || "");
+        } catch (error) {
+          console.error("Failed to parse short fiction result JSON:", error);
+        }
       }
 
       if (parsed && parsed.storyId) {
@@ -190,7 +196,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
           color: "#a78bfa",
         }}>
           <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>🚀</span>
+            <Emoji char="🚀" />
             <span>全自动短篇小说工坊 (Auto Short Fiction Pipeline)</span>
           </h3>
           {!isRunningShort && (
@@ -198,7 +204,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
               onClick={onClose}
               style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16 }}
             >
-              ✕
+              <Emoji char="✕" />
             </button>
           )}
         </div>
@@ -206,7 +212,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", flex: 1 }}>
           {shortError && (
             <div style={{ padding: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 11 }}>
-              ⚠️ 运行错误: {shortError}
+              <Emoji char="⚠️" style={{ marginRight: 4 }} />运行错误: {shortError}
             </div>
           )}
           {shortSuccess && (
@@ -220,7 +226,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
               gap: 8
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: "#10b981", fontSize: "13px" }}>
-                <span>✨</span> 阶段任务完成！
+                <Emoji char="✨" /> 阶段任务完成！
               </div>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                 {shortSuccess}
@@ -316,7 +322,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                       opacity: shortStoryId ? 0.7 : 1,
                     }}
                   >
-                    {[12, 13, 14, 15, 16, 17, 18].map((n) => (
+                    {[1, 3, 5, 8, 10, 12, 15, 18, 20].map((n) => (
                       <option key={n} value={n}>{n} 章</option>
                     ))}
                   </select>
@@ -343,7 +349,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                       opacity: shortStoryId ? 0.7 : 1,
                     }}
                   >
-                    {[900, 1000, 1100, 1200].map((n) => (
+                    {[800, 1000, 1500, 2000, 2500, 3000, 4000].map((n) => (
                       <option key={n} value={n}>{n} 字/章</option>
                     ))}
                   </select>
@@ -360,7 +366,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                   style={{ cursor: shortStoryId ? "not-allowed" : "pointer", accentColor: "#a78bfa" }}
                 />
                 <label htmlFor="shortCoverCheckbox" style={{ fontSize: 11, color: "var(--text-muted)", cursor: shortStoryId ? "not-allowed" : "pointer", userSelect: "none", opacity: shortStoryId ? 0.7 : 1 }}>
-                  🌌 全自动生成配图故事封面 (AI Cover Generation)
+                  <Emoji char="🌌" style={{ marginRight: 4 }} />全自动生成配图故事封面 (AI Cover Generation)
                 </label>
               </div>
             </>
@@ -382,6 +388,17 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                     ? "正在运行 步骤二：AI 协同批量起草各章节正文..."
                     : "正在运行 步骤三：AI 生成故事简介、卖点与封面提示词，并调用模型生成书封..."}
                 </span>
+              </div>
+              <div style={{
+                fontSize: "11px",
+                color: "#eab308",
+                background: "rgba(234, 179, 8, 0.08)",
+                border: "1px solid rgba(234, 179, 8, 0.2)",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                lineHeight: 1.5,
+              }}>
+                ⏳ 创作生成过程耗时较长，请耐心等待，请勿关闭弹窗或刷新页面
               </div>
               <div
                 ref={shortConsoleRef}
@@ -427,7 +444,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                   cursor: "pointer", marginRight: "auto"
                 }}
               >
-                🔁 重置新故事
+                <Emoji char="🔁" style={{ marginRight: 4 }} />重置新故事
               </button>
             )}
 
@@ -461,7 +478,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                       opacity: !shortDirection.trim() ? 0.6 : 1,
                     }}
                   >
-                    🚀 步骤一：生成大纲
+                    <Emoji char="🚀" style={{ marginRight: 4 }} />步骤一：生成大纲
                   </button>
                 )}
                 {shortStoryId && shortFictionStage === "draft" && (
@@ -476,7 +493,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                       cursor: "pointer"
                     }}
                   >
-                    ✍️ 步骤二：批量起草正文
+                    <Emoji char="✍️" style={{ marginRight: 4 }} />步骤二：批量起草正文
                   </button>
                 )}
                 {shortStoryId && shortFictionStage === "package" && (
@@ -491,7 +508,7 @@ export default function ShortRunModal({ isOpen, onClose, cwd, onCompleted }: Pro
                       cursor: "pointer"
                     }}
                   >
-                    🎨 步骤三：生成封面与包装
+                    <Emoji char="🎨" style={{ marginRight: 4 }} />步骤三：生成封面与包装
                   </button>
                 )}
               </>

@@ -921,7 +921,7 @@ export const PlotHookVisualizer: React.FC<PlotHookVisualizerProps> = ({ editCont
                                 onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--accent)"}
                                 onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--border)"}
                               >
-                                ↩️ 撤销回收
+                                <Emoji char="↩️" style={{ marginRight: 4 }} />撤销回收
                               </button>
                             ) : (
                               <>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { isBaseTtsModel, isVoiceDesignModel, isVoiceCloneModel, isTtsModel } from "@/lib/tts-utils";
-import { Emoji } from "./Emoji";
+import { Emoji, renderWithEmoji } from "./Emoji";
 
 export interface TtsPanelProps {
   model: { provider: string; modelId: string } | null | undefined;
@@ -260,12 +260,11 @@ export function TtsPanel({
                         cursor: "pointer",
                         fontWeight: isActive ? 600 : 400,
                         transition: "all 0.12s",
-                        fontFamily: 'var(--font-serif), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
                       }}
                       onMouseEnter={e => { if(!isActive) e.currentTarget.style.background = "var(--bg-hover)"; }}
                       onMouseLeave={e => { if(!isActive) e.currentTarget.style.background = "none"; }}
                     >
-                      {v.name}
+                      {renderWithEmoji(v.name)}
                     </button>
                   );
                 })}
@@ -383,17 +382,16 @@ export function TtsPanel({
                           color: isActive ? "var(--text)" : "var(--text-muted)",
                           cursor: "pointer",
                           transition: "all 0.12s",
-                          fontFamily: 'var(--font-serif), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
                         }}
                       >
-                        <span>{item.name}</span>
+                        <span>{renderWithEmoji(item.name)}</span>
                         {idx >= 3 && (
                           <span 
                             onClick={(e) => deleteSavedTimbre(item.name, e)}
                             style={{ color: "var(--text-dim)", marginLeft: 4, fontSize: 10, cursor: "pointer" }}
                             title="删除此声线"
                           >
-                            ✕
+                            <Emoji char="✕" />
                           </span>
                         )}
                       </div>
@@ -456,10 +454,9 @@ export function TtsPanel({
                               color: isSelected ? "var(--text)" : "var(--text-muted)",
                               cursor: "pointer",
                               transition: "all 0.12s",
-                              fontFamily: 'var(--font-serif), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
                             }}
                           >
-                            {chip}
+                            {renderWithEmoji(chip)}
                           </button>
                         );
                       })}
@@ -470,7 +467,7 @@ export function TtsPanel({
 
               {/* Prompt Preview */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px dashed var(--border)", paddingTop: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>📝 生成的声线描述 (Timbre Prompt)：</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}><Emoji char="📝" style={{ marginRight: 4 }} />生成的声线描述 (Timbre Prompt)：</span>
                 <textarea
                   value={voiceDesignPrompt}
                   onChange={(e) => setVoiceDesignPrompt(e.target.value)}

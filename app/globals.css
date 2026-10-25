@@ -32,7 +32,7 @@
   --assistant-bg: #fcf8f2;
   --tool-bg: #f4ead1;
   --bg-subtle: rgba(63, 47, 31, 0.04);
-  --font-serif-stack: var(--font-lora), var(--font-outfit), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "STSong", "SimSun", "KaiTi", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
+  --font-serif-stack: var(--font-lora), var(--font-outfit), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "STSong", "SimSun", "KaiTi", serif;
 }
 
 html.dark {
@@ -108,7 +108,7 @@ body {
 }
 
 :root {
-  --font-mono: var(--font-noto-mono), 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', 'PingFang SC', 'Microsoft YaHei', monospace;
+  --font-mono: var(--font-noto-mono), 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, 'Segoe UI Symbol', 'PingFang SC', 'Microsoft YaHei', monospace;
 }
 
 pre, code {

@@ -5,6 +5,7 @@ import { isVisionModel } from "@/lib/vision";
 import { isTtsModel, isVoiceDesignModel, isVoiceCloneModel, isBaseTtsModel } from "@/lib/tts-utils";
 import { encodeFilePathForApi, joinFilePath } from "@/lib/file-paths";
 import { TtsPanel } from "./TtsPanel";
+import { Emoji } from "./Emoji";
 
 export interface AttachedImage {
   data: string;   // base64, no prefix
@@ -918,7 +919,7 @@ function compressAndResizeImage(file: File, maxWidth = 1024, maxHeight = 1024, q
                     <>
                       <button
                         onClick={() => handleDescribe(i)}
-                        title="🪄 反推提示词"
+                        title="反推提示词"
                         style={{
                           position: "absolute", bottom: -4, left: -4,
                           width: 20, height: 20, borderRadius: "50%",
@@ -938,7 +939,7 @@ function compressAndResizeImage(file: File, maxWidth = 1024, maxHeight = 1024, q
                           e.currentTarget.style.background = "var(--bg-panel)";
                         }}
                       >
-                        🪄
+                        <Emoji char="🪄" />
                       </button>
                       <button
                         onClick={() => removeImage(i)}

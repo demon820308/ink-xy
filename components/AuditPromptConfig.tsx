@@ -1,13 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Emoji } from "./Emoji";
+
+export type PromptType =
+  | "auditor_system"
+  | "detector_system"
+  | "state_validator_system"
+  | "writer_system"
+  | "architect_system"
+  | "sf_writer_system";
 
 interface AuditPromptConfigProps {
   onClose: () => void;
 }
 
 export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
-  const [promptName, setPromptName] = useState<"auditor_system" | "detector_system" | "state_validator_system">("auditor_system");
+  const [promptName, setPromptName] = useState<PromptType>("auditor_system");
   const [lang, setLang] = useState<"zh" | "en">("zh");
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -16,13 +25,14 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const hasLang = ["auditor_system", "detector_system", "writer_system", "architect_system"].includes(promptName);
+
   const fetchPrompt = useCallback(async () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
     try {
-      // state_validator_system has no lang suffix, so we omit lang parameter
-      const langParam = promptName === "state_validator_system" ? "" : `&lang=${lang}`;
+      const langParam = hasLang ? `&lang=${lang}` : "";
       const res = await fetch(`/api/skills/prompts?name=${promptName}${langParam}`);
       const data = await res.json();
       if (res.ok && data.success) {
@@ -36,7 +46,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
     } finally {
       setLoading(false);
     }
-  }, [promptName, lang]);
+  }, [promptName, lang, hasLang]);
 
   useEffect(() => {
     fetchPrompt();
@@ -79,7 +89,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
     setError(null);
     setSuccess(null);
     try {
-      const langParam = promptName === "state_validator_system" ? undefined : lang;
+      const langParam = hasLang ? lang : undefined;
       const res = await fetch("/api/skills/prompts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +123,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
     setError(null);
     setSuccess(null);
     try {
-      const langParam = promptName === "state_validator_system" ? undefined : lang;
+      const langParam = hasLang ? lang : undefined;
       const res = await fetch("/api/skills/prompts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -159,7 +169,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
         }}>
           <div>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-              <span>🤖</span> AI 质量审计与检测指令配置
+              <Emoji char="🤖" /> AI 质量审计与检测指令配置
             </h2>
             <span style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2, display: "block" }}>
               管理和配置写手引擎的底层 Agent 提示词模板。请勿随意删除双大括号插值占位符。
@@ -188,23 +198,26 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
         }}>
           {/* Prompt Name Dropdown */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>指令类型:</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>核心指令:</span>
             <select
               value={promptName}
-              onChange={(e) => setPromptName(e.target.value as "auditor_system" | "detector_system" | "state_validator_system")}
+              onChange={(e) => setPromptName(e.target.value as PromptType)}
               style={{
                 padding: "6px 12px", background: "var(--bg)", border: "1px solid var(--border)",
                 borderRadius: 6, color: "var(--text)", fontSize: 12, outline: "none", cursor: "pointer"
               }}
             >
-              <option value="auditor_system">🛡️ 质量审计指令 (Auditor)</option>
-              <option value="detector_system">👁️ AIGC痕迹检测指令 (Detector)</option>
-              <option value="state_validator_system">🧩 设定与状态真理校验指令 (Validator)</option>
+              <option value="auditor_system">质量审计核心指令 (Auditor)</option>
+              <option value="detector_system">AIGC痕迹检测指令 (Detector)</option>
+              <option value="state_validator_system">设定与状态真理校验 (Validator)</option>
+              <option value="writer_system">写手正文协同写作 (Writer)</option>
+              <option value="architect_system">架构师大纲与世界观 (Architect)</option>
+              <option value="sf_writer_system">爆款短篇故事起草 (Short Fiction)</option>
             </select>
           </div>
 
           {/* Language Tabs */}
-          {promptName !== "state_validator_system" && (
+          {hasLang && (
             <div style={{ display: "flex", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 2 }}>
               <button
                 onClick={() => setLang("zh")}
@@ -215,7 +228,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
                   cursor: "pointer", transition: "all 0.15s"
                 }}
               >
-                🇨🇳 中文版
+                <Emoji char="🇨🇳" style={{ marginRight: 4 }} />中文版
               </button>
               <button
                 onClick={() => setLang("en")}
@@ -226,7 +239,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
                   cursor: "pointer", transition: "all 0.15s"
                 }}
               >
-                🇺🇸 英文版
+                <Emoji char="🇺🇸" style={{ marginRight: 4 }} />英文版
               </button>
             </div>
           )}
@@ -262,8 +275,8 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
         }}>
           {/* Error & Success Messages */}
           <div style={{ flex: 1, marginRight: 16, display: "flex", alignItems: "center" }}>
-            {error && <span style={{ fontSize: 12, color: "#f87171" }}>❌ {error}</span>}
-            {success && <span style={{ fontSize: 12, color: "#4ade80" }}>✅ {success}</span>}
+            {error && <span style={{ fontSize: 12, color: "#f87171" }}><Emoji char="❌" style={{ marginRight: 4 }} />{error}</span>}
+            {success && <span style={{ fontSize: 12, color: "#4ade80" }}><Emoji char="✅" style={{ marginRight: 4 }} />{success}</span>}
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -289,7 +302,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
                 e.currentTarget.style.background = "none";
               }}
             >
-              ↩️ 恢复系统默认
+              <Emoji char="↩️" style={{ marginRight: 4 }} />恢复系统默认
             </button>
 
             {/* Cancel Button */}
@@ -317,7 +330,7 @@ export function AuditPromptConfig({ onClose }: AuditPromptConfigProps) {
                 opacity: (saving || restoring || loading) ? 0.6 : 1
               }}
             >
-              {saving ? "正在保存..." : "💾 保存修改"}
+              {saving ? "正在保存..." : <><Emoji char="💾" /> 保存修改</>}
             </button>
           </div>
         </div>
