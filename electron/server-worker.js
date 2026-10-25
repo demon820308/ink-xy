@@ -2,6 +2,11 @@ const { createServer } = require("http");
 const path = require("path");
 const next = require("next");
 
+// Ensure process.cwd() is consistent with the app binary directory on Windows
+try {
+  process.chdir(path.dirname(process.execPath));
+} catch {}
+
 const PORT = process.env.PORT || 3030;
 const nextApp = next({
   dev: false,

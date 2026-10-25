@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ success: true, genres });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error("[api/genres] Failed to load genres:", error);
+    return NextResponse.json({ success: false, genres: [], error: String(error) });
   }
 }
 

@@ -209,8 +209,12 @@ export function SessionSidebar({
     const loadGenres = async () => {
       try {
         const res = await fetch(`/api/genres?cwd=${encodeURIComponent(activeCwd)}`);
+        if (!res.ok) {
+          console.warn("[SessionSidebar] genres API returned non-OK status:", res.status);
+          return;
+        }
         const data = await res.json();
-        if (res.ok && data.success) {
+        if (data.success) {
           setDynamicGenres(data.genres || []);
         }
       } catch (err) {

@@ -30,14 +30,16 @@ function startNextServer() {
     try {
       const serverPath = path.join(__dirname, "server-worker.js");
       const env = getShellEnv();
+      const appRoot = path.join(__dirname, "..");
       
       // Fork Next.js server as a separate child process (Electron Helper)
       nextProcess = fork(serverPath, [], {
+        cwd: path.dirname(app.getPath("exe")),
         env: {
           ...env,
           PORT,
           NODE_ENV: "production",
-          APP_ROOT: path.join(__dirname, ".."),
+          APP_ROOT: appRoot,
           PI_CODING_AGENT_DIR: path.join(require("os").homedir(), ".ink", "agent")
         },
         stdio: "inherit"
