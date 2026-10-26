@@ -7,6 +7,9 @@ try {
   process.chdir(path.dirname(process.execPath));
 } catch {}
 
+// Exit with the Electron main process; an orphaned worker keeps port 3030 with a stale app.asar after reinstall (white screen)
+process.on("disconnect", () => process.exit(0));
+
 const PORT = process.env.PORT || 3030;
 const nextApp = next({
   dev: false,
